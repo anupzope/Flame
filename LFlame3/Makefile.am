@@ -1,9 +1,27 @@
 bin_PROGRAMS = LFlame3
 
-LFlame3_SOURCES=src/main.cc
+LPP = @LPP@
+
+SUFFIXES = .loci
+
+.loci.cc:
+	$(LPP) $(LFlame3_CXXFLAGS) $(LFlame3_CPPFLAGS) $< -o $@
+
+LFlame3_SOURCES=src/main.cc \
+  src/boundary_checker.cc \
+  src/grid_post_processor.cc \
+  src/bcImpermeable.cc \
+  src/logger.cc \
+  src/plot.cc \
+  src/totalVolume.cc \
+  src/initialConditions.cc \
+  src/solverTimestepping.cc \
+  src/solverRungeKutta.cc \
+  src/solverPlotting.cc \
+  src/solverMultispecies.cc
 LFlame3_LDFLAGS = 
 LFlame3_LDADD = 
-LFlame3_CXXFLAGS = 
+LFlame3_CXXFLAGS = -I$(srcdir)/include
 LFlame3_CPPFLAGS = 
 if HAVE_MPI
   LFlame3_LDFLAGS += $(MPI_LDFLAGS)

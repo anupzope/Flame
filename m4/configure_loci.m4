@@ -222,6 +222,8 @@ AS_IF(
     
     dnl for C preprocessor
     AC_DEFINE([HAVE_LOCI], [1], [Defined if Loci library is detected.])
+    
+    AC_SUBST([LPP],[$_configure_loci_path/bin/lpp])
   ],
   [
     dnl for configure use

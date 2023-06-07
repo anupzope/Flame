@@ -1,0 +1,32 @@
+$include "flame.lh"
+$include "FVM.lh"
+
+#include <Loci.h>
+
+$rule default(Runiv) {
+  $Runiv = 8314.34;
+}
+
+$rule default(Ns) {
+  $Ns = 2;
+}
+
+//$rule singleton(speciesNames <- Ns) {
+//  $speciesNames.resize($Ns);
+//  $speciesNames[0] = "H2";
+//  $speciesNames[1] = "N2";
+//}
+
+$rule singleton(molecularWeights <- Ns) {
+  $molecularWeights.resize($Ns);
+  $molecularWeights[0] = 2.016;
+  $molecularWeights[1] = 28.014;
+}
+
+$rule pointwise(molecularWeight <- massFractions, molecularWeights, Ns), constraint(geom_cells) {
+  double sum = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    sum += $massFractions[i]/$molecularWeights[i];
+  }
+  $molecularWeight = 1.0/sum;
+}

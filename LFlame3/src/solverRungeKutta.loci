@@ -1,0 +1,187 @@
+$include "flame.lh"
+$include "FVM.lh"
+
+#include <Loci.h>
+
+//==============================================================================
+
+$rule singleton(rk2TimeStepSize <- timeStepSize) {
+  $rk2TimeStepSize = $timeStepSize;
+}
+
+$rule singleton(rk2Weights), constraint(UNIVERSE) {
+  $rk2Weights[0] = 0.5;
+  $rk2Weights[1] = 0.5;
+}
+
+//==============================================================================
+
+$rule singleton(timeStep{n,rk=0} <- timeStep{n}) {
+  $timeStep{n, rk=0} = $timeStep{n} + 1;
+}
+
+$rule singleton(stime{n,rk=0} <- stime{n}) {
+  $stime{n,rk=0} = $stime{n};
+}
+
+$type massFractions_i storeVec<double>;
+$type gagePressure_i store<double>;
+$type velocity_i store<Loci::vector3d<double> >;
+$type temperature_i store<double>;
+
+$rule pointwise(massFractions_i{n,rk=0} <- massFractions{n}, Ns), prelude {
+  $massFractions_i{n,rk=0}.setVecSize($massFractions{n}.vecSize());
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $massFractions_i{n,rk=0}[i] = $massFractions{n}[i];
+  }
+}
+
+$rule pointwise(gagePressure_i{n,rk=0} <- gagePressure{n}) {
+  $gagePressure_i{n,rk=0} = $gagePressure{n};
+}
+
+$rule pointwise(velocity_i{n,rk=0} <- velocity{n}) {
+  $velocity_i{n,rk=0} = $velocity{n};
+}
+
+$rule pointwise(temperature_i{n,rk=0} <- temperature{n}) {
+  $temperature_i{n,rk=0} = $temperature{n};
+}
+
+//$rule pointwise(massFractions{n,rk=0} <- massFractions{n}, Ns),
+//constraint(geom_cells, timeIntegrationRK2), prelude {
+//  $massFractions{n,rk=0}.setVecSize(*$Ns);
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    $massFractions{n,rk=0}[i] = $massFractions{n}[i];
+//  }
+//}
+//
+//$rule pointwise(gagePressure{n,rk=0} <- gagePressure{n}),
+//constraint(geom_cells, timeIntegrationRK2) {
+//  $gagePressure{n,rk=0} = $gagePressure{n};
+//}
+//
+//$rule pointwise(velocity{n,rk=0} <- velocity{n}),
+//constraint(geom_cells, timeIntegrationRK2) {
+//  $velocity{n,rk=0} = $velocity{n};
+//}
+//
+//$rule pointwise(temperature{n,rk=0} <- temperature{n}),
+//constraint(geom_cells, timeIntegrationRK2) {
+//  $temperature{n,rk=0} = $temperature{n};
+//}
+
+$rule pointwise(massFractions{n,rk} <- massFractions_i{n,rk}),
+inplace(massFractions{n,rk}|massFractions_i{n,rk}), prelude {
+};
+
+$rule pointwise(gagePressure{n,rk} <- gagePressure_i{n,rk}),
+inplace(gagePressure{n,rk}|gagePressure_i{n,rk}), prelude {
+};
+
+$rule pointwise(velocity{n,rk} <- velocity_i{n,rk}),
+inplace(velocity{n,rk}|velocity_i{n,rk}), prelude {
+};
+
+$rule pointwise(temperature{n,rk} <- temperature_i{n,rk}),
+inplace(temperature{n,rk}|temperature_i{n,rk}), prelude {
+};
+
+$rule pointwise(massFractions_i{n,rk+1} <- massFractions{n,rk}, Ns),
+inplace(massFractions_i{n,rk+1}|massFractions{n,rk}), prelude {
+  $massFractions_i{n,rk+1}.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $massFractions_i{n,rk+1} = $massFractions{n,rk};
+  }
+}
+
+$rule pointwise(gagePressure_i{n,rk+1} <- gagePressure{n,rk}),
+inplace(gagePressure_i{n,rk+1}|gagePressure{n,rk}) {
+  $gagePressure_i{n,rk+1} = $gagePressure{n,rk};
+}
+
+$rule pointwise(velocity_i{n,rk+1} <- velocity{n,rk}),
+inplace(velocity_i{n,rk+1}|velocity{n,rk}) {
+  $velocity_i{n,rk+1} = $velocity{n,rk};
+}
+
+$rule pointwise(temperature_i{n,rk+1} <- temperature{n,rk}),
+inplace(temperature_i{n,rk+1}|temperature{n,rk}) {
+  $temperature_i{n,rk+1} = $temperature{n,rk};
+}
+
+//==============================================================================
+
+$rule singleton(timeStep{n,rk+1} <- timeStep{n,rk}), constraint(timeIntegrationRK2) {
+  $timeStep{n,rk+1} = $timeStep{n,rk};
+}
+
+$rule singleton(stime{n,rk+1} <- stime{n,rk}, stime{n}, rk2TimeStepSize, rk2Weights, $rk{n,rk}),
+constraint(timeIntegrationRK2) {
+  $stime{n,rk+1} = $stime{n} + $rk2Weights[$$rk{n,rk}]*$rk2TimeStepSize;
+}
+
+//$rule pointwise(massFractions{n,rk+1}, gagePressure{n,rk+1}, velocity{n,rk+1},
+//temperature{n,rk+1} <- srcMass{n,rk}, srcMomentum{n,rk}, srcEnergy{n,rk},
+//Ns, rk2TimeStepSize, rk2Weights, $rk{n,rk}),
+//constraint(geom_cells, timeIntegrationRK2), prelude {
+//  $massFractions{n,rk+1}.setVecSize(*$Ns);
+//} {
+//  //for(int i = 0; i < $Ns; ++i) {
+//  //  $massFractions{n,rk+1}[i] = $massFractions{n,rk}[i]
+//  //    + $rk2Weights[$$rk{n,rk}]*$rk2TimeStepSize*$massFractionsF{n,rk}[i];
+//  //}
+//}
+
+//==============================================================================
+
+$rule singleton(rk2Finished{n,rk} <- $rk{n,rk}), constraint(timeIntegrationRK2) {
+  $rk2Finished{n,rk} = $$rk{n,rk} >= 2;
+}
+
+$rule singleton(timeStep{n+1} <- timeStep{n,rk}),
+constraint(timeIntegrationRK2),
+conditional(rk2Finished{n,rk}) {
+  $timeStep{n+1} = $timeStep{n,rk};
+}
+
+$rule singleton(stime{n+1} <- stime{n,rk}),
+constraint(timeIntegrationRK2),
+conditional(rk2Finished{n,rk}) {
+  $stime{n+1} = $stime{n,rk};
+}
+
+$rule pointwise(massFractions{n+1} <- massFractions{n,rk}, Ns),
+inplace(massFractions{n+1}|massFractions{n,rk}),
+constraint(geom_cells, timeIntegrationRK2),
+conditional(rk2Finished{n,rk}) {
+  for(int i = 0; i < $Ns; ++i) {
+    $massFractions{n+1} = $massFractions{n,rk};
+  }
+}
+
+$rule pointwise(gagePressure{n+1} <- gagePressure{n,rk}),
+inplace(gagePressure{n+1}|gagePressure{n,rk}),
+constraint(geom_cells, timeIntegrationRK2),
+conditional(rk2Finished{n,rk}) {
+  $gagePressure{n+1} = $gagePressure{n,rk};
+}
+
+$rule pointwise(velocity{n+1} <- velocity{n,rk}),
+inplace(velocity{n+1}|velocity{n,rk}),
+constraint(geom_cells, timeIntegrationRK2),
+conditional(rk2Finished{n,rk}) {
+  $velocity{n+1} = $velocity{n,rk};
+}
+
+$rule pointwise(temperature{n+1} <- temperature{n,rk}),
+inplace(temperature{n+1}|temperature{n,rk}),
+constraint(geom_cells, timeIntegrationRK2),
+conditional(rk2Finished{n,rk}) {
+  $temperature{n+1} = $temperature{n,rk};
+}
+
+//==============================================================================

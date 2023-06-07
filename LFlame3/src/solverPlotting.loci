@@ -1,0 +1,52 @@
+$include "flame.lh"
+$include "FVM.lh"
+
+#include <plot.hh>
+#include <logger.hh>
+
+#include <Loci.h>
+
+$rule default(plotOptions) {
+  $plotOptions = options_list("nodalVariables:frequency:counts");
+}
+
+$rule singleton(plotSettings <- plotOptions), option(disable_threading) {
+  std::string err;
+  if($plotSettings.fromOptionsList($plotOptions, err)) {
+    $[Once] {
+      flame::logger.severe(err);
+    }
+    Loci::Abort();
+  } else {
+    flame::logger.info("PlotSettings frequency ", $plotSettings.frequency);
+    for(size_t i = 0; i < $plotSettings.counts.size(); ++i) {
+      flame::logger.info("PlotSettings counts ", $plotSettings.counts[i]);
+    }
+    for(size_t i = 0; i < $plotSettings.variables.size(); ++i) {
+      flame::logger.info("PlotSettings variables ", $plotSettings.variables[i]);
+    }
+  }
+}
+
+//$type doPreCoupling param<bool>;
+//$type doPostCoupling param<bool>;
+//
+//$rule singleton(doPreCoupling{n} <- timeStep{n}, $n{n}) {
+//  $doPreCoupling{n} = $timeStep{n} % 2 == 0;
+//}
+//
+//$rule singleton(doPreCoupling{n,rk=0} <- doPreCoupling{n}) {
+//  $doPreCoupling{n,rk=0} = false;
+//}
+//
+//$rule singleton(doPreCoupling{n,rk+1} <- doPreCoupling{n,rk}) {
+//  $doPreCoupling{n,rk+1} = false;
+//}
+//
+//$rule pointwise(temperature{n} <- temperature_ic, timeStep{n}), constraint(geom_cells), conditional(doPreCoupling{n}), prelude {
+//  $[Once] {
+//    std::cerr << "PreCoupling at " << *$timeStep{n} << std::endl;
+//  }
+//} {
+//  $temperature{n} = $temperature_ic;
+//}

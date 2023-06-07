@@ -1,0 +1,13 @@
+$include "FVM.lh"
+
+#include <Loci.h>
+
+$type totalVolume param<double>;
+
+$rule unit(totalVolume), constraint(geom_cells) {
+  $totalVolume = 0.0;
+}
+
+$rule apply(totalVolume <- vol)[Loci::Summation], constraint(geom_cells) {
+  join($totalVolume, $vol);
+}

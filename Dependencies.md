@@ -10,11 +10,15 @@ Additional dependencies are required for building Flame dependencies
 module load cmake miniconda3 texlive/20210325
 ```
 
+## Set the install prefix
+
+FLAME_DEP_INSTALL_PREFIX=/var/tmp/anup/flame-deps/installed
+
 ### GKlib
 ```
 git clone https://github.com/KarypisLab/GKlib.git
 cd GKlib
-make config prefix=/work/adz8/flame-deps/installed/metis
+make config prefix=${FLAME_DEP_INSTALL_PREFIX}/metis
 make -j4
 make install
 ```
@@ -23,7 +27,7 @@ make install
 ```
 git clone https://github.com/KarypisLab/METIS.git
 cd METIS
-make config prefix=/work/adz8/flame-deps/installed/metis shared=1
+make config prefix=${FLAME_DEP_INSTALL_PREFIX}/metis shared=1
 make -j4
 make install
 ```
@@ -32,7 +36,7 @@ make install
 ```
 git clone https://github.com/KarypisLab/ParMETIS.git
 cd ParMETIS
-make config prefix=/work/adz8/flame-deps/installed/metis shared=1
+make config prefix=${FLAME_DEP_INSTALL_PREFIX}/metis shared=1
 make -j4
 make install
 ```
@@ -48,7 +52,7 @@ whatis("Name: GKlib,METIS, ParMETIS")
 whatis("Version: master (4/12/2023)")
 whatis("Category: mesh partitioning library")
 
-local base = "/work/adz8/flame-deps/installed/metis"
+local base = "/var/tmp/anup/flame-deps/installed/metis"
 
 prepend_path("PATH", pathJoin(base,"bin"))
 prepend_path("LD_LIBRARY_PATH", pathJoin(base,"lib"))
@@ -57,7 +61,7 @@ setenv("PARMETIS_DIR", base)
 ```
 
 ### HDF5
-Use ccmake to configure. Enable parallel HDF5 and  and set installation path. No other changes in the configuration are required. Then build as usual using `make` and `make install`.
+Use ccmake to configure. Enable parallel HDF5 and set installation path. No other changes in the configuration are required. Then, build as usual using `make` and `make install`.
 
 ### Modulefile for HDF5
 ```
@@ -71,7 +75,7 @@ whatis("Name: HDF5")
 whatis("Version: 1.10.9 (compiled on 4/12/2023)")
 whatis("Category: File storage format")
 
-local base = "/work/adz8/flame-deps/installed/hdf5/1.10.9"
+local base = "/var/tmp/anup/flame-deps/installed/hdf5/1.10.9"
 
 prepend_path("PATH", pathJoin(base,"bin"))
 prepend_path("LD_LIBRARY_PATH", pathJoin(base,"lib"))
@@ -95,8 +99,8 @@ CGNS_ENABLE_SCOPING:OFF
 CGNS_ENABLE_TESTS:OFF
 CGNS_USE_SHARED:ON
 CMAKE_BUILD_TYPE:Release
-CMAKE_INSTALL_PREFIX:/work/adz8/flame-deps/installed/cgns
-HDF5_DIR:/work/adz8/flame-deps/installed/hdf5/1.10.9/cmake
+CMAKE_INSTALL_PREFIX:${FLAME_DEP_INSTALL_PREFIX}/cgns
+HDF5_DIR:${FLAME_DEP_INSTALL_PREFIX}/hdf5/1.10.9/cmake
 HDF5_NEED_MPI:ON
 HDF5_NEED_SZIP:OFF
 HDF5_NEED_ZLIB:OFF
@@ -116,7 +120,7 @@ whatis("Name: CGNS")
 whatis("Version: master (compiled on 4/12/2023)")
 whatis("Category: CFD General Notation System")
 
-local base = "/work/adz8/flame-deps/installed/cgns"
+local base = "/var/tmp/anup/flame-deps/installed/cgns"
 
 prepend_path("PATH", pathJoin(base,"bin"))
 prepend_path("LD_LIBRARY_PATH", pathJoin(base,"lib"))
@@ -132,13 +136,13 @@ tar -xf petsc-3.18.5.tar.gz
 cd petsc-3.18.5
 
 ./configure \
---prefix=/work/adz8/flame-deps/installed/petsc/3.18.5 \
---with-metis-include=/work/adz8/flame-deps/installed/metis/include \
---with-metis-lib="-Wl,-rpath,/work/adz8/flame-deps/installed/metis/lib -L/work/adz8/flame-deps/installed/metis/lib -lmetis /work/adz8/flame-deps/installed/metis/lib/libGKlib.a" \
---with-parmetis-include=/work/adz8/flame-deps/installed/metis/include \
---with-parmetis-lib="-Wl,-rpath,/work/adz8/flame-deps/installed/metis/lib -L/work/adz8/flame-deps/installed/metis/lib -lparmetis /work/adz8/flame-deps/installed/metis/lib/libGKlib.a" \
---with-hdf5-dir=/work/adz8/flame-deps/installed/hdf5/1.10.9 \
---with-cgns-dir=/work/adz8/flame-deps/installed/cgns \
+--prefix=${FLAME_DEP_INSTALL_PREFIX}/petsc/3.18.5 \
+--with-metis-include=${FLAME_DEP_INSTALL_PREFIX}/metis/include \
+--with-metis-lib="-Wl,-rpath,${FLAME_DEP_INSTALL_PREFIX}/metis/lib -L${FLAME_DEP_INSTALL_PREFIX}/metis/lib -lmetis ${FLAME_DEP_INSTALL_PREFIX}/metis/lib/libGKlib.a" \
+--with-parmetis-include=${FLAME_DEP_INSTALL_PREFIX}/metis/include \
+--with-parmetis-lib="-Wl,-rpath,${FLAME_DEP_INSTALL_PREFIX}/metis/lib -L${FLAME_DEP_INSTALL_PREFIX}/metis/lib -lparmetis ${FLAME_DEP_INSTALL_PREFIX}/metis/lib/libGKlib.a" \
+--with-hdf5-dir=${FLAME_DEP_INSTALL_PREFIX}/hdf5/1.10.9 \
+--with-cgns-dir=${FLAME_DEP_INSTALL_PREFIX}/cgns \
 --with-blas-lapack-dir=$MKLROOT
 
 make -j4
@@ -157,7 +161,7 @@ whatis("Name: PETSc")
 whatis("Version: 3.18.5 (compiled on 4/12/2023)")
 whatis("Category: Portable, Extensible Toolkit for Scientific Computation")
 
-local base = "/work/adz8/flame-deps/installed/petsc/3.18.5"
+local base = "/var/tmp/anup/flame-deps/installed/petsc/3.18.5"
 
 prepend_path("LD_LIBRARY_PATH", pathJoin(base,"lib"))
 prepend_path("PKG_CONFIG_PATH", pathJoin(base,"lib/pkgconfig"))
@@ -170,7 +174,7 @@ setenv("PETSC_ARCH", "")
 ```
 cvs -d /cavs/simcenter/data4/loci/cvsroot checkout -r rel-4-0-patches 2dgv configure FVMMod FVMtools lpp install.txt lpp Makefile ParMetis-4.0 README sprng src tmpcopy Tutorial
 
-./configure --prefix /work/adz8/flame-deps/installed/Loci --with-metis /work/adz8/flame-deps/installed/metis
+./configure --prefix ${FLAME_DEP_INSTALL_PREFIX}/Loci --with-metis ${FLAME_DEP_INSTALL_PREFIX}/metis
 
 make -j4
 make install
@@ -187,7 +191,7 @@ whatis("Name: Loci")
 whatis("Version: 4.0 (compiled on 4/12/2023)")
 whatis("Category: Auto-parallelization framework for scientific computations")
 
-local base = "/work/adz8/flame-deps/installed/Loci/Loci-Linux-x86_64-mpic++-rel-4-0-patches"
+local base = "/var/tmp/anup/flame-deps/installed/Loci/Loci-Linux-x86_64-mpic++-rel-4-0-patches"
 
 prepend_path("PATH", pathJoin(base,"bin"))
 prepend_path("LD_LIBRARY_PATH", pathJoin(base,"lib"))

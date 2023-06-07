@@ -1,0 +1,28 @@
+#include <boundary_checker.hh>
+
+$include "FVM.lh"
+
+namespace flame {
+
+class ReflectingBCChecker : public BoundaryChecker {
+public:
+  std::string boundaryConditions() override {
+    return "reflecting";
+  }
+  
+  std::string variablesChecked() override {
+    return "";
+  }
+  
+  bool checkOptions(const options_list & bc_options) override {
+    return true;
+  }
+  
+  std::ostream & errorMessage(std::ostream & s) override {
+    return s;
+  }
+};
+
+registerBoundaryChecker<ReflectingBCChecker> reflectingBCChecker;
+
+} // end: namespace flame

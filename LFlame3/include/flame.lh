@@ -1,0 +1,159 @@
+
+/*******************************************************************************
+General variables.
+*******************************************************************************/
+// Name of the current case.
+$type caseName param<std::string>;
+
+/*******************************************************************************
+Variables related to solver time integration algorithm.
+*******************************************************************************/
+// Number of time steps.
+$type nTimeSteps param<int>;
+
+// Time step size specified by user.
+$type timeStepSize param<double>;
+
+// Conditional variable indicating the end of time steps.
+$type timeStepFinished param<bool>;
+
+// Initial value of cycle number.
+$type timeStep_ic param<int>;
+
+// Current cycle number.
+$type timeStep param<int>;
+
+// Initial value of simulation time.
+$type stime_ic param<double>;
+
+// Current simulation time.
+$type stime param<double>;
+
+// Time integration method.
+$type timeIntegrationMethod param<string>;
+
+// Constraints that represent current time integration method.
+$type timeIntegrationRK2 Constraint;
+
+$type rk2Weights param<Loci::Array<double, 2> >;
+
+/*******************************************************************************
+Variables related to solver output.
+*******************************************************************************/
+// Dummy variable that is used to force writing grid topology
+// information.
+$type plotOptions param<options_list>;
+$type plotSettings param<flame::PlotSettings>;
+
+// Parameter to indicate if data is output in an iteration.
+$type doPlot param<bool>;
+
+// List of postfixes to use while writing output data.
+$type plotPostfix param<std::string>;
+
+// Constraint for parametrix variables.
+$type plotNodal_X Constraint;
+
+$type boundary_names store<string>;
+
+/*******************************************************************************
+Output variable.
+*******************************************************************************/
+$type solution store<double>;
+
+/*******************************************************************************
+Variables related to solver initial conditions.
+*******************************************************************************/
+// Initial pressure (at cell).
+$type gagePressure_ic store<double>;
+
+// Initial velocity (at cell).
+$type velocity_ic store<Loci::vector3d<double> >;
+
+// Initial temperature (at cell).
+$type temperature_ic store<double>;
+
+// Initial mass fractions (at cell).
+$type massFractions_ic storeVec<double>;
+
+/*******************************************************************************
+Parameters of the solver.
+*******************************************************************************/
+// Ambient pressure.
+$type Pambient param<double>;
+
+/*******************************************************************************
+Variables related to solver current state.
+*******************************************************************************/
+// Vector of mass fractions (at cell).
+$type massFractions storeVec<double>;
+
+// Gage pressure (at cell).
+$type gagePressure store<double>;
+
+// Velocity (at cell).
+$type velocity store<Loci::vector3d<double> >;
+
+// Temperature (at cell).
+$type temperature store<double>;
+
+
+// Net rate of mass convection through a face.
+$type massConvection_f storeVec<double>;
+
+// Net rate of momentum convection though a face.
+$type momentumConvection_f store<Loci::vector3d<double> >;
+
+// Net rate of energy convection through a face.
+$type energyConvection_f store<double>;
+
+
+// Net rate of mass diffusion through a face.
+$type massDiffusion_f storeVec<double>;
+
+// Net rate of momentum diffusion through a face.
+$type momentumDiffusion_f store<Loci::vector3d<double> >;
+
+// Net rate of energy diffusion through a face.
+$type energyDiffusion_f store<double>;
+
+
+// Source term for mass equations.
+$type srcMass storeVec<double>;
+
+// Source term for momentum equations.
+$type srcMomentum store<Loci::vector3d<double> >;
+
+// Source term for energy equations.
+$type srcEnergy store<double>;
+
+/*******************************************************************************
+Variables related to Runge-Kutta time integration.
+*******************************************************************************/
+$type rk2Finished param<bool>;
+$type rk2TimeStepSize param<double>;
+
+/*******************************************************************************
+Variables related to milti-species management.
+*******************************************************************************/
+// Universal gas constant in J/kmol/K.
+$type Runiv param<double>;
+
+// Number of species.
+$type Ns param<int>;
+
+// Names of the species.
+//$type speciesNames param<std::vector<std::string> >;
+
+// Vector of molecular weight of the species in kg/kmol.
+$type molecularWeights param<std::vector<double> >;
+
+// Molecular weight of the mixture in kg/kmol (in a cell).
+$type molecularWeight store<double>;
+
+/**
+chemistryModel=<
+  species="H2,N2",
+  molecularWeights=[2.016, 28.014], // kg/kmol or grams/mol
+>
+*/

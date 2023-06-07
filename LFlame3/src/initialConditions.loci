@@ -1,0 +1,192 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <logger.hh>
+#include <plot.hh>
+
+#include <Loci.h>
+
+#include <sstream>
+
+$rule default(Ns) {
+  $Ns = 2;
+}
+
+$rule unit(gagePressure_ic), constraint(geom_cells) {
+  $gagePressure_ic = 0.0;
+}
+
+$rule apply(gagePressure_ic)[Loci::Summation], constraint(geom_cells) {
+  double P = 101325.0;
+  join($gagePressure_ic, P);
+}
+
+$rule unit(velocity_ic), constraint(geom_cells) {
+  $velocity_ic = Loci::vector3d<double>(0.0, 0.0, 0.0);
+}
+
+$rule apply(velocity_ic)[Loci::Summation], constraint(geom_cells) {
+  Loci::vector3d<double> U(100.0, 0.0, 0.0);
+  join($velocity_ic, U);
+}
+
+$rule unit(temperature_ic), constraint(geom_cells) {
+  $temperature_ic = 0.0;
+}
+
+$rule apply(temperature_ic)[Loci::Summation], constraint(geom_cells) {
+  double T = 300.0;
+  join($temperature_ic, T);
+}
+
+$rule unit(massFractions_ic <- Ns), constraint(geom_cells), prelude {
+  $massFractions_ic.setVecSize(*$Ns);
+} {
+  $massFractions_ic = mk_Scalar(0.0);
+}
+
+$rule apply(massFractions_ic <- Ns, cellcenter)[Loci::Summation], constraint(geom_cells) {
+  if($cellcenter.y > 0.0) {
+    $massFractions_ic[0] = 1.0;
+    $massFractions_ic[1] = 0.0;
+  } else {
+    $massFractions_ic[0] = 0.0;
+    $massFractions_ic[1] = 1.0;
+  }
+}
+
+$rule singleton(timeStep_ic), constraint(UNIVERSE) {
+  $timeStep_ic = 0;
+}
+
+$rule singleton(stime_ic), constraint(UNIVERSE) {
+  $stime_ic = 0;
+}
+
+$rule pointwise(
+  OUTPUT <- caseName, upper, lower, boundary_map, face2node, ref, boundary_names, pos,
+  (upper,lower,boundary_map)->face2node->pos, boundary_map->ref->boundary_names, plotPostfix
+), conditional(doPlot), prelude {
+  {
+    std::stringstream ss;
+    ss << "output/grid_pos." << *$plotPostfix << "_" << *$caseName;
+    
+    hid_t fileId = Loci::hdf5CreateFile(ss.str().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    Loci::writeContainer(fileId, "pos", $pos.Rep());
+    Loci::hdf5CloseFile(fileId);
+  }
+  
+  {
+    std::string basename = *$caseName + ".topo";
+    std::string filename = "output/" + basename;
+    
+    if(Loci::MPI_rank==0) {
+      std::string topolink = std::string("output/topo_file.") + *$plotPostfix + std::string("_") + *$caseName;
+      std::ofstream file(topolink.c_str(), std::ios::trunc);
+      file << basename << std::endl;
+      file.close();
+    }
+    
+    if(Loci::MPI_rank == 0) {
+      flame::logger.info("writing grid topology file: ", basename);
+    }
+    
+    Loci::parallelWriteGridTopology(
+      filename.c_str(),
+      $upper.Rep(),$lower.Rep(),
+      $boundary_map.Rep(),
+      $face2node.Rep(),
+      $ref.Rep(),
+      $boundary_names.Rep(),
+      $pos.Rep(),
+      entitySet(seq)
+    );
+  }
+};
+
+//$rule pointwise(solution <- writeTopo, P, T, U, Y, caseName), inplace(solution|P), prelude {
+  /*{
+    std::string basename = *$caseName + ".topo";
+    std::string filename = "output/" + basename;
+    
+    if(Loci::MPI_rank==0) {
+      std::string topolink = (std::string("output/topo_file.") + std::string("_") + *$caseName);
+      std::ofstream file(topolink.c_str(), std::ios::trunc);
+      file << basename << std::endl;
+      file.close();
+    }
+    
+    if(Loci::MPI_rank == 0)
+      std::cout << "writing grid topology file: " << basename << std::endl;
+    
+    Loci::parallelWriteGridTopology(
+      filename.c_str(),
+      $upper.Rep(),$lower.Rep(),
+      $boundary_map.Rep(),
+      $face2node.Rep(),
+      $ref.Rep(),
+      $boundary_names.Rep(),
+      $pos.Rep(),
+      entitySet(seq)
+    );
+  }*/
+  
+  /*{
+    std::stringstream ss;
+    ss << "output/P_sca.0_" << *$caseName;
+    
+    hid_t fileId = Loci::hdf5CreateFile(ss.str().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    Loci::writeContainer(fileId, "P", $P_ic.Rep());
+    Loci::hdf5CloseFile(fileId);
+  }*/
+//};
+
+//$type nodalWriteScalar(X) store<float>;
+
+/** files required for extract to work
+ * 
+ * 1. output/topo_file.<plot-postfix>_<case-name>: This is a text file
+ * that lists all the topology file names that contain the grid
+ * topology information.
+ * 
+ * 2. *.topo: This file contains the actual grid topology
+ * information. Name of this file must be listed in the text file #1.
+ * 
+ * 3. output/grid_pos.<time-step>_<case-name>: This file needs to have
+ * pos array written to it.
+ * 
+ * 4. output/<variable-name>_<variable-type>.<time-step>_<case-name>:
+ * This file contains the values of variables. <variable-type>
+ * possible values are "sca" for scalar variable, "vec" for vector
+ * variable, "bndvec" for boundary vector variable etc. See extract.cc
+ * in FVMtools for a complete list of supported <variable-type>s.
+ */
+
+OUTPUT_SCALAR("cell2node(gagePressure)", gP);
+
+//$rule pointwise(OUTPUT <- cell2node(gagePressure), pos, caseName, plotPostfix),
+//constraint(pos, plotNodal_gagePressure), conditional(doPlot), prelude {
+//  dumpScalar(seq, $cell2node(gagePressure), *$caseName, *$plotPostfix, "sca", "gP");
+//};
+
+//class plot
+
+/**
+ * TODO:
+ * 
+ * Current configuration
+ * 
+ * plotSettings: <nodalVariables="P, v, T", frequency=100, counts=[5,2,2]>
+ * 
+ * 1. A plotting configuration that will allow plotting different set
+ * of variables at different frequencies.
+ * 
+ * plotSettings: <
+ *   config1=<region="all", variables="P,v,T", startCycle=100, endCycle=200, incrCycle=10>,
+ *   config2=<region="all", variables="r,mu,m,k", startTime=1ms, endTime=2ms, incrTime=0.05ms>
+ * >
+ * 
+ * 2. Plotting based on simulation time rather than iteration number.
+ */
+
+//OUTPUT_SCALAR("P", P_ic);
