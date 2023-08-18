@@ -1,0 +1,42 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <Loci.h>
+
+namespace flame {
+
+// =============================================================================
+
+$rule default(eosType) {
+  $eosType = "idealGas";
+}
+
+$rule constraint(idealGas <- eosType) {
+  $idealGas = EMPTY;
+  if($eosType == "idealGas") {
+    $idealGas = ~EMPTY;
+  } else {
+    std::cerr << "Invalid value of eosType: " << $eosType << std::endl;
+    Loci::Abort();
+  }
+}
+
+// =============================================================================
+
+$rule pointwise(rho <- temperature, gagePressure, speciesR, Pambient) {
+  $rho = ($gagePressure+$Pambient)/($speciesR[0]*$temperature);
+}
+
+$rule pointwise(rho_f <- temperature_f, gagePressure_f, speciesR, Pambient) {
+  $rho_f = ($gagePressure_f+$Pambient)/($speciesR[0]*$temperature_f);
+}
+
+$rule pointwise(rho <- temperature, gagePressure, mixtureR, Pambient) {
+  $rho = ($gagePressure+$Pambient)/($mixtureR*$temperature);
+}
+
+$rule pointwise(rho_f <- temperature_f, gagePressure_f, mixtureR, Pambient) {
+  $rho_f = ($gagePressure_f+$Pambient)/($mixtureR*$temperature_f);
+}
+
+}

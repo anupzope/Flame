@@ -1,0 +1,8 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <Loci.h>
+
+$rule default(Pambient) {
+  $Pambient = 0.0;
+}

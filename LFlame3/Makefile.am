@@ -18,7 +18,18 @@ LFlame3_SOURCES=src/main.cc \
   src/solverTimestepping.cc \
   src/solverRungeKutta.cc \
   src/solverPlotting.cc \
-  src/solverMultispecies.cc
+  src/solverMultispecies.cc \
+  src/solverInviscid.cc \
+  src/solverViscous.cc \
+  src/solverParameters.cc \
+  src/constants.cc \
+  src/solverEoS.cc \
+  src/utils.cc \
+  src/flux.cc \
+  src/solverPeriodic.cc \
+  src/bcSetup.cc \
+  src/solverVolumeIntegrated.cc \
+  src/solverCFL.cc
 LFlame3_LDFLAGS = 
 LFlame3_LDADD = 
 LFlame3_CXXFLAGS = -I$(srcdir)/include

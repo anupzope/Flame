@@ -6,7 +6,9 @@ $include "FVM.lh"
 
 #include <Loci.h>
 
-//==============================================================================
+// =============================================================================
+// Default values for parameters that control the time loop.
+// =============================================================================
 
 $rule default(nTimeSteps) {
   $nTimeSteps = 10;
@@ -17,15 +19,17 @@ $rule default(timeStepSize) {
 }
 
 $rule default(timeIntegrationMethod) {
-  $timeIntegrationMethod = "rk2";
+  $timeIntegrationMethod = "rk";
 }
 
-//==============================================================================
+// =============================================================================
+// Calculation of constraints that define time integration scheme.
+// =============================================================================
 
-$rule constraint(timeIntegrationRK2 <- timeIntegrationMethod) {
-  $timeIntegrationRK2 = EMPTY;
-  if($timeIntegrationMethod == "rk2") {
-    $timeIntegrationRK2 = ~EMPTY;
+$rule constraint(timeIntegrationRK <- timeIntegrationMethod) {
+  $timeIntegrationRK = EMPTY;
+  if($timeIntegrationMethod == "rk") {
+    $timeIntegrationRK = ~EMPTY;
   } else {
     $[Once] {
       flame::logger.severe("unknown timeIntegrationMethod ", $timeIntegrationMethod);
@@ -34,101 +38,145 @@ $rule constraint(timeIntegrationRK2 <- timeIntegrationMethod) {
   }
 }
 
-//==============================================================================
+// =============================================================================
+// Set unit values for single-species fluxes and the source term.
+// =============================================================================
 
-$rule unit(massConvection_f <- Ns), constraint(area), prelude {
-  $massConvection_f.setVecSize(*$Ns);
+//$rule unit(ssConvectiveFlux_f), constraint(area, singleSpecies) {
+//  $ssConvectiveFlux_f[0] = 0.0;
+//  $ssConvectiveFlux_f[1] = 0.0;
+//  $ssConvectiveFlux_f[2] = 0.0;
+//  $ssConvectiveFlux_f[3] = 0.0;
+//  $ssConvectiveFlux_f[4] = 0.0;
+//}
+//
+//$rule unit(ssDiffusiveFlux_f), constraint(area, singleSpecies) {
+//  $ssDiffusiveFlux_f[0] = 0.0;
+//  $ssDiffusiveFlux_f[1] = 0.0;
+//  $ssDiffusiveFlux_f[2] = 0.0;
+//  $ssDiffusiveFlux_f[3] = 0.0;
+//  $ssDiffusiveFlux_f[4] = 0.0;
+//}
+
+$rule unit(ssResidual), constraint(geom_cells, singleSpecies) {
+  $ssResidual[0] = 0.0;
+  $ssResidual[1] = 0.0;
+  $ssResidual[2] = 0.0;
+  $ssResidual[3] = 0.0;
+  $ssResidual[4] = 0.0;
+}
+
+// =============================================================================
+// Set unit values for multi-species fluxes and the source term.
+// =============================================================================
+
+//$rule unit(msConvectiveFlux_f <- Ns), constraint(area, multiSpecies), prelude {
+//  $msConvectiveFlux_f.setVecSize(*$Ns+4);
+//} {
+//  $msConvectiveFlux_f = mk_Scalar(0.0);
+//}
+//
+//$rule unit(msDiffusiveFlux_f <- Ns), constraint(area, multiSpecies), prelude {
+//  $msDiffusiveFlux_f.setVecSize(*$Ns+4);
+//} {
+//  $msDiffusiveFlux_f = mk_Scalar(0.0);
+//}
+
+$rule unit(msResidual <- Ns), constraint(geom_cells, multiSpecies), prelude {
+  $msResidual.setVecSize(*$Ns+4);
 } {
-  for(int i = 0; i < $Ns; ++i) {
-    $massConvection_f[i] = 0.0;
+  $msResidual = mk_Scalar(0.0);
+}
+
+// =============================================================================
+// Integrate single-species convective and diffusive flux over faces of a cell
+// to compute contribution to the source term at a cell.
+// =============================================================================
+
+// Add convetive contribution from a face to its left cell.
+$rule apply((cl,cr)->ssResidual <- ssConvectiveFlux_f)[Loci::Summation],
+constraint((cl,cr)->geom_cells, singleSpecies) {
+  for(int i = 0; i < 5; ++i) {
+    $cl->$ssResidual[i] -= $ssConvectiveFlux_f[i];
+    $cr->$ssResidual[i] += $ssConvectiveFlux_f[i];
   }
 }
 
-$rule unit(momentumConvection_f), constraint(area) {
-  $momentumConvection_f = Loci::vector3d<double>(0.0, 0.0, 0.0);
-}
-
-$rule unit(energyConvection_f), constraint(area) {
-  $energyConvection_f = 0.0;
-}
-
-$rule apply(massConvection_f <- Ns, leftvM(massFractions), rightvM(massFractions))[Loci::Summation] {
-  for(int i = 0; i < $Ns; ++i) {
-    $massConvection_f[i] = $leftvM(massFractions)[i] + $rightvM(massFractions)[i];
+// Add convective contribution from a face to its right cell.
+$rule apply(cl->ssResidual <- ssConvectiveFlux_f)[Loci::Summation],
+constraint(boundary_faces, singleSpecies) {
+  for(int i = 0; i < 5; ++i) {
+    $cl->$ssResidual[i] -= $ssConvectiveFlux_f[i];
   }
 }
 
-//==============================================================================
-
-$rule unit(massDiffusion_f <- Ns), constraint(area), prelude {
-  $massDiffusion_f.setVecSize(*$Ns);
-} {
-  for(int i = 0; i < $Ns; ++i) {
-    $massDiffusion_f[i] = 0.0;
+// Add diffusive contribution from a face to its left cell.
+$rule apply((cl,cr)->ssResidual <- ssDiffusiveFlux_f)[Loci::Summation],
+constraint((cl,cr)->geom_cells, singleSpecies) {
+  for(int i = 0; i < 5; ++i) {
+    $cl->$ssResidual[i] += $ssDiffusiveFlux_f[i];
+    $cr->$ssResidual[i] -= $ssDiffusiveFlux_f[i];
   }
 }
 
-$rule unit(momentumDiffusion_f), constraint(area) {
-  $momentumDiffusion_f = Loci::vector3d<double>(0.0, 0.0, 0.0);
-}
-
-$rule unit(energyDiffusion_f), constraint(area) {
-  $energyDiffusion_f = 0.0;
-}
-
-//==============================================================================
-
-$rule unit(srcMass <- Ns), constraint(geom_cells), prelude {
-  $srcMass.setVecSize(*$Ns);
-} {
-  for(int i = 0; i < $Ns; ++i) {
-    $srcMass[i] = 0.0;
+// Add diffusive contribution from a face to its right cell.
+$rule apply(cl->ssResidual <- ssDiffusiveFlux_f)[Loci::Summation],
+constraint(boundary_faces, singleSpecies) {
+  for(int i = 0; i < 5; ++i) {
+    $cl->$ssResidual[i] += $ssDiffusiveFlux_f[i];
   }
 }
 
-$rule apply(cl->srcMass <- massConvection_f, massDiffusion_f, Ns)[Loci::Summation],
-constraint(cl->geom_cells) {
-  for(int i = 0; i < $Ns; ++i) {
-    $cl->$srcMass[i] -= $massConvection_f[i] - $massDiffusion_f[i];
+// =============================================================================
+// Integrate multi-species convective and diffusive flux over faces of a cell to
+// compute contribution to the source term at a cell.
+// =============================================================================
+
+// Add convetive contribution from a face to its left cell.
+$rule apply((cl,cr)->msResidual <- msConvectiveFlux_f, Ns)[Loci::Summation],
+constraint((cl,cr)->geom_cells, multiSpecies) {
+  for(int i = 0; i < $Ns+4; ++i) {
+    $cl->$msResidual[i] -= $msConvectiveFlux_f[i];
+    $cr->$msResidual[i] += $msConvectiveFlux_f[i];
   }
 }
 
-$rule apply(cr->srcMass <- massConvection_f, massDiffusion_f, Ns)[Loci::Summation],
-constraint(cr->geom_cells) {
-  for(int i = 0; i < $Ns; ++i) {
-    $cr->$srcMass[i] += $massConvection_f[i] - $massDiffusion_f[i];
+// Add convective contribution from a face to its right cell.
+$rule apply(cl->msResidual <- msConvectiveFlux_f, Ns)[Loci::Summation],
+constraint(boundary_faces, multiSpecies) {
+  for(int i = 0; i < $Ns+4; ++i) {
+    $cl->$msResidual[i] -= $msConvectiveFlux_f[i];
   }
 }
 
-$rule unit(srcMomentum), constraint(geom_cells) {
-  $srcMomentum = Loci::vector3d(0.0, 0.0, 0.0);
+// Add diffusive contribution from a face to its left cell.
+$rule apply((cl,cr)->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
+constraint((cl,cr)->geom_cells, multiSpecies) {
+  for(int i = 0; i < $Ns+4; ++i) {
+    $cl->$msResidual[i] += $msDiffusiveFlux_f[i];
+    $cr->$msResidual[i] -= $msDiffusiveFlux_f[i];
+  }
 }
 
-$rule apply(cl->srcMomentum <- momentumConvection_f, momentumDiffusion_f)[Loci::Summation],
-constraint(cl->geom_cells) {
-  $cl->$srcMomentum -= $momentumConvection_f - $momentumDiffusion_f;
+// Add diffusive contribution from a face to its right cell.
+$rule apply(cl->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
+constraint(boundary_faces, multiSpecies) {
+  for(int i = 0; i < $Ns+4; ++i) {
+    $cl->$msResidual[i] += $msDiffusiveFlux_f[i];
+  }
 }
 
-$rule apply(cr->srcMomentum <- momentumConvection_f, momentumDiffusion_f)[Loci::Summation],
-constraint(cr->geom_cells) {
-  $cr->$srcMomentum += $momentumConvection_f - $momentumDiffusion_f;
+// =============================================================================
+// Time loop initialization.
+// =============================================================================
+
+$rule singleton(timeStep{n=0} <- timeStep_ic) {
+  $timeStep{n=0} = $timeStep_ic;
 }
 
-$rule unit(srcEnergy), constraint(geom_cells) {
-  $srcEnergy = 0.0;
+$rule singleton(stime{n=0} <- stime_ic) {
+  $stime{n=0} <- $stime_ic;
 }
-
-$rule apply(cl->srcEnergy <- energyConvection_f, energyDiffusion_f)[Loci::Summation],
-constraint(cl->geom_cells) {
-  $cl->$srcEnergy -= $energyConvection_f - $energyDiffusion_f;
-}
-
-$rule apply(cr->srcEnergy <- energyConvection_f, energyDiffusion_f)[Loci::Summation],
-constraint(cr->geom_cells) {
-  $cr->$srcEnergy += $energyConvection_f - $energyDiffusion_f;
-}
-
-//==============================================================================
 
 $rule pointwise(gagePressure{n=0} <- gagePressure_ic) {
   $gagePressure{n=0} = $gagePressure_ic;
@@ -142,55 +190,84 @@ $rule pointwise(velocity{n=0} <- velocity_ic) {
   $velocity{n=0} = $velocity_ic;
 }
 
-$rule pointwise(massFractions{n=0} <- massFractions_ic, Ns), prelude {
-  $massFractions{n=0}.setVecSize(*$Ns);
+$rule pointwise(speciesY{n=0} <- speciesY_ic, Ns), prelude {
+  $speciesY{n=0}.setVecSize(*$Ns);
 } {
-  $massFractions{n=0} = $massFractions_ic;
+  $speciesY{n=0} = $speciesY_ic;
 }
 
-$rule singleton(timeStep{n=0} <- timeStep_ic) {
-  $timeStep{n=0} = $timeStep_ic;
+$rule pointwise(mixtureW{n=0} <- mixtureW_ic) {
+  $mixtureW{n=0} = $mixtureW_ic;
 }
 
-$rule singleton(stime{n=0} <- stime_ic) {
-  $stime{n=0} <- $stime_ic;
+$rule pointwise(mixtureR{n=0} <- mixtureR_ic) {
+  $mixtureR{n=0} = $mixtureR_ic;
 }
 
-//==============================================================================
+$rule pointwise(mixtureGamma{n=0} <- mixtureGamma_ic) {
+  $mixtureGamma{n=0} = $mixtureGamma_ic;
+}
+
+//$rule pointwise(
+//  speciesY{n=0}, mixtureW{n=0}, mixtureR{n=0}, mixtureGamma{n=0}
+//  <-
+//  speciesY_ic, speciesW, speciesGamma, Runiv, Ns
+//), constraint(multiSpecies), prelude {
+//  $speciesY{n=0}.setVecSize(*$Ns);
+//} {
+//  double W = 0.0;
+//  double R = 0.0;
+//  double gamma = 0.0;
+//  for(int i = 0; i < $Ns; ++i) {
+//    W += $speciesY_ic[i]/$speciesW[i];
+//    gamma += $speciesY_ic[i]/($speciesGamma[i]-1.0);
+//  }
+//  R = $Runiv*W;
+//  W = 1.0/W;
+//  gamma = 1.0/gamma + 1.0;
+//  
+//  $speciesY{n=0} = $speciesY_ic;
+//  $mixtureW{n=0} = W;
+//  $mixtureR{n=0} = R;
+//  $mixtureGamma{n=0} = gamma;
+//}
+
+//$rule pointwise(
+//  mixtureCp{n=0}, mixtureEnthalpy{n=0}
+//  <-
+//  mixtureR{n=0}, mixtureGamma{n=0}, temperature{n=0},
+//  speciesY_ic, speciesW, speciesGamma, Ns
+//), constraint(multiSpecies, idealGas) {
+//  double const cp = $mixtureGamma{n=0}*$mixtureR{n=0}/($mixtureGamma{n=0}-1.0);
+//  double const h = cp*$temperature{n=0};
+//  
+//  $mixtureCp{n=0} = cp;
+//  $mixtureEnthalpy{n=0} = h;
+//}
+
+// =============================================================================
+// Time loop advance: These are specific to the time integration scheme. Hence,
+// they are written in files specific to the scheme.
+// =============================================================================
+
+
+// =============================================================================
+// Time loop collapse.
+// =============================================================================
 
 $rule singleton(timeStepFinished{n} <- timeStep{n}, nTimeSteps) {
   $timeStepFinished{n} = $timeStep{n} == $nTimeSteps;
 }
 
-$rule pointwise(solution <- gagePressure{n}, velocity{n},
-temperature{n}, massFractions{n}), constraint(geom_cells{n}),
+$rule pointwise(solution <- gagePressure{n}, velocity{n}, temperature{n}),
+constraint(geom_cells{n}, singleSpecies),
 conditional(timeStepFinished{n}),
 inplace(solution|gagePressure{n}), prelude {};
 
-//==============================================================================
+$rule pointwise(solution <- gagePressure{n}, velocity{n}, temperature{n},
+speciesY{n}), constraint(geom_cells{n}, multiSpecies),
+conditional(timeStepFinished{n}),
+inplace(solution|gagePressure{n}), prelude {};
 
-$rule singleton(doPlot{n}, plotPostfix{n} <- timeStep{n}, plotSettings) {
-  $doPlot{n} = false;
-  
-  std::string postfix;
-  
-  if($plotSettings.frequency > 0) {
-    int const nLevels = $plotSettings.counts.size();
-    int const f = $plotSettings.frequency;
-    int k = 1;
-    for(int i = 0; i < nLevels; ++i) {
-      int c = $plotSettings.counts[i];
-      if(c > 0) {
-        if(($timeStep{n} % (k*f)) == 0) {
-          $doPlot{n} = true;
-          std::stringstream ss;
-          ss << ($timeStep{n}/(k*f))%c << "L" << i;
-          $plotPostfix{n} = ss.str();
-        }
-      }
-      k *= c;
-    }
-  }
-}
-
-//==============================================================================
+// =============================================================================
+// =============================================================================

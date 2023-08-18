@@ -5,7 +5,7 @@ dnl Initialize autoconf
 AC_INIT([Flame], [0.1], [anupzope@gmail.com])
 
 dnl Set macro directory
-AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_MACRO_DIR([acm4])
 
 dnl Set auxiliary directory
 AC_CONFIG_AUX_DIR([build-aux])
@@ -27,16 +27,6 @@ CONFIGURE_GTEST
 
 dnl Detect and configure libxml2
 CONFIGURE_XML2
-dnl PKG_CHECK_MODULES(
-dnl  XML2, libxml-2.0,
-dnl  [
-dnl    use_xml2="yes"
-dnl     AC_DEFINE([HAVE_XML2], [1], [Defined if XML2 library is found])
-dnl   ],
-dnl   [
-dnl     use_xml2="no"
-dnl   ]
-dnl )
 
 dnl Detect and configure MPI
 CONFIGURE_MPI_CXX

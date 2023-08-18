@@ -1,13 +1,71 @@
-$include "flame.lh"
 $include "FVM.lh"
+$include "flame.lh"
 
 #include <plot.hh>
 #include <logger.hh>
 
 #include <Loci.h>
 
+// =============================================================================
+// printOptions processing
+// =============================================================================
+
+$rule default(printOptions) {
+  $printOptions = options_list("parameters:frequency:file");
+}
+
+$rule singleton(printSettings <- printOptions), option(disable_threading) {
+  std::string err;
+  if($printSettings.fromOptionsList($printOptions, err)) {
+    $[Once] {
+      flame::logger.severe(err);
+    }
+    Loci::Abort();
+  } else {
+    $[Once] {
+      std::ostringstream ss;
+      ss << $printSettings;
+      flame::logger.info("PrintSettings: ", ss.str());
+    }
+  }
+}
+
+$rule singleton(doPrint{n,rk} <- printSettings, timeStep{n}, lastRK{n,rk}) {
+  $doPrint{n,rk} = false;
+  
+  if($printSettings.frequency > 0) {
+    if($timeStep{n} % $printSettings.frequency == 0) {
+      $doPrint{n,rk} = true;
+    }
+  }
+}
+
+// =============================================================================
+// Files required for extract to work:
+// 
+// 1. output/topo_file.<plot-postfix>_<case-name>: This is a text file that
+// lists all the topology file names that contain the grid topology information.
+// 
+// 2. *.topo: This file contains the actual grid topology information. Name of
+// this file must be listed in the text file #1.
+// 
+// 3. output/grid_pos.<time-step>_<case-name>: This file needs to have pos array
+// written to it.
+// 
+// 4. output/<variable-name>_<variable-type>.<time-step>_<case-name>: This file
+// contains the values of variables. <variable-type> possible values are "sca"
+// for scalar variable, "vec" for vector variable, "bndvec" for boundary vector
+// variable etc. See extract.cc in FVMtools for a complete list of supported
+// <variable-type>s.
+// 
+// =============================================================================
+
+// =============================================================================
+// plotOptions processing
+// =============================================================================
+
 $rule default(plotOptions) {
-  $plotOptions = options_list("nodalVariables:frequency:counts");
+  $plotOptions = options_list("nodalVariables:boundaryVariables:frequencies:counts");
 }
 
 $rule singleton(plotSettings <- plotOptions), option(disable_threading) {
@@ -18,35 +76,148 @@ $rule singleton(plotSettings <- plotOptions), option(disable_threading) {
     }
     Loci::Abort();
   } else {
-    flame::logger.info("PlotSettings frequency ", $plotSettings.frequency);
-    for(size_t i = 0; i < $plotSettings.counts.size(); ++i) {
-      flame::logger.info("PlotSettings counts ", $plotSettings.counts[i]);
-    }
-    for(size_t i = 0; i < $plotSettings.variables.size(); ++i) {
-      flame::logger.info("PlotSettings variables ", $plotSettings.variables[i]);
+    $[Once] {
+      std::ostringstream ss;
+      ss << $plotSettings;
+      flame::logger.info("PlotSettings: ", ss.str());
     }
   }
 }
 
-//$type doPreCoupling param<bool>;
-//$type doPostCoupling param<bool>;
-//
-//$rule singleton(doPreCoupling{n} <- timeStep{n}, $n{n}) {
-//  $doPreCoupling{n} = $timeStep{n} % 2 == 0;
-//}
-//
-//$rule singleton(doPreCoupling{n,rk=0} <- doPreCoupling{n}) {
-//  $doPreCoupling{n,rk=0} = false;
-//}
-//
-//$rule singleton(doPreCoupling{n,rk+1} <- doPreCoupling{n,rk}) {
-//  $doPreCoupling{n,rk+1} = false;
-//}
-//
-//$rule pointwise(temperature{n} <- temperature_ic, timeStep{n}), constraint(geom_cells), conditional(doPreCoupling{n}), prelude {
-//  $[Once] {
-//    std::cerr << "PreCoupling at " << *$timeStep{n} << std::endl;
-//  }
-//} {
-//  $temperature{n} = $temperature_ic;
-//}
+// =============================================================================
+// Output grid position and topoogy.
+// =============================================================================
+
+$rule singleton(doPlotGridPos{n,rk}<-timeStep{n,rk},$n{n},lastRK{n,rk}) {
+  $doPlotGridPos{n,rk} = ($$n{n} == 0) && $lastRK{n,rk} ;
+}
+
+$rule pointwise(OUTPUT <- caseName, plotPostfix, pos),
+constraint(pos), conditional(doPlotGridPos), option(disable_threading),
+prelude {
+  std::stringstream ss;
+  //ss << "output/grid_pos." << *$plotPostfix << "_" << *$caseName;
+  ss << "output/grid_pos." << *$caseName;
+  
+  hid_t fileId = Loci::hdf5CreateFile(ss.str().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  Loci::writeContainer(fileId, "pos", $pos.Rep());
+  Loci::hdf5CloseFile(fileId);
+  
+  //if(Loci::MPI_rank==0) {
+  //  std::cout << "unlink filename = " << ss.str() << std::endl;
+  //  ::unlink(ss.str().c_str());
+  //}
+};
+
+$rule singleton(doPlotTopology{n,rk}<-timeStep{n,rk},$n{n},lastRK{n,rk}) {
+  $doPlotTopology{n,rk} = ($$n{n} == 0) && $lastRK{n,rk} ;
+}
+
+$rule pointwise(
+  OUTPUT <- caseName, plotPostfix,
+  (upper,lower,boundary_map)->face2node->pos, boundary_map->ref->boundary_names
+), conditional(doPlotTopology), option(disable_threading), prelude {
+  {
+    std::string basename = *$caseName + ".topo";
+    std::string filename = "output/" + basename;
+    
+    if(Loci::MPI_rank==0) {
+      std::string topolink = std::string("output/topo_file.") + *$plotPostfix + std::string("_") + *$caseName;
+      std::ofstream file(topolink.c_str(), std::ios::trunc);
+      file << basename << std::endl;
+      file.close();
+    }
+    
+    if(Loci::MPI_rank == 0) {
+      flame::logger.info("writing grid topology file: ", basename);
+    }
+    
+    Loci::parallelWriteGridTopology(
+      filename.c_str(),
+      $upper.Rep(),$lower.Rep(),
+      $boundary_map.Rep(),
+      $face2node.Rep(),
+      $ref.Rep(),
+      $boundary_names.Rep(),
+      $pos.Rep(),
+      entitySet(seq)
+    );
+  }
+};
+
+// =============================================================================
+// Calculate boolean parameter that controls when plotting occurs.
+// =============================================================================
+
+$rule singleton(
+  doPlot{n,rk}, plotPostfix{n,rk}
+  <-
+  timeStep{n}, plotSettings, lastRK{n,rk}
+) {
+  $doPlot{n,rk} = false;
+  $plotPostfix{n,rk} = "none";
+  
+  int const nLevels = $plotSettings.counts.size();
+  int const n = $timeStep{n};
+  
+  for(int i = 0; i < nLevels; ++i) {
+    int const f = $plotSettings.frequencies[i];
+    int const c = $plotSettings.counts[i];
+    
+    if(f > 0 && $lastRK{n,rk}) {
+      if(n%f == 0) {
+        $doPlot{n,rk} = true;
+        std::ostringstream ss;
+        ss << (n%(f*c)) << "L" << i;
+        $plotPostfix{n,rk} = ss.str();
+      }
+    }
+  }
+  
+  if($doPlot{n,rk}) {
+    std::cout << "plotPostfix = " << $plotPostfix{n,rk} << std::endl;
+  }
+}
+
+// =============================================================================
+// OUTPUT variables
+// =============================================================================
+
+OUTPUT_PARAM("Pambient", Pambient);
+OUTPUT_SCALAR("cell2node(gagePressure)", pg);
+OUTPUT_SCALAR("cell2node(temperature)", t);
+OUTPUT_VECTOR("cell2node_v3d(velocity)", v);
+
+OUTPUT_SCALAR("cell2node(cfl)", cfl);
+
+OUTPUT_BOUNDARY_SCALAR("gagePressure_f", bpg, "ci");
+OUTPUT_BOUNDARY_SCALAR("temperature_f", bt, "ci");
+OUTPUT_BOUNDARY_VECTOR("velocity_f", bv, "ci");
+
+OUTPUT_VEC_COMPONENTS("cell2node_v(speciesY)", Y, "speciesNames");
+
+// =============================================================================
+// TODO:
+// =============================================================================
+// 
+// Current configuration
+// 
+// plotSettings: <
+//   nodalVariables="pg,t,v",
+//   boundaryVariables="bpg,bt,bv",
+//   frequencies=[10,50,100],
+//   counts=[2,2,10000]
+// >
+// 
+// 1. Evolve this to a plotting configuration that will allow plotting different
+// set of variables at different frequencies in different regions of the
+// computational domain.
+// 
+// plotSettings: <
+//   config1=<region="all", nodalVariables="pg,v,t", frequencies=[10,50], counts=[5,100000]>,
+//   config2=<region="all", boundaryVariables="r,mu,m,k", frequencies=[50,100], counts=[5,100000]>
+// >
+// 
+// 2. Plotting based on simulation time rather than iteration number.
+// 
+// =============================================================================

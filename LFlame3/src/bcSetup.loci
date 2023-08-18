@@ -1,0 +1,154 @@
+#include <Loci.h>
+
+#include <boundary_checker.hh>
+
+namespace flame {
+
+bool check_scalar_units(
+  options_list const & o, std::string option, std::string unit
+) {
+  bool check = false ;
+  if(o.getOptionValueType(option) == Loci::REAL)
+    check = true ;
+  if(o.getOptionValueType(option) == Loci::UNIT_VALUE) {
+    Loci::UNIT_type Tu ;
+    o.getOption(option,Tu) ;
+    if(Tu.is_compatible(unit)) {
+      check = true ;
+    }
+  }
+  return check ;
+}
+
+bool check_vector_units(
+  options_list const & ol,std::string vname, std::string units
+) {
+  Loci::option_value_type ovt= ol.getOptionValueType(vname) ;
+  if(ovt == Loci::REAL) {
+    return true ;
+  } else if(ol.getOptionValueType(vname) == Loci::UNIT_VALUE) {
+    Loci::UNIT_type vu ;
+    ol.getOption(vname,vu) ;
+    if(!vu.is_compatible(units)) {
+      return false ;
+    }
+    return true ;
+  } else if(ovt == Loci::LIST) {
+    Loci::options_list::arg_list value_list ;
+    ol.getOption(vname,value_list) ;
+    if(value_list.size() != 3) {
+      return false ;
+    }
+    for(int i=0;i<3;++i)
+      if(value_list[i].type_of() != Loci::REAL &&
+         value_list[i].type_of() != Loci::UNIT_VALUE) {
+        return false ;
+      }
+    for(int i=0;i<3;++i) {
+      if(value_list[i].type_of() == Loci::UNIT_VALUE) {
+        Loci::UNIT_type vu ;
+        value_list[i].get_value(vu) ;
+        if(!vu.is_compatible(units)) {
+          return false ;
+        }
+      }
+    }
+    return true ;
+  } else if(ovt == Loci::FUNCTION) {
+    string name ;
+    Loci::options_list::arg_list value_list ;
+    ol.getOption(vname,name,value_list) ;
+    if(name != "polar") {
+      return false ;
+    }
+    if(value_list.size() != 3) {
+      return false ;
+    }
+    for(int i=0;i<3;++i)
+      if(value_list[i].type_of() != Loci::REAL &&
+         value_list[i].type_of() != Loci::UNIT_VALUE) {
+        return false ;
+      }
+    if(value_list[0].type_of() == Loci::UNIT_VALUE) {
+      Loci::UNIT_type vu ;
+      value_list[0].get_value(vu) ;
+      if(!vu.is_compatible(units)) {
+        return false ;
+      }
+    }
+    if(value_list[1].type_of() == Loci::UNIT_VALUE) {
+      Loci::UNIT_type vu ;
+      value_list[1].get_value(vu) ;
+      if(!vu.is_compatible("radians")) {
+        return false ;
+      }
+    }
+    if(value_list[2].type_of() == Loci::UNIT_VALUE) {
+      Loci::UNIT_type vu ;
+      value_list[2].get_value(vu) ;
+      if(!vu.is_compatible("radians")) {
+        return false ;
+      }
+    }
+    return true ;
+  } else {
+    return false ;
+  }
+}
+
+class PeriodicBCChecker : public BoundaryChecker {
+  string errmsg;
+  
+public:
+  std::string boundaryConditions() {
+    return "periodic";
+  }
+  
+  std::string variablesChecked() {
+    return "rotate,translate,name,center,vector";
+  }
+  
+  bool checkOptions(options_list const & bc_options) {
+    errmsg = "";
+    bool check = true;
+    if(!bc_options.optionExists("name")) {
+      errmsg = "all periodic boundaries must have a name ";
+      check = false;
+    }
+    if(bc_options.optionExists("center")) {
+      if(!check_vector_units(bc_options,"center","m")) {
+        errmsg += "center has incorrect units ";
+        check = false;
+      }
+    }
+    if(bc_options.optionExists("translate")) {
+      if(!check_vector_units(bc_options,"translate","m")) {
+        errmsg += "translate has incorrect units ";
+        check = false;
+      }
+    }
+    if(bc_options.optionExists("vector")) {
+      if(!check_vector_units(bc_options,"vector","")) {
+        errmsg += "vector has incorrect units ";
+        check = false;
+      }
+    }
+    if(bc_options.optionExists("rotate")) {
+      if(!check_scalar_units(bc_options,"rotate","radians")) {
+        errmsg += "rotate has incorrect units ";
+        check = false;
+      }
+    }
+    
+    return check;
+  }
+  
+  std::ostream & errorMessage(std::ostream & s) {
+    s << errmsg;
+    return s;
+  }
+};
+
+registerBoundaryChecker<PeriodicBCChecker> periodicBCChecker;
+
+} // end: namespace flame

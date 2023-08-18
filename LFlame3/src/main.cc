@@ -22,7 +22,7 @@ struct arguments {
   std::string query;
 };
 
-static char doc[] = "Multi-Species Navier-Stokes Solver or Turbulent Combustion";
+static char doc[] = "Multi-Species Navier-Stokes Solver for Turbulent Combustion";
 
 static char args_doc[] = "None";
 
@@ -217,27 +217,14 @@ int main(int argc, char * argv[]) {
     
     icDirectory += "/";
     
-#ifdef LOCI_V5
-    gParam<bool> hasICDirectory; *hasICDirectory = true;
-    facts.create_gfact("hasICDirectory", hasICDirectory);
-    
-    gParam<std::string> icdir; *icdir = icDirectory;
-    facts.create_gfact("icDirectory", icdir);
-#else
     param<bool> hasICDirectory; *hasICDirectory = true;
     facts.create_fact("hasICDirectory", hasICDirectory);
     
     param<std::string> icdir; *icdir = icDirectory;
     facts.create_fact("icDirectory", icdir);
-#endif
   } else {
-#ifdef LOCI_V5
-    gParam<bool> hasICDirectory; *hasICDirectory = false;
-    facts.create_gfact("hasICDirectory", hasICDirectory);
-#else
     param<bool> hasICDirectory; *hasICDirectory = false;
     facts.create_fact("hasICDirectory", hasICDirectory);
-#endif
   }
   
   // Setup constraints for plot variables.
@@ -254,17 +241,35 @@ int main(int argc, char * argv[]) {
       Loci::Abort();
     }
     
-    int const nVariables = settings.variables.size();
-    for(int i = 0; i < nVariables; ++i) {
+    int const nNodalVariables = settings.nodalVariables.size();
+    int const nBoundaryVariables = settings.boundaryVariables.size();
+    int const nTotalVariables = nNodalVariables + nBoundaryVariables;
+    
+    for(int i = 0; i < nNodalVariables; ++i) {
       constraint x;
       x = ~EMPTY;
-      std::string constraintName = std::string("plotNodal_") + settings.variables[i];
+      std::string constraintName = std::string("plotNodal_") + settings.nodalVariables[i];
       facts.create_fact(constraintName, x);
-      plotInfoValue << "plotNodal_" << settings.variables[i];
-      if(i < nVariables-1) {
-        plotInfoValue << ":";
-      }
+      plotInfoValue << constraintName << ":";
     }
+    
+    for(int i = 0; i < nBoundaryVariables; ++i) {
+      constraint x;
+      x = ~EMPTY;
+      std::string constraintName = std::string("plotBoundary_") + settings.boundaryVariables[i];
+      facts.create_fact(constraintName, x);
+      plotInfoValue << constraintName << ":";
+    }
+    
+    // Pambient is a special param that always needs to be written out
+    {
+      std::string constraintName = "plotParam_Pambient";
+      constraint plotParam_Pambient;
+      plotParam_Pambient = ~EMPTY;
+      facts.create_fact(constraintName, plotParam_Pambient);
+      plotInfoValue << constraintName;
+    }
+    
     *plotInfo = plotInfoValue.str();
     facts.create_fact("plotInfo", plotInfo);
   }
@@ -290,7 +295,7 @@ int main(int argc, char * argv[]) {
           }
         }
       }
-      db_file << "}" << endl ;
+      db_file << "}" << endl;
     }
   }
   

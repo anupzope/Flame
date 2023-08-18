@@ -30,6 +30,7 @@ bool check_boundary_conditions(fact_db & facts) {
     int i = 0;
     while(bcChecker != nullptr) {
       Loci::variableSet bcNames;
+      std::cerr << bcChecker->entry->boundaryConditions() << std::endl;
       if(bcChecker->entry->boundaryConditions() == "*") {
         bcNames = ~EMPTY;
       } else {
@@ -50,6 +51,7 @@ bool check_boundary_conditions(fact_db & facts) {
       bcCheckerInfo[i].checker = bcChecker->entry;
       
       bcChecker = bcChecker->next;
+      ++i;
     }
   }
   
@@ -62,7 +64,7 @@ bool check_boundary_conditions(fact_db & facts) {
   options_list::option_namelist::iterator li;
   
   // Print boundary names.
-  std::cout << "Boundary names:";
+  std::cout << "Boundary names:" << std::endl;
   for(li = nl.begin(); li != nl.end(); ++li) {
     std::string bName = *li;
     std::cout << "  " << bName << std::endl;

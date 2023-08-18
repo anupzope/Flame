@@ -1,0 +1,62 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <Loci.h>
+
+#include <limits>
+
+$rule pointwise(maxUt_f<-area,(cl,cr)->(velocity)) {
+  double Utl = std::fabs(dot($cl->$velocity, $area.n))*$area.sada;
+  double Utr = std::fabs(dot($cr->$velocity, $area.n))*$area.sada;
+  $maxUt_f = std::max(Utl, Utr);
+}
+
+$rule pointwise(maxUt_f<-area,ci->(velocity)) {
+  $maxUt_f = std::fabs(dot($ci->$velocity, $area.n))*$area.sada;
+}
+
+$rule pointwise(cflpdt <- vol,(upper,lower,boundary_map)->(area,maxUt_f)) {
+  double sum = 0.0;
+  
+  for(int const * li = $lower.begin(); li != $lower.end(); ++li) {
+    sum += li->$maxUt_f;
+  }
+  
+  for(int const * ui = $upper.begin(); ui != $upper.end(); ++ui) {
+    sum += ui->$maxUt_f;
+  }
+  
+  for(int const * bi = $boundary_map.begin(); bi != $boundary_map.end(); ++bi) {
+    sum += bi->$maxUt_f;
+  }
+  
+  $cflpdt = 0.5*sum/$vol;
+}
+
+$rule unit(maxCFL), constraint(geom_cells) {
+  $maxCFL = 0.0;
+}
+
+$rule unit(minCFL), constraint(geom_cells) {
+  auto tmp = $minCFL;
+  $minCFL = std::numeric_limits<decltype(tmp)>::max();
+}
+
+$rule apply(maxCFL <- cfl)[Loci::Maximum] {
+  join($maxCFL, $cfl);
+}
+
+$rule apply(minCFL <- cfl)[Loci::Minimum] {
+  join($minCFL, $cfl);
+}
+
+$rule pointwise(OUTPUT{n,rk} <- maxCFL{n,rk}, minCFL{n,rk}),
+option(disable_threading), prelude {
+  if(Loci::MPI_rank == 0) {
+    auto const minCFL = *$minCFL{n,rk};
+    auto const maxCFL = *$maxCFL{n,rk};
+    std::cout << "CFL: " << minCFL << " " << maxCFL << std::endl;
+  }
+};
+
+//OUTPUT_SCALAR();

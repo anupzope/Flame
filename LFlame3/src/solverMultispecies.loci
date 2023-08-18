@@ -3,30 +3,190 @@ $include "FVM.lh"
 
 #include <Loci.h>
 
-$rule default(Runiv) {
-  $Runiv = 8314.34;
-}
+#include <utils.hh>
+#include <logger.hh>
 
-$rule default(Ns) {
-  $Ns = 2;
-}
+// =============================================================================
+//// Two species setup
+// =============================================================================
 
-//$rule singleton(speciesNames <- Ns) {
+//$rule singleton(Ns), constraint(UNIVERSE) {
+//  $Ns = 2;
+//}
+//
+//$rule singleton(speciesNames <- Ns), constraint(UNIVERSE) {
 //  $speciesNames.resize($Ns);
 //  $speciesNames[0] = "H2";
 //  $speciesNames[1] = "N2";
 //}
+//
+//$rule singleton(speciesW <- Ns), constraint(UNIVERSE) {
+//  $speciesW.resize($Ns);
+//  $speciesW[0] = 2.016;
+//  $speciesW[1] = 28.014;
+//}
+//
+//$rule singleton(speciesGamma <- Ns), constraint(UNIVERSE) {
+//  $speciesGamma.resize($Ns);
+//  $speciesGamma[0] = 1.405;
+//  $speciesGamma[1] = 1.4;
+//}
+//
+//$rule singleton(speciesR <- Runiv, speciesW, Ns),
+//constraint(UNIVERSE) {
+//  $speciesR.resize($Ns);
+//  for(int i = 0; i < $Ns; ++i) {
+//    $speciesR[i] = $Runiv/$speciesW[i];
+//  }
+//}
 
-$rule singleton(molecularWeights <- Ns) {
-  $molecularWeights.resize($Ns);
-  $molecularWeights[0] = 2.016;
-  $molecularWeights[1] = 28.014;
+$rule singleton(Ns), constraint(UNIVERSE) {
+  $Ns = 2;
 }
 
-$rule pointwise(molecularWeight <- massFractions, molecularWeights, Ns), constraint(geom_cells) {
-  double sum = 0.0;
+$rule singleton(speciesNames <- Ns), constraint(UNIVERSE) {
+  $speciesNames.resize($Ns);
+  //$speciesNames[0] = "O2";
+  $speciesNames[0] = "N2A";
+  $speciesNames[1] = "N2B";
+}
+
+$rule singleton(speciesW <- Ns), constraint(UNIVERSE) {
+  $speciesW.resize($Ns);
+  //$speciesW[0] = 31.998;
+  $speciesW[0] = 28.014;
+  $speciesW[1] = 28.014;
+}
+
+$rule singleton(speciesGamma <- Ns), constraint(UNIVERSE) {
+  $speciesGamma.resize($Ns);
+  $speciesGamma[0] = 1.4;
+  $speciesGamma[1] = 1.4;
+}
+
+$rule singleton(speciesR <- Runiv, speciesW, Ns),
+constraint(UNIVERSE) {
+  $speciesR.resize($Ns);
   for(int i = 0; i < $Ns; ++i) {
-    sum += $massFractions[i]/$molecularWeights[i];
+    $speciesR[i] = $Runiv/$speciesW[i];
   }
-  $molecularWeight = 1.0/sum;
 }
+
+// =============================================================================
+// Single species setup
+// =============================================================================
+
+//$rule singleton(Ns), constraint(UNIVERSE) {
+//  $Ns = 1;
+//}
+//
+//$rule singleton(speciesNames <- Ns), constraint(UNIVERSE) {
+//  $speciesNames.resize($Ns);
+//  $speciesNames[0] = "Air";
+//}
+//
+//$rule singleton(speciesW <- Ns), constraint(UNIVERSE) {
+//  $speciesW.resize($Ns);
+//  $speciesW[0] = 28.96;
+//}
+//
+//$rule singleton(speciesGamma <- Ns), constraint(UNIVERSE) {
+//  $speciesGamma.resize($Ns);
+//  $speciesGamma[0] = 1.4;
+//}
+//
+//$rule singleton(speciesR <- Runiv, speciesW, Ns),
+//constraint(UNIVERSE) {
+//  $speciesR.resize($Ns);
+//  for(int i = 0; i < $Ns; ++i) {
+//    $speciesR[i] = $Runiv/$speciesW[i];
+//  }
+//}
+
+// =============================================================================
+// Calculation of boolean parameters to distinguish between single-species vs
+// multi-species mode.
+// =============================================================================
+
+$rule singleton(isMultiSpecies <- Ns) {
+  $isMultiSpecies = $Ns > 1;
+}
+
+$rule singleton(isSingleSpecies <- Ns) {
+  $isSingleSpecies = $Ns == 1;
+}
+
+// =============================================================================
+// Calculation of constraints to distinguish between single-species vs
+// multi-species mode.
+// =============================================================================
+$rule constraint(multiSpecies, singleSpecies <- Ns) {
+  $multiSpecies = EMPTY;
+  $singleSpecies = EMPTY;
+  
+  if($Ns > 1) {
+    $multiSpecies = ~EMPTY;
+  } else if($Ns == 1) {
+    $singleSpecies = ~EMPTY;
+  } else {
+    $[Once] {
+      flame::logger.severe("Number of species must be >= 1");
+    }
+    Loci::Abort();
+  }
+}
+
+// =============================================================================
+// Calculation of mixture properties
+// =============================================================================
+
+//$rule pointwise(mixtureW <- speciesY, speciesW, Ns),
+//constraint(multiSpecies) {
+//  double sum = 0.0;
+//  for(int i = 0; i < $Ns; ++i) {
+//    sum += $speciesY[i]/$speciesW[i];
+//  }
+//  $mixtureW = 1.0/sum;
+//}
+//
+//$rule pointwise(mixtureR <- Runiv, mixtureW),
+//constraint(multiSpecies) {
+//  $mixtureR = $Runiv/$mixtureW;
+//}
+//
+//$rule pointwise(mixtureGamma <- speciesY, speciesGamma, Ns),
+//constraint(multiSpecies, idealGas) {
+//  double sum = 0.0;
+//  for(int i = 0; i < $Ns; ++i) {
+//    sum += $speciesY[i]/($speciesGamma[i]-1.0);
+//  }
+//  $mixtureGamma = 1.0/sum + 1.0;
+//}
+//
+//$rule pointwise(mixtureCp <- mixtureR, mixtureGamma),
+//constraint(multiSpecies, idealGas) {
+//  $mixtureCp = $mixtureGamma*$mixtureR/($mixtureGamma-1.0);
+//}
+//
+//$rule pointwise(mixtureEnthalpy <- mixtureCp, temperature),
+//constraint(multiSpecies, idealGas) {
+//  $mixtureEnthalpy = $mixtureCp*$temperature;
+//}
+
+//$rule pointwise(speciesWFrac <- mixtureW, speciesW, Ns),
+//constraint(multiSpecies), prelude {
+//  $speciesWFrac.setVecSize(*$Ns)
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    $speciesWFrac[i] = $speciesW[i]/$mixtureW;
+//  }
+//}
+//
+//$rule pointwise(speciesWRFrac <- mixtureW, speciesW, Ns),
+//constraint(multiSpecies), prelude {
+//  $speciesWRFrac.setVecSize(*$Ns);
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    $speciesWRFrac[i] = $mixtureW/$speciesW[i];
+//  }
+//}

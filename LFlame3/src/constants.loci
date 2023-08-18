@@ -1,0 +1,12 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <Loci.h>
+
+namespace flame {
+
+$rule singleton(Runiv), constraint(UNIVERSE) {
+  $Runiv = 8314.4621;
+}
+
+}

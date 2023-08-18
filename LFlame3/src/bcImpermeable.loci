@@ -1,6 +1,9 @@
 #include <boundary_checker.hh>
 
 $include "FVM.lh"
+$include "flame.lh"
+
+#include <flux.hh>
 
 namespace flame {
 
@@ -14,7 +17,7 @@ public:
     return "";
   }
   
-  bool checkOptions(const options_list & bc_options) override {
+  bool checkOptions(options_list const & bc_options) override {
     return true;
   }
   
@@ -24,5 +27,91 @@ public:
 };
 
 registerBoundaryChecker<ReflectingBCChecker> reflectingBCChecker;
+
+$rule pointwise(velocity_f <- area, ci->velocity), constraint(reflecting_BC) {
+  double const uit = dot($ci->$velocity, $area.n);
+  $velocity_f = $ci->$velocity - uit*$area.n;
+}
+
+$rule pointwise(gagePressure_f <- area, ci->(velocity,gagePressure,rho), Pambient),
+constraint(reflecting_BC) {
+  double const uit = dot($ci->$velocity,$area.n);
+  double const Pmin = 0.5*($ci->$gagePressure+$Pambient)-$Pambient;
+  $gagePressure_f = std::max(Pmin, $ci->$gagePressure + 0.5*($ci->$rho)*uit*fabs(uit));
+}
+
+$rule pointwise(temperature_f <- ci->temperature), constraint(reflecting_BC) {
+  $temperature_f = $ci->$temperature;
+}
+
+$rule pointwise(
+  ssConvectiveFlux_f
+  <-
+  leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
+  area, Pambient, speciesR, speciesGamma
+), constraint(singleSpecies, idealGas, reflecting_BC) {
+  double const Pgl = $leftsP(gagePressure,minPg);
+  Loci::vector3d<double> const ul = $leftv3d(velocity);
+  double const Tl = $leftsP(temperature,Zero);
+  
+  double const Pgr = Pgl;
+  Loci::vector3d<double> const ur = ul - 2.*dot(ul, $area.n)*$area.n;
+  double const Tr = Tl;
+  
+  Loci::Array<double, 5> flux;
+  
+  AUSMPlusUpFluxIdealGas(
+    flux,
+    ul, Pgl, Tl,
+    ur, Pgr, Tr,
+    $area.sada, $area.n, $Pambient,
+    $speciesR[0], $speciesGamma[0], 1.0
+  );
+  
+  $ssConvectiveFlux_f[0] = 0; // Mass flux should be zero for this BC
+  $ssConvectiveFlux_f[1] = flux[1];
+  $ssConvectiveFlux_f[2] = flux[2];
+  $ssConvectiveFlux_f[3] = flux[3];
+  $ssConvectiveFlux_f[4] = flux[4];
+}
+
+$rule pointwise(
+  msConvectiveFlux_f
+  <-
+  leftsP(gagePressure,minPg), leftv3d(velocity), leftsP(temperature,Zero), leftvM(speciesY),
+  ci->(mixtureGamma, mixtureR), area, Pambient, Ns
+), constraint(multiSpecies, idealGas, reflecting_BC), prelude {
+  $msConvectiveFlux_f.setVecSize(*$Ns+4);
+} {
+  double * flux = &($msConvectiveFlux_f[0]);
+  
+  double const * Yl = &($leftvM(speciesY)[0]);
+  Loci::vector3d<double> const & Ul = $leftv3d(velocity);
+  double const & Pgl = $leftsP(gagePressure,minPg);
+  double const & Tl = $leftsP(temperature,Zero);
+  double const & gammal = $ci->$mixtureGamma;
+  double const & Rtildel = $ci->$mixtureR;
+  
+  double const * Yr = Yl;
+  Loci::vector3d<double> const & Ur = Ul;
+  double const & Pgr = Pgl;
+  double const & Tr = Tl;
+  double const & gammar = gammal;
+  double const & Rtilder = Rtildel;
+  
+  AUSMPlusUpFluxMultiSpeciesIdealGas(
+    flux,
+    $Ns,
+    Yl, Ul, Pgl, Tl, Rtildel, gammal,
+    Yr, Ur, Pgr, Tr, Rtilder, gammar,
+    $area.sada, $area.n, $Pambient,
+    1.0
+  );
+  
+  flux[4] = 0.0;
+  for(int i = 0; i < $Ns-1; ++i) {
+    flux[5+i] = 0.0;
+  }
+}
 
 } // end: namespace flame

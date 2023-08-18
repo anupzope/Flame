@@ -5,16 +5,45 @@ $include "FVM.lh"
 
 //==============================================================================
 
-$rule singleton(rk2TimeStepSize <- timeStepSize) {
-  $rk2TimeStepSize = $timeStepSize;
+$rule singleton(dtRK <- timeStepSize) {
+  $dtRK = $timeStepSize;
 }
 
-$rule singleton(rk2Weights), constraint(UNIVERSE) {
-  $rk2Weights[0] = 0.5;
-  $rk2Weights[1] = 0.5;
+$rule default(rkOrder) {
+  $rkOrder = 2;
 }
 
-//==============================================================================
+$rule singleton(rkOrderWeights <- rkOrder) {
+  std::vector<Loci::Array<double, 3> > wlist;
+  Loci::Array<double, 3> wts;
+  wts[0] = 1.0; wts[1] = 0.0; wts[2] = 1.0;
+  wlist.push_back(wts);
+  
+  if($rkOrder == 2) {
+    wts[0] = 0.5; wts[1] = 0.5; wts[2] = 0.5;
+    wlist.push_back(wts);
+  }
+  
+  if($rkOrder == 3) {
+    wts[0] = 0.75; wts[1] = 0.25; wts[2] = 0.25;
+    wlist.push_back(wts);
+    
+    wts[0] = 1./3.; wts[1] = 2./3.; wts[2] = 2./3.;
+    wlist.push_back(wts);
+  }
+  
+  $rkOrderWeights = wlist;
+  
+  if($rkOrder < 1 || $rkOrder > 3) {
+    std::cerr << "rkOrder should be between 1 and 3, it is set to "
+      << $rkOrder << std::endl;
+    Loci::Abort();
+  }
+}
+
+// =============================================================================
+// RK loop initialization
+// =============================================================================
 
 $rule singleton(timeStep{n,rk=0} <- timeStep{n}) {
   $timeStep{n, rk=0} = $timeStep{n} + 1;
@@ -28,54 +57,51 @@ $type massFractions_i storeVec<double>;
 $type gagePressure_i store<double>;
 $type velocity_i store<Loci::vector3d<double> >;
 $type temperature_i store<double>;
+$type speciesY_i storeVec<double>;
+$type mixtureW_i store<double>;
+$type mixtureR_i store<double>;
+$type mixtureGamma_i store<double>;
 
-$rule pointwise(massFractions_i{n,rk=0} <- massFractions{n}, Ns), prelude {
-  $massFractions_i{n,rk=0}.setVecSize($massFractions{n}.vecSize());
-} {
-  for(int i = 0; i < $Ns; ++i) {
-    $massFractions_i{n,rk=0}[i] = $massFractions{n}[i];
-  }
-}
-
-$rule pointwise(gagePressure_i{n,rk=0} <- gagePressure{n}) {
+$rule pointwise(gagePressure_i{n,rk=0} <- gagePressure{n}),
+constraint(geom_cells) {
   $gagePressure_i{n,rk=0} = $gagePressure{n};
 }
 
-$rule pointwise(velocity_i{n,rk=0} <- velocity{n}) {
+$rule pointwise(velocity_i{n,rk=0} <- velocity{n}),
+constraint(geom_cells) {
   $velocity_i{n,rk=0} = $velocity{n};
 }
 
-$rule pointwise(temperature_i{n,rk=0} <- temperature{n}) {
+$rule pointwise(temperature_i{n,rk=0} <- temperature{n}),
+constraint(geom_cells) {
   $temperature_i{n,rk=0} = $temperature{n};
 }
 
-//$rule pointwise(massFractions{n,rk=0} <- massFractions{n}, Ns),
-//constraint(geom_cells, timeIntegrationRK2), prelude {
-//  $massFractions{n,rk=0}.setVecSize(*$Ns);
-//} {
-//  for(int i = 0; i < $Ns; ++i) {
-//    $massFractions{n,rk=0}[i] = $massFractions{n}[i];
-//  }
-//}
-//
-//$rule pointwise(gagePressure{n,rk=0} <- gagePressure{n}),
-//constraint(geom_cells, timeIntegrationRK2) {
-//  $gagePressure{n,rk=0} = $gagePressure{n};
-//}
-//
-//$rule pointwise(velocity{n,rk=0} <- velocity{n}),
-//constraint(geom_cells, timeIntegrationRK2) {
-//  $velocity{n,rk=0} = $velocity{n};
-//}
-//
-//$rule pointwise(temperature{n,rk=0} <- temperature{n}),
-//constraint(geom_cells, timeIntegrationRK2) {
-//  $temperature{n,rk=0} = $temperature{n};
-//}
+$rule pointwise(speciesY_i{n,rk=0} <- speciesY{n}, Ns),
+constraint(geom_cells), prelude {
+  $speciesY_i{n,rk=0}.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesY_i{n,rk=0}[i] = $speciesY{n}[i];
+  }
+}
 
-$rule pointwise(massFractions{n,rk} <- massFractions_i{n,rk}),
-inplace(massFractions{n,rk}|massFractions_i{n,rk}), prelude {
-};
+$rule pointwise(mixtureW_i{n,rk=0} <- mixtureW{n}),
+constraint(geom_cells) {
+  $mixtureW_i{n,rk=0} = $mixtureW{n};
+}
+
+$rule pointwise(mixtureR_i{n,rk=0} <- mixtureR{n}),
+constraint(geom_cells) {
+  $mixtureR_i{n,rk=0} = $mixtureR{n};
+}
+
+$rule pointwise(mixtureGamma_i{n,rk=0} <- mixtureGamma{n}),
+constraint(geom_cells) {
+  $mixtureGamma_i{n,rk=0} = $mixtureGamma{n};
+}
+
+// =============================================================================
 
 $rule pointwise(gagePressure{n,rk} <- gagePressure_i{n,rk}),
 inplace(gagePressure{n,rk}|gagePressure_i{n,rk}), prelude {
@@ -89,99 +115,253 @@ $rule pointwise(temperature{n,rk} <- temperature_i{n,rk}),
 inplace(temperature{n,rk}|temperature_i{n,rk}), prelude {
 };
 
-$rule pointwise(massFractions_i{n,rk+1} <- massFractions{n,rk}, Ns),
-inplace(massFractions_i{n,rk+1}|massFractions{n,rk}), prelude {
-  $massFractions_i{n,rk+1}.setVecSize(*$Ns);
-} {
-  for(int i = 0; i < $Ns; ++i) {
-    $massFractions_i{n,rk+1} = $massFractions{n,rk};
-  }
-}
+$rule pointwise(speciesY{n,rk} <- speciesY_i{n,rk}),
+inplace(speciesY{n,rk}|speciesY_i{n,rk}), prelude {
+};
 
-$rule pointwise(gagePressure_i{n,rk+1} <- gagePressure{n,rk}),
-inplace(gagePressure_i{n,rk+1}|gagePressure{n,rk}) {
-  $gagePressure_i{n,rk+1} = $gagePressure{n,rk};
-}
+$rule pointwise(mixtureW{n,rk} <- mixtureW_i{n,rk}),
+inplace(mixtureW{n,rk}|mixtureW_i{n,rk}), prelude {
+};
 
-$rule pointwise(velocity_i{n,rk+1} <- velocity{n,rk}),
-inplace(velocity_i{n,rk+1}|velocity{n,rk}) {
-  $velocity_i{n,rk+1} = $velocity{n,rk};
-}
+$rule pointwise(mixtureR{n,rk} <- mixtureR_i{n,rk}),
+inplace(mixtureR{n,rk}|mixtureR_i{n,rk}), prelude {
+};
 
-$rule pointwise(temperature_i{n,rk+1} <- temperature{n,rk}),
-inplace(temperature_i{n,rk+1}|temperature{n,rk}) {
-  $temperature_i{n,rk+1} = $temperature{n,rk};
-}
+$rule pointwise(mixtureGamma{n,rk} <- mixtureGamma_i{n,rk}),
+inplace(mixtureGamma{n,rk}|mixtureGamma_i{n,rk}), prelude {
+};
 
-//==============================================================================
+// =============================================================================
+// RK advance rules
+// =============================================================================
 
-$rule singleton(timeStep{n,rk+1} <- timeStep{n,rk}), constraint(timeIntegrationRK2) {
+$rule singleton(timeStep{n,rk+1} <- timeStep{n,rk}),
+constraint(timeIntegrationRK) {
   $timeStep{n,rk+1} = $timeStep{n,rk};
 }
 
-$rule singleton(stime{n,rk+1} <- stime{n,rk}, stime{n}, rk2TimeStepSize, rk2Weights, $rk{n,rk}),
-constraint(timeIntegrationRK2) {
-  $stime{n,rk+1} = $stime{n} + $rk2Weights[$$rk{n,rk}]*$rk2TimeStepSize;
+$rule singleton(stime{n,rk+1} <- stime{n,rk}, stime{n}, dtRK),
+constraint(timeIntegrationRK) {
+  $stime{n,rk+1} = $stime{n} + $dtRK;
 }
 
-//$rule pointwise(massFractions{n,rk+1}, gagePressure{n,rk+1}, velocity{n,rk+1},
-//temperature{n,rk+1} <- srcMass{n,rk}, srcMomentum{n,rk}, srcEnergy{n,rk},
-//Ns, rk2TimeStepSize, rk2Weights, $rk{n,rk}),
-//constraint(geom_cells, timeIntegrationRK2), prelude {
-//  $massFractions{n,rk+1}.setVecSize(*$Ns);
-//} {
-//  //for(int i = 0; i < $Ns; ++i) {
-//  //  $massFractions{n,rk+1}[i] = $massFractions{n,rk}[i]
-//  //    + $rk2Weights[$$rk{n,rk}]*$rk2TimeStepSize*$massFractionsF{n,rk}[i];
-//  //}
-//}
+$rule pointwise(
+  gagePressure_i{n,rk+1}, velocity_i{n,rk+1}, temperature_i{n,rk+1},
+  speciesY_i{n,rk+1}, mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1},
+  mixtureGamma_i{n,rk+1}
+  <-
+  rkOrderWeights{n,rk}, $rk{n,rk}, dtRK{n,rk},
+  vol{n}, gagePressure{n}, velocity{n}, temperature{n},
+  speciesY{n}, mixtureW{n}, mixtureR{n}, mixtureGamma{n},
+  vol{n,rk}, gagePressure{n,rk}, velocity{n,rk}, temperature{n,rk},
+  speciesY{n,rk}, mixtureW{n,rk}, mixtureR{n,rk}, mixtureGamma{n,rk},
+  msResidual{n,rk},
+  speciesW, speciesGamma, speciesR, Pambient, Runiv, Ns
+), constraint(geom_cells, multiSpecies, idealGas), prelude{
+  $speciesY_i{n,rk+1}.setVecSize(*$Ns);
+} {
+  double const gm1n = $mixtureGamma{n} - 1.0;
+  double const rgm1n = 1.0/gm1n;
+  
+  double const gm1rk = $mixtureGamma{n,rk} - 1.0;
+  double const rgm1rk = 1.0/gm1rk;
+  
+  double const rhon = ($gagePressure{n}+$Pambient)/($mixtureR{n}*$temperature{n});
+  double const rein = ($gagePressure{n}+$Pambient)*rgm1n;
+  double const re0n = rein + 0.5*rhon*dot($velocity{n}, $velocity{n});
+  
+  double const rhork = ($gagePressure{n,rk}+$Pambient)/($mixtureR{n,rk}*$temperature{n,rk});
+  double const reirk = ($gagePressure{n,rk}+$Pambient)*rgm1rk;
+  double const re0rk = reirk + 0.5*rhork*dot($velocity{n,rk}, $velocity{n,rk});
+  
+  int const step = $$rk{n,rk};
+  double const vn = $vol{n};
+  double const vnp1 = $vol{n,rk};
+  double const rvnp1 = 1.0/vnp1;
+  
+  double const dt = $dtRK{n,rk};
+  
+  Loci::Array<double, 3> const & wgts = $rkOrderWeights{n,rk}[step];
+  
+  double const rnext = (wgts[0]*vn*rhon + wgts[1]*vnp1*rhork + wgts[2]*dt*$msResidual{n,rk}[4])*rvnp1;
+  
+  double sumY = 0.0;
+  for(int i = 0; i < $Ns-1; ++i) {
+    $speciesY_i{n,rk+1}[i] = (
+      wgts[0]*vn*rhon*$speciesY{n}[i] +
+      wgts[1]*vnp1*rhork*$speciesY{n,rk}[i] +
+      wgts[2]*dt*$msResidual{n,rk}[5+i]
+    )*(rvnp1/rnext);
+    sumY += $speciesY_i{n,rk+1}[i];
+  }
+  $speciesY_i{n,rk+1}[$Ns-1] = 1.0 - sumY;
+  
+  // calculate new mixture molecular weight
+  double W_rkp1 = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    W_rkp1 += $speciesY_i{n,rk+1}[i]/$speciesW[i];
+  }
+  W_rkp1 = 1.0/W_rkp1;
+  
+  // calculate new gas constant of the mixture
+  double R_rkp1 = $Runiv/W_rkp1;
+  
+  // calculate new adiabatic index of the mixture
+  double gamma_rkp1 = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    gamma_rkp1 += $speciesY_i{n,rk+1}[i]/($speciesGamma[i]-1.0);
+  }
+  gamma_rkp1 = 1.0/gamma_rkp1 + 1.0;
+  
+  double gammam1_rkp1 = gamma_rkp1 - 1.0;
+  
+  $mixtureW_i{n,rk+1} = W_rkp1;
+  $mixtureR_i{n,rk+1} = R_rkp1;
+  $mixtureGamma_i{n,rk+1} = gamma_rkp1;
+  
+  Loci::vector3d<double> const unext = (
+    wgts[0]*vn*rhon*$velocity{n} +
+    wgts[1]*vnp1*rhork*$velocity{n,rk} +
+    wgts[2]*dt*Loci::vector3d<double>($msResidual{n,rk}[0], $msResidual{n,rk}[1], $msResidual{n,rk}[2])
+  )*(rvnp1/rnext);
+  
+  double const re0next = (wgts[0]*vn*re0n + wgts[1]*vnp1*re0rk + wgts[2]*dt*$msResidual{n,rk}[3])*rvnp1;
+  
+  double const pnext = (re0next - 0.5*rnext*dot(unext, unext))*gammam1_rkp1;
+  double const pgnext = pnext - $Pambient;
+  double const tnext = pnext/(R_rkp1*rnext);
+  
+  $gagePressure_i{n,rk+1} = pgnext;
+  $velocity_i{n,rk+1} = unext;
+  $temperature_i{n,rk+1} = tnext;
+}
 
-//==============================================================================
+$rule pointwise(
+  gagePressure_i{n,rk+1}, velocity_i{n,rk+1}, temperature_i{n,rk+1}
+  <-
+  rkOrderWeights{n,rk}, $rk{n,rk}, dtRK{n,rk},
+  vol{n}, gagePressure{n}, velocity{n}, temperature{n},
+  vol{n,rk}, gagePressure{n,rk}, velocity{n,rk}, temperature{n,rk},
+  ssResidual{n,rk},
+  speciesGamma, speciesR, Pambient
+), constraint(geom_cells, idealGas, singleSpecies) {
+  double const gm1 = $speciesGamma[0] - 1.0;
+  double const rgm1 = 1.0/gm1;
+  
+  double const rhon = ($gagePressure{n}+$Pambient)/($speciesR[0]*$temperature{n});
+  double const rein = ($gagePressure{n}+$Pambient)*rgm1;
+  double const re0n = rein + 0.5*rhon*dot($velocity{n}, $velocity{n});
+  
+  double const rhork = ($gagePressure{n,rk}+$Pambient)/($speciesR[0]*$temperature{n,rk});
+  double const reirk = ($gagePressure{n,rk}+$Pambient)*rgm1;
+  double const re0rk = reirk + 0.5*rhork*dot($velocity{n,rk}, $velocity{n,rk});
+  
+  int const step = $$rk{n,rk};
+  double const vn = $vol{n};
+  double const vnp1 = $vol{n,rk};
+  double const rvnp1 = 1.0/vnp1;
+  
+  double const dt = $dtRK{n,rk};
+  
+  Loci::Array<double, 3> const & wgts = $rkOrderWeights{n,rk}[step];
+  
+  double const rnext = (wgts[0]*vn*rhon + wgts[1]*vnp1*rhork + wgts[2]*dt*$ssResidual{n,rk}[0])*rvnp1;
+  double const re0next = (wgts[0]*vn*re0n + wgts[1]*vnp1*re0rk + wgts[2]*dt*$ssResidual{n,rk}[4])*rvnp1;
+  Loci::vector3d<double> const unext = (
+    wgts[0]*vn*rhon*$velocity{n} + 
+    wgts[1]*vnp1*rhork*$velocity{n,rk} +
+    wgts[2]*dt*Loci::vector3d<double>($ssResidual{n,rk}[1], $ssResidual{n,rk}[2], $ssResidual{n,rk}[3])
+  )*(rvnp1/rnext);
+  
+  double const pnext = (re0next - 0.5*rnext*dot(unext,unext))*gm1;
+  double const pgnext = pnext - $Pambient;
+  double const tnext = pnext/($speciesR[0]*rnext);
+  
+  $gagePressure_i{n,rk+1} = pgnext;
+  $velocity_i{n,rk+1} = unext;
+  $temperature_i{n,rk+1} = tnext;
+}
 
-$rule singleton(rk2Finished{n,rk} <- $rk{n,rk}), constraint(timeIntegrationRK2) {
-  $rk2Finished{n,rk} = $$rk{n,rk} >= 2;
+// =============================================================================
+// RK loop collapse rules
+// =============================================================================
+
+$rule singleton(lastRK{n,rk} <- $rk{n,rk}, rkOrder) {
+  $lastRK{n,rk} = $$rk{n,rk} == $rkOrder-1;
+}
+
+$rule singleton(rkFinished{n,rk} <- $rk{n,rk}, rkOrder),
+constraint(timeIntegrationRK) {
+  $rkFinished{n,rk} = $$rk{n,rk} >= $rkOrder;
 }
 
 $rule singleton(timeStep{n+1} <- timeStep{n,rk}),
-constraint(timeIntegrationRK2),
-conditional(rk2Finished{n,rk}) {
+constraint(timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
   $timeStep{n+1} = $timeStep{n,rk};
 }
 
 $rule singleton(stime{n+1} <- stime{n,rk}),
-constraint(timeIntegrationRK2),
-conditional(rk2Finished{n,rk}) {
+constraint(timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
   $stime{n+1} = $stime{n,rk};
 }
 
-$rule pointwise(massFractions{n+1} <- massFractions{n,rk}, Ns),
-inplace(massFractions{n+1}|massFractions{n,rk}),
-constraint(geom_cells, timeIntegrationRK2),
-conditional(rk2Finished{n,rk}) {
+$rule pointwise(gagePressure{n+1} <- gagePressure_i{n,rk}),
+inplace(gagePressure{n+1}|gagePressure_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
+  $gagePressure{n+1} = $gagePressure_i{n,rk};
+}
+
+$rule pointwise(velocity{n+1} <- velocity_i{n,rk}),
+inplace(velocity{n+1}|velocity_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
+  $velocity{n+1} = $velocity_i{n,rk};
+}
+
+$rule pointwise(temperature{n+1} <- temperature_i{n,rk}),
+inplace(temperature{n+1}|temperature_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
+  $temperature{n+1} = $temperature_i{n,rk};
+}
+
+$rule pointwise(speciesY{n+1} <- speciesY_i{n,rk}, Ns),
+inplace(speciesY{n+1}|speciesY_i{n,rk}),
+constraint(geom_cells, multiSpecies, timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
   for(int i = 0; i < $Ns; ++i) {
-    $massFractions{n+1} = $massFractions{n,rk};
+    $speciesY{n+1} = $speciesY_i{n,rk};
   }
 }
 
-$rule pointwise(gagePressure{n+1} <- gagePressure{n,rk}),
-inplace(gagePressure{n+1}|gagePressure{n,rk}),
-constraint(geom_cells, timeIntegrationRK2),
-conditional(rk2Finished{n,rk}) {
-  $gagePressure{n+1} = $gagePressure{n,rk};
+$rule pointwise(mixtureGamma{n+1} <- mixtureGamma_i{n,rk}),
+inplace(mixtureGamma{n+1}|mixtureGamma_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
+  $mixtureGamma{n+1} = $mixtureGamma_i{n,rk};
 }
 
-$rule pointwise(velocity{n+1} <- velocity{n,rk}),
-inplace(velocity{n+1}|velocity{n,rk}),
-constraint(geom_cells, timeIntegrationRK2),
-conditional(rk2Finished{n,rk}) {
-  $velocity{n+1} = $velocity{n,rk};
+$rule pointwise(mixtureW{n+1} <- mixtureW_i{n,rk}),
+inplace(mixtureW{n+1}|mixtureW_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
+  $mixtureW{n+1} = $mixtureW_i{n,rk};
 }
 
-$rule pointwise(temperature{n+1} <- temperature{n,rk}),
-inplace(temperature{n+1}|temperature{n,rk}),
-constraint(geom_cells, timeIntegrationRK2),
-conditional(rk2Finished{n,rk}) {
-  $temperature{n+1} = $temperature{n,rk};
+$rule pointwise(mixtureR{n+1} <- mixtureR_i{n,rk}),
+inplace(mixtureR{n+1}|mixtureR_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+conditional(rkFinished{n,rk}) {
+  $mixtureR{n+1} = $mixtureR_i{n,rk};
+}
+
+//==============================================================================
+
+$rule pointwise(cfl <- cflpdt, dtRK) {
+  $cfl = $cflpdt * $dtRK;
 }
 
 //==============================================================================

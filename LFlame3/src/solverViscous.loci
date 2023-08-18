@@ -1,0 +1,35 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <Loci.h>
+
+#include <logger.hh>
+
+$rule default(flowRegime) {
+  $flowRegime = "inviscid";
+}
+
+$rule singleton(isInviscidFlow <- flowRegime),
+constraint(UNIVERSE) {
+  $isInviscidFlow = $flowRegime == "inviscid";
+}
+
+$rule singleton(isLaminarFlow <- flowRegime),
+constraint(UNIVERSE) {
+  $isLaminarFlow = $flowRegime == "laminar";
+}
+
+$rule constraint(inviscidFlow,laminarFlow <- flowRegime) {
+  if($flowRegime == "viscous") {
+    $inviscidFlow = EMPTY;
+    $laminarFlow = ~EMPTY;
+  } else if($flowRegime == "inviscid") {
+    $inviscidFlow = ~EMPTY;
+    $laminarFlow = EMPTY;
+  } else {
+    $[Once] {
+      flame::logger.severe("invalid value for flowRegime", $flowRegime);
+    }
+    Loci::Abort();
+  }
+}

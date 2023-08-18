@@ -1,13 +1,22 @@
+#include <Loci.h>
 
-/*******************************************************************************
-General variables.
-*******************************************************************************/
+// =============================================================================
+// General variables.
+// =============================================================================
+
 // Name of the current case.
 $type caseName param<std::string>;
 
-/*******************************************************************************
-Variables related to solver time integration algorithm.
-*******************************************************************************/
+// =============================================================================
+// Variables related to periodic boundaries
+// =============================================================================
+
+$type periodicTransform store<Loci::rigid_transform>;
+
+// =============================================================================
+// Variables related to solver time integration algorithm.
+// =============================================================================
+
 // Number of time steps.
 $type nTimeSteps param<int>;
 
@@ -33,38 +42,65 @@ $type stime param<double>;
 $type timeIntegrationMethod param<string>;
 
 // Constraints that represent current time integration method.
-$type timeIntegrationRK2 Constraint;
+$type timeIntegrationRK Constraint;
 
-$type rk2Weights param<Loci::Array<double, 2> >;
+// =============================================================================
+// Variables related to solver printing.
+// =============================================================================
 
-/*******************************************************************************
-Variables related to solver output.
-*******************************************************************************/
-// Dummy variable that is used to force writing grid topology
-// information.
+$type printOptions param<options_list>;
+
+$type printSettings param<flame::PrintSettings>;
+
+$type doPrint param<bool>;
+
+// =============================================================================
+// Variables related to solver plotting and printing.
+// =============================================================================
+
+// User supplied options for printing.
+$type printOptions param<options_list>;
+
+// Internal parameter to store parsed user specified printing options.
+$type printSettings param<flame::PrintSettings>;
+
+// Conditional for writing print variables in an iteration.
+$type doPrint param<bool>;
+
+// User supplied options for plotting.
 $type plotOptions param<options_list>;
+
+// Internal parameter to store parsed user specified plotting options.
 $type plotSettings param<flame::PlotSettings>;
 
-// Parameter to indicate if data is output in an iteration.
+// Conditional for writing grid topology.
+$type doPlotTopology param<bool>;
+
+// Conditional for writing grid node positions.
+$type doPlotGridPos param<bool>;
+
+// Conditional for writing output variables in an iteration.
 $type doPlot param<bool>;
 
 // List of postfixes to use while writing output data.
 $type plotPostfix param<std::string>;
 
 // Constraint for parametrix variables.
-$type plotNodal_X Constraint;
+//$type plotNodal_X Constraint;
 
 $type boundary_names store<string>;
 
-/*******************************************************************************
-Output variable.
-*******************************************************************************/
+// =============================================================================
+// Output variable.
+// =============================================================================
+
 $type solution store<double>;
 
-/*******************************************************************************
-Variables related to solver initial conditions.
-*******************************************************************************/
-// Initial pressure (at cell).
+// =============================================================================
+// Variables related to solver initial conditions.
+// =============================================================================
+
+// Initial gage pressure (at cell).
 $type gagePressure_ic store<double>;
 
 // Initial velocity (at cell).
@@ -73,87 +109,208 @@ $type velocity_ic store<Loci::vector3d<double> >;
 // Initial temperature (at cell).
 $type temperature_ic store<double>;
 
-// Initial mass fractions (at cell).
-$type massFractions_ic storeVec<double>;
+// Initial species mass fractions (at cell).
+$type speciesY_ic storeVec<double>;
 
-/*******************************************************************************
-Parameters of the solver.
-*******************************************************************************/
+// Initial mixture gas molecular weight (at cell).
+$type mixtureW_ic store<double>;
+
+// Initial mixture gas constant (at cell).
+$type mixtureR_ic store<double>;
+
+// Initial mixture adiabatic exponent (at  cell).
+$type mixtureGamma_ic store<double>;
+
+// Initial mixture specific heat at constant pressure (at cell).
+//$type mixtureCp_ic store<double>;
+
+// Initial mixture enthalpy (at cell).
+//$type mixtureEnthalpy_ic store<double>;
+
+// =============================================================================
+// Parameters of the solver.
+// =============================================================================
+
+// User supplied parameter for specifying whether the flow is inviscid, laminar
+// or turbulent.
+$type flowRegime param<std::string>;
+
+// Constraints to distinguish between inviscid and viscous flows.
+$type isInviscidFlow param<bool>;
+$type isLaminarFlow param<bool>;
+$type inviscidFlow Constraint;
+$type laminarFlow Constraint;
+
 // Ambient pressure.
 $type Pambient param<double>;
 
-/*******************************************************************************
-Variables related to solver current state.
-*******************************************************************************/
-// Vector of mass fractions (at cell).
-$type massFractions storeVec<double>;
+// =============================================================================
+// Volume integrated quantities.
+// =============================================================================
+
+$type totalVolume param<double>;
+
+$type totalKE param<double>;
+
+// =============================================================================
+// Boundary condition constraints.
+// =============================================================================
+
+$type reflecting_BC Constraint;
+
+// =============================================================================
+// Variables common to both the single- and multi-species solver state.
+// =============================================================================
 
 // Gage pressure (at cell).
 $type gagePressure store<double>;
 
+// Gage pressure (at face).
+$type gagePressure_f store<double>;
+
 // Velocity (at cell).
 $type velocity store<Loci::vector3d<double> >;
+
+// velocity (at face).
+$type velocity_f store<Loci::vector3d<double> >;
 
 // Temperature (at cell).
 $type temperature store<double>;
 
+// Temperature (at face).
+$type temperature_f store<double>;
 
-// Net rate of mass convection through a face.
-$type massConvection_f storeVec<double>;
+// Density (at cell).
+$type rho store<double>;
 
-// Net rate of momentum convection though a face.
-$type momentumConvection_f store<Loci::vector3d<double> >;
+// Density (at face).
+$type rho_f store<double>;
 
-// Net rate of energy convection through a face.
-$type energyConvection_f store<double>;
+// =============================================================================
+// Variables related to single-species solver state.
+// =============================================================================
 
+// Vector of single-species convective flux (at face).
+$type ssConvectiveFlux_f store<Loci::Array<double, 5> >;
 
-// Net rate of mass diffusion through a face.
-$type massDiffusion_f storeVec<double>;
+// Vector of single-species diffusive flux (at face).
+$type ssDiffusiveFlux_f store<Loci::Array<double, 5> >;
 
-// Net rate of momentum diffusion through a face.
-$type momentumDiffusion_f store<Loci::vector3d<double> >;
+// Vector of single-species residual (at face).
+$type ssResidual store<Loci::Array<double, 5> >;
 
-// Net rate of energy diffusion through a face.
-$type energyDiffusion_f store<double>;
+// =============================================================================
+// Variables related to multi-species solver state.
+// =============================================================================
 
+// Vector of species mass fractions (at cell): [-].
+$type speciesY storeVec<double>;
 
-// Source term for mass equations.
-$type srcMass storeVec<double>;
+// Vector of species mass fractions (at face): [-].
+$type speciesY_f storeVec<double>;
 
-// Source term for momentum equations.
-$type srcMomentum store<Loci::vector3d<double> >;
+// Molecular weight of mixture (at cell): [kg/kmol].
+$type mixtureW store<double>;
 
-// Source term for energy equations.
-$type srcEnergy store<double>;
+// Molecular weight of mixture (at face): [kg/kmol].
+$type mixtureW_f store<double>;
 
-/*******************************************************************************
-Variables related to Runge-Kutta time integration.
-*******************************************************************************/
-$type rk2Finished param<bool>;
-$type rk2TimeStepSize param<double>;
+// Gas constant of mixture (at cell): [J/kg.K].
+$type mixtureR store<double>;
 
-/*******************************************************************************
-Variables related to milti-species management.
-*******************************************************************************/
-// Universal gas constant in J/kmol/K.
+// Gas constant of mixture (at face): [J/kg.K].
+$type mixtureR_f store<double>;
+
+// Adiabatic index of mixture (at cell): [-]
+$type mixtureGamma store<double>;
+
+// Adiabatic index of mixture (at face): [-]
+$type mixtureGamma_f store<double>;
+
+// Mixture specific heat at constant pressure (at cell); [J/kg.K]
+$type mixtureCp store<double>;
+
+// Mixture enthalpy (at cell); [J/kg.K]
+$type mixtureEnthalpy store<double>;
+
+// Fraction Wk/mixtureW of the species (at cell): [-]
+//$type speciesWFrac storeVec<double>;
+
+// Fraction mixtureW/Wk of the species (at cell): [-]
+//$type speciesWRFrac storeVec<double>;
+
+// Vector of multi-species convective flux (at face).
+$type msConvectiveFlux_f storeVec<double>;
+
+// Vector of multi-species diffusive flux (at faces).
+$type msDiffusiveFlux_f storeVec<double>;
+
+// Vector of multi-species residual (at cells).
+$type msResidual storeVec<double>;
+
+// =============================================================================
+// Variables related to Runge-Kutta time integration.
+// =============================================================================
+$type rkFinished param<bool>;
+$type dtRK param<double>;
+$type rkOrder param<int>;
+$type rkOrderWeights param<std::vector<Loci::Array<double, 3> > >;
+$type lastRK param<bool>;
+
+// =============================================================================
+// Variables related to EoS
+// =============================================================================
+$type eosType param<std::string>;
+$type idealGas Constraint;
+
+// =============================================================================
+// Variables related to milti-species management.
+// =============================================================================
+
+// Constraints to distinguish between single-species vs multi-species mode.
+$type multiSpecies Constraint;
+$type singleSpecies Constraint;
+
+// Boolean parameters to distinguish between single-species vs multi-species
+// mode.
+$type isMultiSpecies param<bool>;
+$type isSingleSpecies param<bool>;
+
+// Universal gas constant: [J/kmol.K].
 $type Runiv param<double>;
 
 // Number of species.
 $type Ns param<int>;
 
-// Names of the species.
-//$type speciesNames param<std::vector<std::string> >;
+// Name of the species: [-].
+$type speciesNames param<std::vector<std::string> >;
 
-// Vector of molecular weight of the species in kg/kmol.
-$type molecularWeights param<std::vector<double> >;
+// Molecular weight of the species: [kg/kmol].
+$type speciesW param<std::vector<double> >;
 
-// Molecular weight of the mixture in kg/kmol (in a cell).
-$type molecularWeight store<double>;
+// Ratio of specific heats of the species: [-].
+$type speciesGamma param<std::vector<double> >;
 
-/**
-chemistryModel=<
-  species="H2,N2",
-  molecularWeights=[2.016, 28.014], // kg/kmol or grams/mol
->
-*/
+// Specific gas constant of the species: [J/kg.K].
+$type speciesR param<std::vector<double> >;
+
+// =============================================================================
+// Variables related to computing, plotting and printing CFL number.
+// =============================================================================
+
+// Maximum contravariant velocity flux (at face).
+$type maxUt_f store<double>;
+
+// Time step size neutral CFL number (at cell).
+$type cflpdt store<double>;
+
+// CFL number (at cell).
+$type cfl store<double>;
+
+// Maximum and minimum CFL value (over all cells).
+$type maxCFL param<double>;
+$type minCFL param<double>;
+
+// Merge this functionality with printSettings
+$type cflPrintFrequency param<int>;
+$type doPrintCFL param<bool>;
