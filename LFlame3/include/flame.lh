@@ -1,5 +1,7 @@
 #include <Loci.h>
 
+#include <species.hh>
+
 // =============================================================================
 // General variables.
 // =============================================================================
@@ -137,9 +139,13 @@ $type flowRegime param<std::string>;
 
 // Constraints to distinguish between inviscid and viscous flows.
 $type isInviscidFlow param<bool>;
+$type isViscousFlow param<bool>;
 $type isLaminarFlow param<bool>;
+$type isTurbulentFlow param<bool>;
 $type inviscidFlow Constraint;
+$type viscousFlow Constraint;
 $type laminarFlow Constraint;
+$type turbulentFlow Constraint;
 
 // Ambient pressure.
 $type Pambient param<double>;
@@ -157,6 +163,19 @@ $type totalKE param<double>;
 // =============================================================================
 
 $type reflecting_BC Constraint;
+
+// =============================================================================
+// Variables related to transport properties
+// =============================================================================
+
+$type viscosityModel param<options_list>;
+$type constantViscosityModel Constraint;
+$type sutherlandViscosityModel Constraint;
+
+$type conductivityModel param<std::string>;
+$type constantConductivityModel Constraint;
+$type constantPrandtlNumberModel Constraint;
+$type sutherlandConductivityModel Constraint;
 
 // =============================================================================
 // Variables common to both the single- and multi-species solver state.
@@ -181,10 +200,19 @@ $type temperature store<double>;
 $type temperature_f store<double>;
 
 // Density (at cell).
-$type rho store<double>;
+$type density store<double>;
 
 // Density (at face).
-$type rho_f store<double>;
+$type density_f store<double>;
+
+// Viscosity (at cell).
+$type viscosity store<double>;
+
+// Viscosity (at face).
+$type viscosity_f store<double>;
+
+// Shear stress (at face).
+$type shearStress_f store<SymmetricTensor>;
 
 // =============================================================================
 // Variables related to single-species solver state.
@@ -264,6 +292,13 @@ $type eosType param<std::string>;
 $type idealGas Constraint;
 
 // =============================================================================
+// Variables related to thermodynamic model.
+// =============================================================================
+
+$type thermodynamicModel param<std::string>;
+$type caloricallyPerfectModel Constraint;
+
+// =============================================================================
 // Variables related to milti-species management.
 // =============================================================================
 
@@ -282,17 +317,32 @@ $type Runiv param<double>;
 // Number of species.
 $type Ns param<int>;
 
+// User supplied parameter for species involved in the analysis.
+$type species param<options_list>;
+
 // Name of the species: [-].
 $type speciesNames param<std::vector<std::string> >;
+
+// Central database of species properties.
+$type speciesProperties param<std::vector<flame::SpeciesProperties> >;
 
 // Molecular weight of the species: [kg/kmol].
 $type speciesW param<std::vector<double> >;
 
-// Ratio of specific heats of the species: [-].
-$type speciesGamma param<std::vector<double> >;
+// Specific heat at constant pressure: [J/kg.K].
+$type speciesConstantCp param<std::vector<double> >;
+
+// Constant viscosity of the species: [Pa.s].
+$type speciesConstantViscosity param<std::vector<double> >;
+
+// Parameters for Sutherland's viscosity of the species.
+$type speciesSutherlandViscosityParameters param<std::vector<Loci::vector3d<double> > >;
 
 // Specific gas constant of the species: [J/kg.K].
 $type speciesR param<std::vector<double> >;
+
+// Ratio of specific heats of the species: [-].
+$type speciesGamma param<std::vector<double> >;
 
 // =============================================================================
 // Variables related to computing, plotting and printing CFL number.

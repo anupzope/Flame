@@ -23,20 +23,20 @@ $rule constraint(idealGas <- eosType) {
 
 // =============================================================================
 
-$rule pointwise(rho <- temperature, gagePressure, speciesR, Pambient) {
-  $rho = ($gagePressure+$Pambient)/($speciesR[0]*$temperature);
+$rule pointwise(density <- temperature, gagePressure, speciesR, Pambient) {
+  $density = ($gagePressure+$Pambient)/($speciesR[0]*$temperature);
 }
 
-$rule pointwise(rho_f <- temperature_f, gagePressure_f, speciesR, Pambient) {
-  $rho_f = ($gagePressure_f+$Pambient)/($speciesR[0]*$temperature_f);
+$rule pointwise(density_f <- temperature_f, gagePressure_f, speciesR, Pambient) {
+  $density_f = ($gagePressure_f+$Pambient)/($speciesR[0]*$temperature_f);
 }
 
-$rule pointwise(rho <- temperature, gagePressure, mixtureR, Pambient) {
-  $rho = ($gagePressure+$Pambient)/($mixtureR*$temperature);
+$rule pointwise(density <- temperature, gagePressure, mixtureR, Pambient) {
+  $density = ($gagePressure+$Pambient)/($mixtureR*$temperature);
 }
 
-$rule pointwise(rho_f <- temperature_f, gagePressure_f, mixtureR, Pambient) {
-  $rho_f = ($gagePressure_f+$Pambient)/($mixtureR*$temperature_f);
+$rule pointwise(density_f <- temperature_f, gagePressure_f, mixtureR, Pambient) {
+  $density_f = ($gagePressure_f+$Pambient)/($mixtureR*$temperature_f);
 }
 
 }

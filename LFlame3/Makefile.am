@@ -14,6 +14,7 @@ LFlame3_SOURCES=src/main.cc \
   src/logger.cc \
   src/plot.cc \
   src/totalVolume.cc \
+  src/species.cc \
   src/initialConditions.cc \
   src/solverTimestepping.cc \
   src/solverRungeKutta.cc \
@@ -29,7 +30,9 @@ LFlame3_SOURCES=src/main.cc \
   src/solverPeriodic.cc \
   src/bcSetup.cc \
   src/solverVolumeIntegrated.cc \
-  src/solverCFL.cc
+  src/solverCFL.cc \
+  src/solverThermodynamics.cc \
+  src/solverTransport.cc
 LFlame3_LDFLAGS = 
 LFlame3_LDADD = 
 LFlame3_CXXFLAGS = -I$(srcdir)/include
@@ -45,4 +48,10 @@ if HAVE_LOCI
   LFlame3_LDADD += $(LOCI_LIBS) $(LOCI_DEP_LIBS)
   LFlame3_CXXFLAGS += $(LOCI_CXXFLAGS) $(LOCI_DEP_CXXFLAGS)
   LFlame3_CPPFLAGS += $(LOCI_CPPFLAGS) $(LOCI_DEP_CPPFLAGS)
+endif
+if HAVE_GLOG
+  LFlame3_LDFLAGS += $(GLOG_LDFLAGS)
+  LFlame3_LDADD += $(GLOG_LIBS)
+  LFlame3_CXXFLAGS += $(GLOG_CFLAGS)
+  LFlame3_CPPFLAGS += -DFLAME_HAVE_GLOG
 endif

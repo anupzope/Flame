@@ -1,8 +1,62 @@
 #ifndef FLAME_LFLAME_SPECIES_HH
 #define FLAME_LFLAME_SPECIES_HH
 
+#include <Loci.h>
+
 #include <istream>
 #include <ostream>
+
+namespace flame {
+
+struct SpeciesProperties {
+  double molecularWeight;
+  double constantSpecificHeat;
+  double constantGamma;
+  double constantViscosity;
+  double sutherlandViscosityParameters[3];
+};
+
+std::ostream & operator<<(std::ostream & s, SpeciesProperties const & obj);
+std::istream & operator>>(std::istream & s, SpeciesProperties & obj);
+
+std::ostream & serialize(std::ostream & s, SpeciesProperties const & obj);
+std::istream & deserialize(std::istream & s, SpeciesProperties & obj);
+
+} // end: namespace flame
+
+namespace Loci {
+
+template<>
+struct data_schema_traits<flame::SpeciesProperties> {
+  typedef IDENTITY_CONVERTER Schema_Converter;
+  
+  static DatatypeP get_type() {
+    CompoundDatatypeP cmpd = CompoundFactory(flame::SpeciesProperties());
+    
+    LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, molecularWeight);
+    LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, constantSpecificHeat);
+    LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, constantGamma);
+    LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, constantViscosity);
+    
+    {
+      flame::SpeciesProperties obj;
+      int rank = 1;
+      int dim[] = {3};
+      int sz = 3*sizeof(double);
+      DatatypeP atom = getLociType(obj.sutherlandViscosityParameters[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, sz, rank, dim);
+      cmpd->insert(
+        "sutherlandViscosityParameters",
+        offsetof(flame::SpeciesProperties, sutherlandViscosityParameters),
+        DatatypeP(array_t)
+      );
+    }
+    
+    return DatatypeP(cmpd);
+  }
+};
+
+} // end: namespace Loci
 
 namespace flame {
 

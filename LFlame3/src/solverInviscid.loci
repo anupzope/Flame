@@ -7,6 +7,8 @@ $include "flame.lh"
 
 namespace flame {
 
+// =============================================================================
+
 $rule pointwise(
   ssConvectiveFlux_f <-
   leftv3d(velocity), leftsP(gagePressure,minPg), leftsP(temperature,Zero),
@@ -22,10 +24,14 @@ $rule pointwise(
   );
 }
 
+// =============================================================================
+
 $rule pointwise(
   msConvectiveFlux_f <-
-  leftsP(gagePressure,minPg), leftv3d(velocity), leftsP(temperature,Zero), leftvM(speciesY),
-  rightsP(gagePressure,minPg), rightv3d(velocity), rightsP(temperature,Zero), rightvM(speciesY),
+  leftsP(gagePressure,minPg), leftv3d(velocity), leftsP(temperature,Zero),
+  leftvM(speciesY),
+  rightsP(gagePressure,minPg), rightv3d(velocity), rightsP(temperature,Zero),
+  rightvM(speciesY),
   (cl,cr)->(mixtureGamma, mixtureR), area, Pambient, Ns
 ), constraint(multiSpecies, idealGas, (cl,cr)->(gagePressure,velocity,temperature,speciesY)), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
@@ -55,5 +61,7 @@ $rule pointwise(
     1.0
   );
 }
+
+// =============================================================================
 
 } // end: namespace flame

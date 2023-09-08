@@ -17,8 +17,8 @@ $rule unit(totalKE), constraint(geom_cells) {
   $totalKE = 0.0;
 }
 
-$rule apply(totalKE <- vol, velocity, rho)[Loci::Summation] {
-  double const cellKE = 0.5*$rho*dot($velocity,$velocity)*$vol;
+$rule apply(totalKE <- vol, velocity, density)[Loci::Summation] {
+  double const cellKE = 0.5*$density*dot($velocity,$velocity)*$vol;
   join($totalKE, cellKE);
 }
 

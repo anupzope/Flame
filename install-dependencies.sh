@@ -37,6 +37,49 @@ module use "${MPATH}"
 
 mkdir -p "${BDIR}"
 
+############################################
+## Install Google Test and Google Logging ##
+############################################
+
+# Obtain source from: https://github.com/google/glog.git
+
+INSTALL_GLOG="1"
+GLOG_VERSION="master"
+GLOG_MODULENAME="FlameGlog"
+GLOG_IPATH="${IPATH}/Glog/${GLOG_VERSION}"
+GLOG_MPATH="${MPATH}/${GLOG_MODULENAME}"
+if [[ ${INSTALL_GLOG} -eq 1 ]]; then
+  cd "${BDIR}" && echo "Directory: ${PWD}"
+  rm -rf glog
+  cp -R ../sources/glog ./
+  cd glog && echo "Directory: ${PWD}"
+  cmake -S . -B build -DCMAKE_INSTALL_PREFIX="${GLOG_IPATH}"
+  cmake --build build
+  cmake --build build --target test
+  cmake --build build --target install
+  cd .. && echo "Directory: ${PWD}"
+  cd .. && echo "Directory: ${PWD}"
+  
+  echo "Creating modulefile for Glog..."
+  mkdir -p "${GLOG_MPATH}"
+  cat > "${GLOG_MPATH}/${GLOG_VERSION}.lua" <<EOF
+family("${GLOG_MODULENAME}")
+
+local package="Glog"
+local version="${GLOG_VERSION}"
+local path="${GLOG_IPATH}"
+
+prepend_path("LD_LIBRARY_PATH", pathJoin(path, "lib64"))
+prepend_path("PKG_CONFIG_PATH", pathJoin(pathJoin(path, "lib64"), "pkgconfig"))
+setenv("GLOG_DIR", path)
+setenv("GLOG_ROOT", path)
+
+whatis("Package: "..package)
+whatis("Version: "..version)
+whatis("Path: "..path)
+EOF
+fi
+
 ########################################
 ## Install GKlib, METIS, and ParMETIS ##
 ########################################

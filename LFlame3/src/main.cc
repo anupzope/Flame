@@ -15,6 +15,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <glog/logging.h>
+
 struct arguments {
   std::string caseName;
   bool fpe;
@@ -61,8 +63,20 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 
 //INITIALIZE_EASYLOGGINGPP
 
+void logPrefix(std::ostream& s, const google::LogMessageInfo& l, void* data) {
+  s << l.severity;
+}
+
 int main(int argc, char * argv[]) {
   Loci::Init(&argc, &argv);
+  
+  google::InitGoogleLogging(argv[0], logPrefix);
+  google::InstallFailureSignalHandler();
+  FLAGS_logtostdout=1;
+  //FLAGS_logtostderr = 1;
+  //FLAGS_max_log_size=1024; // in MB
+  //FLAGS_log_prefix=0;
+  //FLAGS_log_dir=".";
   
   arguments arg;
   arg.caseName = "";
@@ -77,11 +91,11 @@ int main(int argc, char * argv[]) {
     flame::logger.initialize("debug/log", Loci::MPI_rank);
   }
   
-  flame::logger.info("Program Arguments:");
-  flame::logger.info("  ", std::setw(20), "case ", " = ", arg.caseName);
-  flame::logger.info("  ", std::setw(20), "fpe enabled", " = ", std::boolalpha, arg.fpe, std::noboolalpha);
-  flame::logger.info("  ", std::setw(20), "IC directory", " = \"", arg.icDirectory, "\"");
-  flame::logger.info("  ", std::setw(20), "query", " = ", arg.query);
+  LOG(INFO) << "Program Arguments:";
+  LOG(INFO) << "  case = " << arg.caseName;
+  LOG(INFO) << "  fpe enabled = " << arg.fpe;
+  LOG(INFO) << "  IC directory = " << arg.icDirectory;
+  LOG(INFO) << "  query = " << arg.query;
   
   // Create debug directory if it does not exist.
   {
@@ -92,8 +106,8 @@ int main(int argc, char * argv[]) {
     } else {
       fstat(fid, &statbuf);
       if(!S_ISDIR(statbuf.st_mode)) {
-        flame::logger.severe("file \"debug\" should be a directory!,"
-          " rename \"debug\" and start again.");
+        LOG(ERROR) << "file \"debug\" should be a directory!," <<
+          " rename \"debug\" and start again.";
         Loci::Abort();
       }
       close(fid);
@@ -109,8 +123,8 @@ int main(int argc, char * argv[]) {
     } else {
       fstat(fid, &statbuf);
       if(!S_ISDIR(statbuf.st_mode)) {
-        flame::logger.severe("file \"output\" should be a directory!,",
-          " rename \"output\" and start again.");
+        LOG(ERROR) << "file \"output\" should be a directory!," <<
+          " rename \"output\" and start again.";
         Loci::Abort();
       }
       close(fid);
@@ -119,7 +133,7 @@ int main(int argc, char * argv[]) {
   
   if(arg.fpe) {
     if(Loci::MPI_rank == 0) {
-      flame::logger.info("Enabling floating point exception trapping");
+      LOG(INFO) << "Enabling floating point exception trapping";
     }
     set_fpe_abort();
   }
@@ -133,27 +147,26 @@ int main(int argc, char * argv[]) {
   
   // Load vars file.
   {
-    std::stringstream ss;
+    std::ostringstream ss;
     ss << arg.caseName << ".vars";
     
     if(Loci::MPI_rank == 0) {
-      flame::logger.info("Reading vars file \"", ss.str(), "\"");
+      LOG(INFO) << "Reading vars file \"" << ss.str() << "\"";
     }
     
     try {
       facts.read_vars(ss.str(), rdb);
     } catch(Loci::BasicException & err) {
       if(Loci::MPI_rank == 0) {
-        std::stringstream ss1;
+        std::ostringstream ss1;
         err.Print(ss1);
-        flame::logger.severe(ss1.str());
-        flame::logger.severe("Could not read \"", ss.str(), "\"");
+        LOG(ERROR) << ss1.str() << ": Could not read \"" << ss.str() << "\"";
       }
       Loci::Abort();
     }
     
     if(Loci::MPI_rank == 0) {
-      flame::logger.info("Reading vars file complete");
+      LOG(INFO) << "Reading vars file complete";
     }
   }
   
@@ -163,18 +176,18 @@ int main(int argc, char * argv[]) {
     ss << arg.caseName << ".vog";
     
     if(Loci::MPI_rank == 0) {
-      flame::logger.info("Reading grid file \"", ss.str(), "\"");
+      LOG(INFO) << "Reading grid file \"" << ss.str() << "\"";
     }
     
     if(!Loci::setupFVMGrid(facts, ss.str())) {
       if(Loci::MPI_rank == 0) {
-        flame::logger.severe("Unable to read grid file \"", ss.str(), "\"");
+        LOG(ERROR) << "Unable to read grid file \"" << ss.str() << "\"";
       }
       Loci::Abort();
     }
     
     if(Loci::MPI_rank == 0) {
-      flame::logger.info("Reading grid file complete");
+      LOG(INFO) << "Reading grid file complete";
     }
   }
   
@@ -187,7 +200,7 @@ int main(int argc, char * argv[]) {
   // Check boundary condition specification for errors.
   if(flame::check_boundary_conditions(facts)) {
     if(Loci::MPI_rank == 0) {
-      flame::logger.severe("Boundary condition errors detected");
+      LOG(ERROR) << "Boundary condition errors detected";
     }
     Loci::Abort();
   }
@@ -203,7 +216,7 @@ int main(int argc, char * argv[]) {
     struct stat statbuf;
     if(stat(standardICDirectory.c_str(), &statbuf)) {
       if(stat(icDirectory.c_str(), &statbuf)) {
-        flame::logger.severe("Unable to open initial conditions directory: ", icDirectory);
+        LOG(ERROR) << "Unable to open initial conditions directory: " << icDirectory;
         Loci::Abort();
       }
     } else {
@@ -211,7 +224,7 @@ int main(int argc, char * argv[]) {
     }
     
     if(!S_ISDIR(statbuf.st_mode)) {
-      flame::logger.severe("file \"", icDirectory, "\" should be a directory!");
+      LOG(ERROR) << "file \"" << icDirectory << "\" should be a directory!";
       Loci::Abort();
     }
     
@@ -237,7 +250,7 @@ int main(int argc, char * argv[]) {
     flame::PlotSettings settings;
     std::string err;
     if(settings.fromOptionsList(*plotOptions, err)) {
-      flame::logger.severe(err);
+      LOG(ERROR) << err;
       Loci::Abort();
     }
     
@@ -302,7 +315,7 @@ int main(int argc, char * argv[]) {
   // Create execution schedule that derives the variable named in
   // arg.query from the database of facts using the rule database rdb.
   if(!Loci::makeQuery(rdb, facts, arg.query)) {
-    flame::logger.severe("Query failed!");
+    LOG(ERROR) << "Query failed!";
     Loci::Abort();
   }
   

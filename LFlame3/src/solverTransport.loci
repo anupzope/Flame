@@ -1,0 +1,87 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <Loci.h>
+
+
+#include <glog/logging.h>
+
+#include <string.h>
+
+namespace flame {
+
+// =============================================================================
+
+$rule default(viscosityModel) {
+  $viscosityModel = "constant";
+}
+
+$rule constraint(
+  constantViscosityModel, sutherlandViscosityModel
+  <-
+  viscosityModel
+) {
+  if(viscosityModel == "constant") {
+    $constantViscosityModel = ~EMPTY;
+    $sutherlandViscosityModel = EMPTY;
+  } else if(viscosityModel == "sutherland") {
+    $constantViscosityModel = EMPTY;
+    $sutherlandViscosityModel = ~EMPTY;
+  } else {
+    LOG(ERROR) << "invalid value of viscosityModel: " << $viscosityModel;
+    Loci::Abort();
+  }
+}
+
+// =============================================================================
+
+$rule default(conductivityModel) {
+  $conductivityModel = "constant";
+}
+
+$rule constraint(
+  constantConductivityModel, constantPrandtlNumberModel,
+  sutherlandConductivityModel
+  <-
+  conductivityModel
+) {
+  if($conductivityModel == "constant") {
+    $constantConductivityModel = ~EMPTY;
+    $constantPrandtlNumberModel = EMPTY;
+    $sutherlandConductivityModel = EMPTY;
+  } else if($conductivityModel == "constantPrandtlNumber") {
+    $constantConductivityModel = EMPTY;
+    $constantPrandtlNumberModel = ~EMPTY;
+    $sutherlandConductivityModel = EMPTY;
+  } else if($conductivityModel == "sutherland") {
+    $constantConductivityModel = EMPTY;
+    $constantPrandtlNumberModel = EMPTY;
+    $sutherlandConductivityModel = ~EMPTY;
+  } else {
+    LOG(ERROR) << "invalid value of conductivityModel: " << $conductivityModel;
+    Loci::Abort();
+  }
+}
+
+// =============================================================================
+
+$rule pointwise(viscosity <- speciesConstantViscosity),
+constraint(constantViscosityModel) {
+}
+
+$rule pointwise(viscosity <- speciesSutherlandViscosityParameters, temperature),
+constraint(sutherlandViscosityModel) {
+}
+
+$rule pointwise(viscosity_f <- speciesConstantViscosity),
+constraint(boundary_faces, constantViscosityModel) {
+  //$viscosity_f <- 
+}
+
+$rule pointwise(viscosity_f <- (cl,cr)->(viscosity,vol)) {
+  $viscosity_f = ($cl->$vol*$cr->$viscosity + $cr->$vol*$cl->$viscosity)/($cl->$vol + $cr->$vol);
+}
+
+// =============================================================================
+
+} // end: namespace flame

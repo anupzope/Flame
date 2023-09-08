@@ -1,14 +1,27 @@
+#include <species.hh>
+#include <utils.hh>
+#include <logger.hh>
+
 $include "flame.lh"
 $include "FVM.lh"
 
-#include <Loci.h>
+#include <glog/logging.h>
 
-#include <utils.hh>
-#include <logger.hh>
+namespace flame {
 
 // =============================================================================
 //// Two species setup
 // =============================================================================
+
+// Multi species specification:
+// 
+// species: <
+//   names=[],
+//   W=[],
+//   gamma=[],
+//   viscosity=[],
+//   conductivity=[]
+// >
 
 //$rule singleton(Ns), constraint(UNIVERSE) {
 //  $Ns = 2;
@@ -40,29 +53,230 @@ $include "FVM.lh"
 //  }
 //}
 
-$rule singleton(Ns), constraint(UNIVERSE) {
-  $Ns = 2;
+//$rule singleton(Ns), constraint(UNIVERSE) {
+//  $Ns = 2;
+//}
+
+$rule default(species) {
+  $species = options_list("");
 }
 
-$rule singleton(speciesNames <- Ns), constraint(UNIVERSE) {
-  $speciesNames.resize($Ns);
-  //$speciesNames[0] = "O2";
-  $speciesNames[0] = "N2A";
-  $speciesNames[1] = "N2B";
+$rule singleton(Ns, speciesNames, speciesProperties <- species),
+option(disable_threading) {
+  options_list const & ol = $species;
+  options_list::option_namelist li = ol.getOptionNameList();
+  
+  std::vector<std::string> names;
+  std::vector<SpeciesProperties> props(li.size());
+  
+  int nSpecies = 0, error = 0;
+  std::ostringstream errmsg;
+  for(auto const & species : li) {
+    Loci::option_value_type type = ol.getOptionValueType(species);
+    if(type == Loci::STRING) {
+      std::string filename;
+      ol.getOption(species, filename);
+      
+      LOG(INFO) << "Reading properties of species " << species << " from file: " << filename << std::endl;
+      
+      std::ifstream file(filename);
+      if(file.is_open()) {
+        names.push_back(species);
+        props.push_back(SpeciesProperties());
+        
+        options_list pol;
+        pol.Input(file);
+        options_list::option_namelist pli = pol.getOptionNameList();
+        for(auto const & pname : pli) {
+          DLOG(INFO) << "  Processing " << pname;
+          
+          if(pname == "molecularWeight") {
+            Loci::option_value_type type = pol.getOptionValueType(pname);
+            if(type == Loci::UNIT_VALUE) {
+              Loci::UNIT_type ut;
+              pol.getOption(pname, ut);
+              if(ut.is_compatible("kg/kmol")) {
+                double value = ut.get_value_in("kg/kmol");
+                props[nSpecies].molecularWeight = value;
+              } else {
+                errmsg << "[" << species << "->" << pname << ": must be in kg/kmol]";
+                ++error;
+              }
+            } else if(type == Loci::REAL) {
+              double value;
+              pol.getOption(pname, value);
+              props[nSpecies].molecularWeight = value;
+            } else {
+              errmsg << "[" << species << "->" << pname << ": must be REAL or UNIT_VALUE]";
+              ++error;
+            }
+          } // end: molecularWeight
+          else if(pname == "constantSpecificHeat") {
+            Loci::option_value_type type = pol.getOptionValueType(pname);
+            if(type == Loci::UNIT_VALUE) {
+              Loci::UNIT_type ut;
+              pol.getOption(pname, ut);
+              if(ut.is_compatible("J/kg/K")) {
+                double value = ut.get_value_in("J/kg/K");
+                props[nSpecies].constantSpecificHeat = value;
+              } else {
+                errmsg << "[" << species << "->" << pname << ": must be in J/kg/K]";
+                ++error;
+              }
+            } else if(type == Loci::REAL) {
+              double value;
+              pol.getOption(pname, value);
+              props[nSpecies].constantSpecificHeat = value;
+            } else {
+              errmsg << "[" << species << "->" << pname << ": must be REAL or UNIT_VALUE]";
+              ++error;
+            }
+          } // end: constantSpecificHeat
+          else if(pname == "constantGamma") {
+            Loci::option_value_type type = pol.getOptionValueType(pname);
+            if(type == Loci::REAL) {
+              double value;
+              pol.getOption(pname, value);
+              props[nSpecies].constantGamma = value;
+            } else {
+              errmsg << "[" << species << "->" << pname << ": must be REAL]";
+              ++error;
+            }
+          } // end: constantGamma
+          else if(pname == "constantViscosity") {
+            Loci::option_value_type type = pol.getOptionValueType(pname);
+            if(type == Loci::UNIT_VALUE) {
+              Loci::UNIT_type ut;
+              pol.getOption(pname, ut);
+              if(ut.is_compatible("Pa*s")) {
+                double value = ut.get_value_in("Pa*s");
+                props[nSpecies].constantViscosity = value;
+                std::cerr << "viscosity = " << value << std::endl;
+              } else {
+                errmsg << "[" << species << "->" << pname << ": must be in Pa*s]";
+                ++error;
+              }
+            } else if(type == Loci::REAL) {
+              double value;
+              pol.getOption(pname, value);
+              props[nSpecies].constantViscosity = value;
+            } else {
+              errmsg << "[" << species << "->" << pname << ": must be REAL or UNIT_VALUE]";
+              ++error;
+            }
+          } // end: constantViscosity
+          else if(pname == "sutherlandViscosityParameters") {
+            Loci::option_value_type type = pol.getOptionValueType(pname);
+            if(type == Loci::LIST) {
+              options_list::arg_list value_list;
+              pol.getOption(pname, value_list);
+              int sz = value_list.size();
+              std::vector<std::string> units = {"Pa*s", "K", "K"};
+              if(sz == 3) {
+                for(int i = 0; i < sz; ++i) {
+                  if(value_list[i].type_of() == Loci::UNIT_VALUE) {
+                    Loci::UNIT_type ut;
+                    value_list[i].get_value(ut);
+                    if(ut.is_compatible(units[i])) {
+                      double value = ut.get_value_in(units[i]);
+                      props[nSpecies].sutherlandViscosityParameters[i] = value;
+                    } else {
+                      errmsg << "[" << species << "->" << pname << ": LIST item " << i << " must be in " << units[i] << "]";
+                      ++error;
+                    }
+                  } else if(value_list[i].type_of() == Loci::REAL) {
+                    double value;
+                    value_list[i].get_value(value);
+                    props[nSpecies].sutherlandViscosityParameters[i] = value;
+                  } else {
+                    errmsg << "[" << species << "->" << pname << ": LIST item " << i << " must be a REAL or UNIT_VALUE]";
+                    ++error;
+                  }
+                }
+              } else {
+                errmsg << "[" << species << "->" << pname << ": must be a LIST of 3 items, found " << sz << " items]";
+                ++error;
+              }
+            } else {
+              errmsg << "[" << species << "->" << pname << ": must be LIST]";
+              ++error;
+            }
+          } // end: sutherlandViscosityParameters
+          else {
+            errmsg << "[" << species << "->" << pname << ": unknown property]";
+            ++error;
+          }
+        } // end: pli loop
+        
+        file.close();
+        
+        ++nSpecies;
+      } else {
+        LOG(ERROR) << "File " << filename << " not found" << std::endl;
+        ++error;
+      }
+    } else {
+      LOG(ERROR) << "species " << species << " must be a STRING" << std::endl;
+      ++error;
+    }
+  }
+  
+  if(error) {
+    LOG(ERROR) << "Error reading species data";
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  $Ns = nSpecies;
+  $speciesNames = names;
+  $speciesProperties = props;
+  
+  for(int i = 0; i < $Ns; ++i) {
+    LOG(INFO) << "Species: " << $speciesNames[i];
+    LOG(INFO) << "  molecularWeight=" << $speciesProperties[i].molecularWeight << " kg/kmol";
+    LOG(INFO) << "  constantSpecificHeat=" << $speciesProperties[i].constantSpecificHeat << " J/kg/K";
+    LOG(INFO) << "  constantGamma=" << $speciesProperties[i].constantGamma;
+    LOG(INFO) << "  constantViscosity=" << $speciesProperties[i].constantViscosity << " Pa*s";
+    LOG(INFO) << "  sutherlandViscosityParameters=["
+      << $speciesProperties[i].sutherlandViscosityParameters[0] << " Pa*s, "
+      << $speciesProperties[i].sutherlandViscosityParameters[1] << " K, "
+      << $speciesProperties[i].sutherlandViscosityParameters[2] << " K]";
+  }
 }
 
-$rule singleton(speciesW <- Ns), constraint(UNIVERSE) {
+$rule singleton(speciesW <- Ns, speciesProperties) {
   $speciesW.resize($Ns);
-  //$speciesW[0] = 31.998;
-  $speciesW[0] = 28.014;
-  $speciesW[1] = 28.014;
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesW[i] = $speciesProperties[i].molecularWeight;
+  }
 }
 
-$rule singleton(speciesGamma <- Ns), constraint(UNIVERSE) {
+$rule singleton(speciesGamma <- Ns, speciesProperties) {
   $speciesGamma.resize($Ns);
-  $speciesGamma[0] = 1.4;
-  $speciesGamma[1] = 1.4;
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesGamma[i] = $speciesProperties[i].constantGamma;
+  }
 }
+
+//$rule singleton(speciesNames <- Ns), constraint(UNIVERSE) {
+//  $speciesNames.resize($Ns);
+//  //$speciesNames[0] = "O2";
+//  $speciesNames[0] = "N2A";
+//  $speciesNames[1] = "N2B";
+//}
+
+//$rule singleton(speciesW <- Ns), constraint(UNIVERSE) {
+//  $speciesW.resize($Ns);
+//  //$speciesW[0] = 31.998;
+//  $speciesW[0] = 28.014;
+//  $speciesW[1] = 28.014;
+//}
+//
+//$rule singleton(speciesGamma <- Ns), constraint(UNIVERSE) {
+//  $speciesGamma.resize($Ns);
+//  $speciesGamma[0] = 1.4;
+//  $speciesGamma[1] = 1.4;
+//}
 
 $rule singleton(speciesR <- Runiv, speciesW, Ns),
 constraint(UNIVERSE) {
@@ -71,6 +285,20 @@ constraint(UNIVERSE) {
     $speciesR[i] = $Runiv/$speciesW[i];
   }
 }
+
+//$rule singleton(speciesConstantViscosity <- Ns),
+//constraint(UNIVERSE) {
+//  $speciesViscosity.resize($Ns);
+//  $speciesViscosity[0] = 25e-6; // Pa.s
+//  $speciesViscosity[1] = 25e-6; // Pa.s
+//}
+//
+//$rule singleton(speciesConstantConductivity <- Ns),
+//constraint(UNIVERSE) {
+//  $speciesConductivity.resize($Ns);
+//  $speciesConductivity[0] = 18.7e-3; // [W/m.K]
+//  $speciesConductivity[1] = 18.7e-3; // [W/m.K]
+//}
 
 // =============================================================================
 // Single species setup
@@ -190,3 +418,5 @@ $rule constraint(multiSpecies, singleSpecies <- Ns) {
 //    $speciesWRFrac[i] = $mixtureW/$speciesW[i];
 //  }
 //}
+
+} // end: namespace flame

@@ -1,0 +1,19 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <flame.hh>
+
+namespace flame {
+
+$rule default(thermodynamicModel) {
+  $thermodynamicModel = "caloricallyPerfect";
+}
+
+$rule constraint(caloricallyPerfectModel <- thermodynamicModel)
+  caloricallyPerfectModel = EMPTY;
+  if($thermodynamicModel == "caloricallyPerfect") {
+    caloricallyPerfectModel = ~EMPTY;
+  }
+}
+
+} // end: namespace flame

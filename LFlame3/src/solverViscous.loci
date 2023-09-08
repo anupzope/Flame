@@ -5,6 +5,8 @@ $include "flame.lh"
 
 #include <logger.hh>
 
+namespace flame {
+
 $rule default(flowRegime) {
   $flowRegime = "inviscid";
 }
@@ -14,18 +16,40 @@ constraint(UNIVERSE) {
   $isInviscidFlow = $flowRegime == "inviscid";
 }
 
+$rule singleton(isViscousFlow <- flowRegime),
+constraint(UNIVERSE) {
+  $isViscousFlow = ($flowRegime == "laminar") || $flowRegime == "turbulent";
+}
+
 $rule singleton(isLaminarFlow <- flowRegime),
 constraint(UNIVERSE) {
   $isLaminarFlow = $flowRegime == "laminar";
 }
 
-$rule constraint(inviscidFlow,laminarFlow <- flowRegime) {
-  if($flowRegime == "viscous") {
-    $inviscidFlow = EMPTY;
-    $laminarFlow = ~EMPTY;
-  } else if($flowRegime == "inviscid") {
+$rule singleton(isTurbulentFlow <- flowRegime),
+constraint(UNIVERSE) {
+  $isTurbulentFlow = $flowRegime == "turbulent";
+}
+
+$rule constraint(inviscidFlow, viscousFlow, laminarFlow, turbulentFlow
+  <-
+  flowRegime
+) {
+  if($flowRegime == "inviscid") {
     $inviscidFlow = ~EMPTY;
+    $viscousFlow = EMPTY;
     $laminarFlow = EMPTY;
+    $turbulentFlow = EMPTY;
+  } else if($flowRegime == "laminar") {
+    $inviscidFlow = EMPTY;
+    $viscousFlow = ~EMPTY;
+    $laminarFlow = ~EMPTY;
+    $turbulentFlow = EMPTY;
+  } else if($flowRegime == "turbulent") {
+    $inviscidFlow = EMPTY;
+    $viscousFlow = ~EMPTY;
+    $laminarFlow = EMPTY;
+    $turbulentFlow = ~EMPTY;
   } else {
     $[Once] {
       flame::logger.severe("invalid value for flowRegime", $flowRegime);
@@ -33,3 +57,5 @@ $rule constraint(inviscidFlow,laminarFlow <- flowRegime) {
     Loci::Abort();
   }
 }
+
+} // end: namespace flame

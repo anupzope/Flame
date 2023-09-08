@@ -33,11 +33,11 @@ $rule pointwise(velocity_f <- area, ci->velocity), constraint(reflecting_BC) {
   $velocity_f = $ci->$velocity - uit*$area.n;
 }
 
-$rule pointwise(gagePressure_f <- area, ci->(velocity,gagePressure,rho), Pambient),
+$rule pointwise(gagePressure_f <- area, ci->(velocity,gagePressure,density), Pambient),
 constraint(reflecting_BC) {
   double const uit = dot($ci->$velocity,$area.n);
   double const Pmin = 0.5*($ci->$gagePressure+$Pambient)-$Pambient;
-  $gagePressure_f = std::max(Pmin, $ci->$gagePressure + 0.5*($ci->$rho)*uit*fabs(uit));
+  $gagePressure_f = std::max(Pmin, $ci->$gagePressure + 0.5*($ci->$density)*uit*fabs(uit));
 }
 
 $rule pointwise(temperature_f <- ci->temperature), constraint(reflecting_BC) {
