@@ -1,61 +1,59 @@
 $include "FVM.lh"
 $include "flame.lh"
 
-#include <Loci.h>
-
-#include <logger.hh>
+#include <flame.hh>
 
 namespace flame {
 
-$rule default(flowRegime) {
-  $flowRegime = "inviscid";
+// =============================================================================
+// Calculation of shear stress.
+// =============================================================================
+
+$rule pointwise(shearStress_f <- gradv3d_f(velocity), viscosity_f),
+constraint(viscousFlow, area) {
+  double mu = $viscosity_f;
+  
+  double dudx = $gradv3d_f(velocity).x.x;
+  double dvdy = $gradv3d_f(velocity).y.y;
+  double dwdz = $gradv3d_f(velocity).z.z;
+  double dvdx = $gradv3d_f(velocity).y.x;
+  double dwdx = $gradv3d_f(velocity).z.x;
+  double dwdy = $gradv3d_f(velocity).z.y;
+  double dudy = $gradv3d_f(velocity).x.y;
+  double dudz = $gradv3d_f(velocity).x.z;
+  double dvdz = $gradv3d_f(velocity).y.z;
+  double divm = (dudx+dvdy+dwdz)*(1./3.);
+  
+  $shearStress_f.xx = 2.0*mu*(dudx-divm);
+  $shearStress_f.yy = 2.0*mu*(dvdy-divm);
+  $shearStress_f.zz = 2.0*mu*(dwdz-divm);
+  
+  $shearStress_f.xy = mu*(dudy+dvdx);
+  $shearStress_f.xz = mu*(dudz+dwdx);
+  $shearStress_f.yz = mu*(dvdz+dwdy);
 }
 
-$rule singleton(isInviscidFlow <- flowRegime),
-constraint(UNIVERSE) {
-  $isInviscidFlow = $flowRegime == "inviscid";
-}
+// =============================================================================
+// Calculation of viscous flux.
+// =============================================================================
 
-$rule singleton(isViscousFlow <- flowRegime),
-constraint(UNIVERSE) {
-  $isViscousFlow = ($flowRegime == "laminar") || $flowRegime == "turbulent";
-}
-
-$rule singleton(isLaminarFlow <- flowRegime),
-constraint(UNIVERSE) {
-  $isLaminarFlow = $flowRegime == "laminar";
-}
-
-$rule singleton(isTurbulentFlow <- flowRegime),
-constraint(UNIVERSE) {
-  $isTurbulentFlow = $flowRegime == "turbulent";
-}
-
-$rule constraint(inviscidFlow, viscousFlow, laminarFlow, turbulentFlow
+$rule pointwise(
+  viscousFlux_f
   <-
-  flowRegime
-) {
-  if($flowRegime == "inviscid") {
-    $inviscidFlow = ~EMPTY;
-    $viscousFlow = EMPTY;
-    $laminarFlow = EMPTY;
-    $turbulentFlow = EMPTY;
-  } else if($flowRegime == "laminar") {
-    $inviscidFlow = EMPTY;
-    $viscousFlow = ~EMPTY;
-    $laminarFlow = ~EMPTY;
-    $turbulentFlow = EMPTY;
-  } else if($flowRegime == "turbulent") {
-    $inviscidFlow = EMPTY;
-    $viscousFlow = ~EMPTY;
-    $laminarFlow = EMPTY;
-    $turbulentFlow = ~EMPTY;
-  } else {
-    $[Once] {
-      flame::logger.severe("invalid value for flowRegime", $flowRegime);
-    }
-    Loci::Abort();
-  }
+  area, shearStress_f, velocity_f, grads_f(temperature), conductivity_f
+), constraint(viscousFlow, area) {
+  Loci::Array<double, 4> & Fv = $viscousFlux_f;
+  
+  Loci::vector3d<double> const & an = $area.n;
+  double const sada = $area.sada;
+  SymmetricTensor const & tau = $shearStress_f;
+  Loci::vector3d<double> const & u = $velocity_f;
+  
+  Fv[0] = (tau.xx*an.x + tau.xy*an.y + tau.xz*an.z)*sada;
+  Fv[1] = (tau.xy*an.x + tau.yy*an.y + tau.yz*an.z)*sada;
+  Fv[2] = (tau.xz*an.x + tau.yz*an.y + tau.zz*an.z)*sada;
+  Fv[3] = (u.x*Fv[0] + u.y*Fv[1] + u.z*Fv[2]) + // viscous dissipation
+    dot($grads_f(temperature), an)*$conductivity_f*sada; // conduction
 }
 
 } // end: namespace flame

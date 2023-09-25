@@ -3,17 +3,23 @@
 namespace flame {
 
 void AUSMPlusUpFluxIdealGas(
-  Loci::Array<double, 5> flux,
+  Loci::Array<double, 5> & flux,
   Loci::vector3d<double> const & Ul, double const Pgl, double const Tl,
   Loci::vector3d<double> const & Ur, double const Pgr, double const Tr,
-  double const area_sada, Loci::vector3d<double> const area_n, double const Pambient,
-  double const Rtilde, double const gamma, double const Minf
+  double const area_sada, Loci::vector3d<double> const & area_n, double const Pambient,
+  double const Rtilde, double const Cp, double const Minf
 ) {
   double const Pl = Pgl+Pambient;
   double const Pr = Pgr+Pambient;
   
   double const rl = Pl/(Rtilde*Tl);
   double const rr = Pr/(Rtilde*Tr);
+  
+  double const hl = Cp*Tl;
+  double const hr = Cp*Tr;
+  
+  double const Cv = Cp-Rtilde;
+  double const gamma = Cp/Cv;
   
   double const gm1 = gamma-1.0;
   double const gp1 = gamma+1.0;
@@ -24,8 +30,10 @@ void AUSMPlusUpFluxIdealGas(
   double const Unl = dot(Ul, area_n);
   double const Unr = dot(Ur, area_n);
   
-  double const h0l = Rtilde*Tl*gamma/gm1+0.5*Ulmag2;
-  double const h0r = Rtilde*Tr*gamma/gm1+0.5*Urmag2;
+  //double const h0l = Rtilde*Tl*gamma/gm1+0.5*Ulmag2;
+  //double const h0r = Rtilde*Tr*gamma/gm1+0.5*Urmag2;
+  double const h0l = hl+0.5*Ulmag2;
+  double const h0r = hr+0.5*Urmag2;
   
   //double const e0l = h0l - Rtilde*Tl;
   //double const e0r = h0r - Rtilde*Tr;
@@ -114,23 +122,23 @@ void AUSMPlusUpFluxIdealGas(
     double const mdot = area_sada*rl*ut;
     double pg = Phalf-Pambient;
     
-    flux[0] = mdot;
-    flux[1] = mdot*Ul.x+area_sada*pg*area_n.x;
-    flux[2] = mdot*Ul.y+area_sada*pg*area_n.y;
-    flux[3] = mdot*Ul.z+area_sada*pg*area_n.z;
-    //flux[4] = mdot*e0l+area_sada*Pl*Unl;
-    flux[4] = mdot*h0l;
+    flux[0] = mdot*Ul.x+area_sada*pg*area_n.x;
+    flux[1] = mdot*Ul.y+area_sada*pg*area_n.y;
+    flux[2] = mdot*Ul.z+area_sada*pg*area_n.z;
+    //flux[3] = mdot*e0l+area_sada*Pl*Unl;
+    flux[3] = mdot*h0l;
+    flux[4] = mdot;
   } else {
     double const ut = Mhalf*chalf; //-us_n;
     double const mdot = area_sada*rr*ut;
     double pg = Phalf-Pambient;
     
-    flux[0] = mdot;
-    flux[1] = mdot*Ur.x+area_sada*pg*area_n.x;
-    flux[2] = mdot*Ur.y+area_sada*pg*area_n.y;
-    flux[3] = mdot*Ur.z+area_sada*pg*area_n.z;
-    //flux[4] = mdot*e0r+area_sada*Pr*Unr;
-    flux[4] = mdot*h0r;
+    flux[0] = mdot*Ur.x+area_sada*pg*area_n.x;
+    flux[1] = mdot*Ur.y+area_sada*pg*area_n.y;
+    flux[2] = mdot*Ur.z+area_sada*pg*area_n.z;
+    //flux[3] = mdot*e0r+area_sada*Pr*Unr;
+    flux[3] = mdot*h0r;
+    flux[4] = mdot;
   }
 }
 
@@ -138,10 +146,10 @@ void AUSMPlusUpFluxMultiSpeciesIdealGas(
   double * flux,
   int const Ns,
   double const * Yl, Loci::vector3d<double> const & Ul, double const Pgl, double const Tl,
-  double const Rtildel, double const gammal,
+  double const Rtildel, double const Cpl,
   double const * Yr, Loci::vector3d<double> const & Ur, double const Pgr, double const Tr,
-  double const Rtilder, double const gammar,
-  double const area_sada, Loci::vector3d<double> const area_n, double const Pambient,
+  double const Rtilder, double const Cpr,
+  double const area_sada, Loci::vector3d<double> const & area_n, double const Pambient,
   double const Minf
 ) {
   double const Pl = Pgl+Pambient;
@@ -149,6 +157,15 @@ void AUSMPlusUpFluxMultiSpeciesIdealGas(
   
   double const rl = Pl/(Rtildel*Tl);
   double const rr = Pr/(Rtilder*Tr);
+  
+  double const hl = Cpl*Tl;
+  double const hr = Cpr*Tr;
+  
+  double const Cvl = Cpl-Rtildel;
+  double const Cvr = Cpr-Rtilder;
+  
+  double const gammal = Cpl/Cvl;
+  double const gammar = Cpr/Cvr;
   
   double const gm1l = gammal-1.0;
   double const gm1r = gammar-1.0;
@@ -162,8 +179,10 @@ void AUSMPlusUpFluxMultiSpeciesIdealGas(
   double const Unl = dot(Ul, area_n);
   double const Unr = dot(Ur, area_n);
   
-  double const h0l = Rtildel*Tl*gammal/gm1l+0.5*Ulmag2;
-  double const h0r = Rtilder*Tr*gammar/gm1r+0.5*Urmag2;
+  //double const h0l = Rtildel*Tl*gammal/gm1l+0.5*Ulmag2;
+  //double const h0r = Rtilder*Tr*gammar/gm1r+0.5*Urmag2;
+  double const h0l = hl+0.5*Ulmag2;
+  double const h0r = hr+0.5*Urmag2;
   
   //double const e0l = h0l - Rtildel*Tl;
   //double const e0r = h0r - Rtilder*Tr;

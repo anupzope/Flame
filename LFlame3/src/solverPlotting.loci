@@ -1,10 +1,14 @@
+#include <flame.hh>
+#include <plot.hh>
+
 $include "FVM.lh"
 $include "flame.lh"
 
-#include <plot.hh>
-#include <logger.hh>
+#include <glog/logging.h>
 
-#include <Loci.h>
+#include <fstream>
+
+namespace flame {
 
 // =============================================================================
 // printOptions processing
@@ -18,27 +22,52 @@ $rule singleton(printSettings <- printOptions), option(disable_threading) {
   std::string err;
   if($printSettings.fromOptionsList($printOptions, err)) {
     $[Once] {
-      flame::logger.severe(err);
+      LOG(ERROR) << err;
     }
     Loci::Abort();
   } else {
     $[Once] {
-      std::ostringstream ss;
-      ss << $printSettings;
-      flame::logger.info("PrintSettings: ", ss.str());
+      LOG(INFO) << "PrintSettings: " << $printSettings;
     }
   }
 }
 
-$rule singleton(doPrint{n,rk} <- printSettings, timeStep{n}, lastRK{n,rk}) {
+$rule singleton(doPrint{n,rk} <- printSettings, timeStep{n}, $rk{n,rk}) {
   $doPrint{n,rk} = false;
   
   if($printSettings.frequency > 0) {
     if($timeStep{n} % $printSettings.frequency == 0) {
-      $doPrint{n,rk} = true;
+      $doPrint{n,rk} = $$rk{n,rk} == 0;
     }
   }
 }
+
+$rule blackbox(createPrintParameterFile <- printSettings), option(disable_threading),
+prelude {
+  if(Loci::MPI_rank == 0) {
+    std::ostringstream ss;
+    ss << "output/" << $printSettings->filename;
+    printParameterFile.file = new std::ofstream(ss.str().c_str());
+    printParameterFile.file->precision(15);
+    *$createPrintParameterFile = 1;
+  } else {
+    *$createPrintParameterFile = 0;
+  }
+};
+
+$rule unit(printParameterDBIdx), constraint(UNIVERSE),
+conditional(doPrint) {
+  printParameterDB.clear();
+  $printParameterDBIdx = 0;
+}
+
+$rule pointwise(OUTPUT <- timeStep, printParameterDBIdx, createPrintParameterFile),
+conditional(doPrint),
+option(disable_threading), prelude {
+  if(Loci::MPI_rank == 0) {
+    printParameterDB.print(*$timeStep, *printParameterFile.file);
+  }
+};
 
 // =============================================================================
 // Files required for extract to work:
@@ -72,14 +101,12 @@ $rule singleton(plotSettings <- plotOptions), option(disable_threading) {
   std::string err;
   if($plotSettings.fromOptionsList($plotOptions, err)) {
     $[Once] {
-      flame::logger.severe(err);
+      LOG(ERROR) << err;
     }
     Loci::Abort();
   } else {
     $[Once] {
-      std::ostringstream ss;
-      ss << $plotSettings;
-      flame::logger.info("PlotSettings: ", ss.str());
+      LOG(INFO) << "PlotSettings: " << $plotSettings;
     }
   }
 }
@@ -88,8 +115,9 @@ $rule singleton(plotSettings <- plotOptions), option(disable_threading) {
 // Output grid position and topoogy.
 // =============================================================================
 
-$rule singleton(doPlotGridPos{n,rk}<-timeStep{n,rk},$n{n},lastRK{n,rk}) {
-  $doPlotGridPos{n,rk} = ($$n{n} == 0) && $lastRK{n,rk} ;
+//lastRK{n,rk}
+$rule singleton(doPlotGridPos{n,rk}<-timeStep{n,rk},$n{n},$rk{n,rk}) {
+  $doPlotGridPos{n,rk} = ($$n{n} == 0) && $$rk{n,rk} == 0; //$lastRK{n,rk} ;
 }
 
 $rule pointwise(OUTPUT <- caseName, plotPostfix, pos),
@@ -109,8 +137,9 @@ prelude {
   //}
 };
 
-$rule singleton(doPlotTopology{n,rk}<-timeStep{n,rk},$n{n},lastRK{n,rk}) {
-  $doPlotTopology{n,rk} = ($$n{n} == 0) && $lastRK{n,rk} ;
+// lastRK{n,rk}
+$rule singleton(doPlotTopology{n,rk}<-timeStep{n,rk},$n{n},$rk{n,rk}) {
+  $doPlotTopology{n,rk} = ($$n{n} == 0) && $$rk{n,rk}; //$lastRK{n,rk} ;
 }
 
 $rule pointwise(
@@ -129,7 +158,7 @@ $rule pointwise(
     }
     
     if(Loci::MPI_rank == 0) {
-      flame::logger.info("writing grid topology file: ", basename);
+      LOG(INFO) << "writing grid topology file: " << basename;
     }
     
     Loci::parallelWriteGridTopology(
@@ -149,10 +178,11 @@ $rule pointwise(
 // Calculate boolean parameter that controls when plotting occurs.
 // =============================================================================
 
+// lastRK{n,rk}
 $rule singleton(
   doPlot{n,rk}, plotPostfix{n,rk}
   <-
-  timeStep{n}, plotSettings, lastRK{n,rk}
+  timeStep{n}, plotSettings, $rk{n,rk}
 ) {
   $doPlot{n,rk} = false;
   $plotPostfix{n,rk} = "none";
@@ -164,7 +194,7 @@ $rule singleton(
     int const f = $plotSettings.frequencies[i];
     int const c = $plotSettings.counts[i];
     
-    if(f > 0 && $lastRK{n,rk}) {
+    if(f > 0 && $$rk{n,rk}/*$lastRK{n,rk}*/) {
       if(n%f == 0) {
         $doPlot{n,rk} = true;
         std::ostringstream ss;
@@ -194,7 +224,7 @@ OUTPUT_BOUNDARY_SCALAR("gagePressure_f", bpg, "ci");
 OUTPUT_BOUNDARY_SCALAR("temperature_f", bt, "ci");
 OUTPUT_BOUNDARY_VECTOR("velocity_f", bv, "ci");
 
-OUTPUT_VEC_COMPONENTS("cell2node_v(speciesY)", Y, "speciesNames");
+OUTPUT_VEC_COMPONENTS("cell2node_v(speciesY)", Y, "speciesNames", "multiSpecies");
 
 // =============================================================================
 // TODO:
@@ -221,3 +251,5 @@ OUTPUT_VEC_COMPONENTS("cell2node_v(speciesY)", Y, "speciesNames");
 // 2. Plotting based on simulation time rather than iteration number.
 // 
 // =============================================================================
+
+} // end: namespace flame

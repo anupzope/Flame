@@ -44,12 +44,26 @@ $rule pointwise(temperature_f <- ci->temperature), constraint(reflecting_BC) {
   $temperature_f = $ci->$temperature;
 }
 
+$rule pointwise(speciesY_f <- ci->speciesY, Ns), constraint(reflecting_BC),
+prelude {
+  $speciesY_f.setVecSize(*$Ns);
+} {
+  $speciesY_f = $ci->$speciesY;
+}
+
+$rule pointwise(speciesX_f <- ci->speciesX, Ns), constraint(reflecting_BC),
+prelude {
+  $speciesX_f.setVecSize(*$Ns);
+} {
+  $speciesX_f = $ci->$speciesX;
+}
+
 $rule pointwise(
   ssConvectiveFlux_f
   <-
   leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
-  area, Pambient, speciesR, speciesGamma
-), constraint(singleSpecies, idealGas, reflecting_BC) {
+  area, Pambient, speciesR, speciesConstantCp
+), constraint(singleSpecies, idealGas, caloricallyPerfectGas, reflecting_BC) {
   double const Pgl = $leftsP(gagePressure,minPg);
   Loci::vector3d<double> const ul = $leftv3d(velocity);
   double const Tl = $leftsP(temperature,Zero);
@@ -65,21 +79,21 @@ $rule pointwise(
     ul, Pgl, Tl,
     ur, Pgr, Tr,
     $area.sada, $area.n, $Pambient,
-    $speciesR[0], $speciesGamma[0], 1.0
+    $speciesR[0], $speciesConstantCp[0], 1.0
   );
   
-  $ssConvectiveFlux_f[0] = 0; // Mass flux should be zero for this BC
+  $ssConvectiveFlux_f[0] = flux[0];
   $ssConvectiveFlux_f[1] = flux[1];
   $ssConvectiveFlux_f[2] = flux[2];
   $ssConvectiveFlux_f[3] = flux[3];
-  $ssConvectiveFlux_f[4] = flux[4];
+  $ssConvectiveFlux_f[4] = 0; // Mass flux should be zero for this BC
 }
 
 $rule pointwise(
   msConvectiveFlux_f
   <-
   leftsP(gagePressure,minPg), leftv3d(velocity), leftsP(temperature,Zero), leftvM(speciesY),
-  ci->(mixtureGamma, mixtureR), area, Pambient, Ns
+  ci->(mixtureCp, mixtureR), area, Pambient, Ns
 ), constraint(multiSpecies, idealGas, reflecting_BC), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {
@@ -89,21 +103,21 @@ $rule pointwise(
   Loci::vector3d<double> const & Ul = $leftv3d(velocity);
   double const & Pgl = $leftsP(gagePressure,minPg);
   double const & Tl = $leftsP(temperature,Zero);
-  double const & gammal = $ci->$mixtureGamma;
+  double const & Cpl = $ci->$mixtureCp;
   double const & Rtildel = $ci->$mixtureR;
   
   double const * Yr = Yl;
   Loci::vector3d<double> const & Ur = Ul;
   double const & Pgr = Pgl;
   double const & Tr = Tl;
-  double const & gammar = gammal;
+  double const & Cpr = Cpl;
   double const & Rtilder = Rtildel;
   
   AUSMPlusUpFluxMultiSpeciesIdealGas(
     flux,
     $Ns,
-    Yl, Ul, Pgl, Tl, Rtildel, gammal,
-    Yr, Ur, Pgr, Tr, Rtilder, gammar,
+    Yl, Ul, Pgl, Tl, Rtildel, Cpl,
+    Yr, Ur, Pgr, Tr, Rtilder, Cpr,
     $area.sada, $area.n, $Pambient,
     1.0
   );

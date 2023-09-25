@@ -1,9 +1,14 @@
+#include <flame.hh>
+#include <plot.hh>
+
 $include "FVM.lh"
 $include "flame.lh"
 
-#include <Loci.h>
-
 #include <limits>
+
+#include <glog/logging.h>
+
+namespace flame {
 
 $rule pointwise(maxUt_f<-area,(cl,cr)->(velocity)) {
   double Utl = std::fabs(dot($cl->$velocity, $area.n))*$area.sada;
@@ -50,13 +55,11 @@ $rule apply(minCFL <- cfl)[Loci::Minimum] {
   join($minCFL, $cfl);
 }
 
-$rule pointwise(OUTPUT{n,rk} <- maxCFL{n,rk}, minCFL{n,rk}),
-option(disable_threading), prelude {
-  if(Loci::MPI_rank == 0) {
-    auto const minCFL = *$minCFL{n,rk};
-    auto const maxCFL = *$maxCFL{n,rk};
-    std::cout << "CFL: " << minCFL << " " << maxCFL << std::endl;
-  }
+$rule apply(printParameterDBIdx <- maxCFL, minCFL)[Loci::NullOp],
+conditional(doPrint), option(disable_threading), prelude {
+  printParameterDB.add(Loci::MPI_rank, "cflMin", *$minCFL);
+  printParameterDB.add(Loci::MPI_rank, "cflMax", *$maxCFL);
+  *$printParameterDBIdx += 2;
 };
 
-//OUTPUT_SCALAR();
+} // end: namespace flame

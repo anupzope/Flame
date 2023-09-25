@@ -1,7 +1,8 @@
+#include <flame.hh>
+#include <plot.hh>
+
 $include "FVM.lh"
 $include "flame.lh"
-
-#include <Loci.h>
 
 namespace flame {
 
@@ -21,5 +22,11 @@ $rule apply(totalKE <- vol, velocity, density)[Loci::Summation] {
   double const cellKE = 0.5*$density*dot($velocity,$velocity)*$vol;
   join($totalKE, cellKE);
 }
+
+$rule apply(printParameterDBIdx <- totalKE)[Loci::NullOp],
+conditional(doPrint), option(disable_threading), prelude {
+  printParameterDB.add(Loci::MPI_rank, "totalKE", *$totalKE);
+  *$printParameterDBIdx += 1;
+};
 
 } // end: namespace flame

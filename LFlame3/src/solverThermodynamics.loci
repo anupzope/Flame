@@ -6,13 +6,13 @@ $include "flame.lh"
 namespace flame {
 
 $rule default(thermodynamicModel) {
-  $thermodynamicModel = "caloricallyPerfect";
+  $thermodynamicModel = "caloricallyPerfectGas";
 }
 
-$rule constraint(caloricallyPerfectModel <- thermodynamicModel)
-  caloricallyPerfectModel = EMPTY;
-  if($thermodynamicModel == "caloricallyPerfect") {
-    caloricallyPerfectModel = ~EMPTY;
+$rule constraint(caloricallyPerfectGas <- thermodynamicModel) {
+  $caloricallyPerfectGas = EMPTY;
+  if($thermodynamicModel == "caloricallyPerfectGas") {
+    $caloricallyPerfectGas = ~EMPTY;
   }
 }
 

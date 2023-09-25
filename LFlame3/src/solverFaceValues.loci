@@ -1,0 +1,56 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <flame.hh>
+
+namespace flame {
+
+$type faceAvgFactor store<double>;
+
+$rule pointwise(faceAvgFactor <- (cl,cr)->vol) {
+  $faceAvgFactor = 1.0/($cl->$vol + $cr->$vol);
+}
+
+$rule pointwise(gagePressure_f <- faceAvgFactor, (cl,cr)->(vol,gagePressure)) {
+  $gagePressure_f = $faceAvgFactor*($cl->$vol*$cr->$gagePressure + $cr->$vol*$cl->$gagePressure);
+}
+
+$rule pointwise(velocity_f <- faceAvgFactor, (cl,cr)->(vol,velocity)) {
+  $velocity_f = $faceAvgFactor*($cl->$vol*$cr->$velocity + $cr->$vol*$cl->$velocity);
+}
+
+$rule pointwise(temperature_f <- faceAvgFactor, (cl,cr)->(vol,temperature)) {
+  $temperature_f = $faceAvgFactor*($cl->$vol*$cr->$temperature + $cr->$vol*$cl->$temperature);
+}
+
+$rule pointwise(speciesY_f <- faceAvgFactor, (cl,cr)->(vol,speciesY), Ns), prelude {
+  $speciesY_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesY_f[i] = $faceAvgFactor*($cl->$vol*$cr->$speciesY[i] + $cr->$vol*$cl->$speciesY[i]);
+  }
+}
+
+$rule pointwise(mixtureW_f <- (cl,cr)->vol, speciesY_f, speciesW, Ns) {
+  double rW = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    rW += $speciesY_f[i]/$speciesW[i];
+  }
+  $mixtureW_f = 1.0/rW;
+}
+
+$rule pointwise(
+  speciesX_f <- (cl,cr)->vol, speciesY_f, mixtureW_f, speciesW, Ns
+), prelude {
+  $speciesX_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesX_f[i] = $speciesY_f[i]*$mixtureW_f/$speciesW[i];
+  }
+}
+
+$rule pointwise(mixtureR_f <- (cl,cr)->vol, Runiv, mixtureW_f) {
+  $mixtureR_f = $Runiv/$mixtureW_f;
+}
+
+} // end: namespace flame

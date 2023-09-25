@@ -23,20 +23,26 @@ $rule constraint(idealGas <- eosType) {
 
 // =============================================================================
 
-$rule pointwise(density <- temperature, gagePressure, speciesR, Pambient) {
+$rule pointwise(density <- temperature, gagePressure, speciesR, Pambient),
+constraint(singleSpecies, geom_cells) {
   $density = ($gagePressure+$Pambient)/($speciesR[0]*$temperature);
 }
 
-$rule pointwise(density_f <- temperature_f, gagePressure_f, speciesR, Pambient) {
+$rule pointwise(density_f <- temperature_f, gagePressure_f, speciesR, Pambient),
+constraint(singleSpecies, area) {
   $density_f = ($gagePressure_f+$Pambient)/($speciesR[0]*$temperature_f);
 }
 
-$rule pointwise(density <- temperature, gagePressure, mixtureR, Pambient) {
+$rule pointwise(density <- temperature, gagePressure, mixtureR, Pambient),
+constraint(multiSpecies, geom_cells) {
   $density = ($gagePressure+$Pambient)/($mixtureR*$temperature);
 }
 
-$rule pointwise(density_f <- temperature_f, gagePressure_f, mixtureR, Pambient) {
+$rule pointwise(density_f <- temperature_f, gagePressure_f, mixtureR, Pambient),
+constraint(multiSpecies, area) {
   $density_f = ($gagePressure_f+$Pambient)/($mixtureR*$temperature_f);
 }
 
-}
+// =============================================================================
+
+} // end: namespace flame

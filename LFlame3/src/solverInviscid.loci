@@ -13,14 +13,14 @@ $rule pointwise(
   ssConvectiveFlux_f <-
   leftv3d(velocity), leftsP(gagePressure,minPg), leftsP(temperature,Zero),
   rightv3d(velocity), rightsP(gagePressure,minPg), rightsP(temperature,Zero),
-  area, Pambient, speciesGamma, speciesR
-), constraint(singleSpecies, idealGas, (cl,cr)->(vol)) {
+  area, Pambient, speciesConstantCp, speciesR
+), constraint(singleSpecies, idealGas, caloricallyPerfectGas, (cl,cr)->(vol)) {
   AUSMPlusUpFluxIdealGas(
     $ssConvectiveFlux_f,
     $leftv3d(velocity), $leftsP(gagePressure,minPg), $leftsP(temperature,Zero),
     $rightv3d(velocity), $rightsP(gagePressure,minPg), $rightsP(temperature,Zero),
     $area.sada, $area.n, $Pambient,
-    $speciesR[0], $speciesGamma[0], 1.0
+    $speciesR[0], $speciesConstantCp[0], 1.0
   );
 }
 
@@ -32,8 +32,9 @@ $rule pointwise(
   leftvM(speciesY),
   rightsP(gagePressure,minPg), rightv3d(velocity), rightsP(temperature,Zero),
   rightvM(speciesY),
-  (cl,cr)->(mixtureGamma, mixtureR), area, Pambient, Ns
-), constraint(multiSpecies, idealGas, (cl,cr)->(gagePressure,velocity,temperature,speciesY)), prelude {
+  (cl,cr)->(mixtureCp, mixtureR), area, Pambient, Ns
+), constraint(multiSpecies, idealGas, caloricallyPerfectGas,
+(cl,cr)->(gagePressure,velocity,temperature,speciesY)), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {
   double * flux = &($msConvectiveFlux_f[0]);
@@ -42,21 +43,21 @@ $rule pointwise(
   Loci::vector3d<double> const & Ul = $leftv3d(velocity);
   double const & Pgl = $leftsP(gagePressure,minPg);
   double const & Tl = $leftsP(temperature,Zero);
-  double const & gammal = $cl->$mixtureGamma;
+  double const & Cpl = $cl->$mixtureCp;
   double const & Rtildel = $cl->$mixtureR;
   
   double const * Yr = &($rightvM(speciesY)[0]);
   Loci::vector3d<double> const & Ur = $rightv3d(velocity);
   double const & Pgr = $rightsP(gagePressure,minPg);
   double const & Tr = $rightsP(temperature,Zero);
-  double const & gammar = $cr->$mixtureGamma;
+  double const & Cpr = $cr->$mixtureCp;
   double const & Rtilder = $cr->$mixtureR;
   
   AUSMPlusUpFluxMultiSpeciesIdealGas(
     flux,
     $Ns,
-    Yl, Ul, Pgl, Tl, Rtildel, gammal,
-    Yr, Ur, Pgr, Tr, Rtilder, gammar,
+    Yl, Ul, Pgl, Tl, Rtildel, Cpl,
+    Yr, Ur, Pgr, Tr, Rtilder, Cpr,
     $area.sada, $area.n, $Pambient,
     1.0
   );

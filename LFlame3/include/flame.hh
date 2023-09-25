@@ -8,6 +8,8 @@
 
 namespace flame {
 
+// =============================================================================
+
 struct SymmetricTensor {
   double xx, xy, xz, yy, yz, zz;
 } ;
@@ -40,6 +42,8 @@ template<> struct data_schema_traits<flame::SymmetricTensor> {
     return DatatypeP(ct);
   }
 };
+
+// =============================================================================
 
 } // end: namespace Loci
 

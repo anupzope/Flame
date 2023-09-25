@@ -28,14 +28,8 @@ $type timeStepSize param<double>;
 // Conditional variable indicating the end of time steps.
 $type timeStepFinished param<bool>;
 
-// Initial value of cycle number.
-$type timeStep_ic param<int>;
-
 // Current cycle number.
 $type timeStep param<int>;
-
-// Initial value of simulation time.
-$type stime_ic param<double>;
 
 // Current simulation time.
 $type stime param<double>;
@@ -55,6 +49,10 @@ $type printOptions param<options_list>;
 $type printSettings param<flame::PrintSettings>;
 
 $type doPrint param<bool>;
+
+$type createPrintParameterFile blackbox<int>;
+
+$type printParameterDBIdx param<int>;
 
 // =============================================================================
 // Variables related to solver plotting and printing.
@@ -102,6 +100,12 @@ $type solution store<double>;
 // Variables related to solver initial conditions.
 // =============================================================================
 
+// Initial value of cycle number.
+$type timeStep_ic param<int>;
+
+// Initial value of simulation time.
+$type stime_ic param<double>;
+
 // Initial gage pressure (at cell).
 $type gagePressure_ic store<double>;
 
@@ -113,21 +117,6 @@ $type temperature_ic store<double>;
 
 // Initial species mass fractions (at cell).
 $type speciesY_ic storeVec<double>;
-
-// Initial mixture gas molecular weight (at cell).
-$type mixtureW_ic store<double>;
-
-// Initial mixture gas constant (at cell).
-$type mixtureR_ic store<double>;
-
-// Initial mixture adiabatic exponent (at  cell).
-$type mixtureGamma_ic store<double>;
-
-// Initial mixture specific heat at constant pressure (at cell).
-//$type mixtureCp_ic store<double>;
-
-// Initial mixture enthalpy (at cell).
-//$type mixtureEnthalpy_ic store<double>;
 
 // =============================================================================
 // Parameters of the solver.
@@ -165,17 +154,32 @@ $type totalKE param<double>;
 $type reflecting_BC Constraint;
 
 // =============================================================================
-// Variables related to transport properties
+// Variables related to model of transport properties.
 // =============================================================================
 
-$type viscosityModel param<options_list>;
-$type constantViscosityModel Constraint;
-$type sutherlandViscosityModel Constraint;
+$type speciesViscosityModel param<std::string>;
+$type speciesViscosityModel_Constant Constraint;
+$type speciesViscosityModel_Sutherland Constraint;
 
-$type conductivityModel param<std::string>;
-$type constantConductivityModel Constraint;
-$type constantPrandtlNumberModel Constraint;
-$type sutherlandConductivityModel Constraint;
+$type mixtureViscosityModel param<std::string>;
+$type mixtureViscosityModel_Standard Constraint;
+$type mixtureViscosityModel_Wilke Constraint;
+
+$type speciesConductivityModel param<std::string>;
+$type speciesConductivityModel_Constant Constraint;
+$type speciesConductivityModel_Sutherland Constraint;
+
+$type mixtureConductivityModel param<std::string>;
+$type mixtureConductivityModel_Standard Constraint;
+$type mixtureConductivityModel_PrandtlNumber Constraint;
+$type mixtureConductivityModel_Wilke Constraint;
+
+// =============================================================================
+// Variables related to model of thermodynamic properties.
+// =============================================================================
+
+$type thermodynamicModel param<std::string>;
+$type caloricallyPerfectGas Constraint;
 
 // =============================================================================
 // Variables common to both the single- and multi-species solver state.
@@ -211,6 +215,12 @@ $type viscosity store<double>;
 // Viscosity (at face).
 $type viscosity_f store<double>;
 
+// Conductivity (at cell).
+$type conductivity store<double>;
+
+// Conductivity (at face).
+$type conductivity_f store<double>;
+
 // Shear stress (at face).
 $type shearStress_f store<SymmetricTensor>;
 
@@ -222,9 +232,9 @@ $type shearStress_f store<SymmetricTensor>;
 $type ssConvectiveFlux_f store<Loci::Array<double, 5> >;
 
 // Vector of single-species diffusive flux (at face).
-$type ssDiffusiveFlux_f store<Loci::Array<double, 5> >;
+$type viscousFlux_f store<Loci::Array<double, 4> >;
 
-// Vector of single-species residual (at face).
+// Vector of single-species residual (at cell).
 $type ssResidual store<Loci::Array<double, 5> >;
 
 // =============================================================================
@@ -236,6 +246,12 @@ $type speciesY storeVec<double>;
 
 // Vector of species mass fractions (at face): [-].
 $type speciesY_f storeVec<double>;
+
+// Vector of species molar fractions (at cell): [-].
+$type speciesX storeVec<double>;
+
+// Vector of species molar fractions (at face): [-].
+$type speciesX_f storeVec<double>;
 
 // Molecular weight of mixture (at cell): [kg/kmol].
 $type mixtureW store<double>;
@@ -250,16 +266,19 @@ $type mixtureR store<double>;
 $type mixtureR_f store<double>;
 
 // Adiabatic index of mixture (at cell): [-]
-$type mixtureGamma store<double>;
+//$type mixtureGamma store<double>;
 
 // Adiabatic index of mixture (at face): [-]
-$type mixtureGamma_f store<double>;
+//$type mixtureGamma_f store<double>;
 
 // Mixture specific heat at constant pressure (at cell); [J/kg.K]
 $type mixtureCp store<double>;
 
+// Mixture specific heat at constant pressure (at face): [J/kg.K]
+$type mixtureCp_f store<double>;
+
 // Mixture enthalpy (at cell); [J/kg.K]
-$type mixtureEnthalpy store<double>;
+//$type mixtureEnthalpy store<double>;
 
 // Fraction Wk/mixtureW of the species (at cell): [-]
 //$type speciesWFrac storeVec<double>;
@@ -270,10 +289,10 @@ $type mixtureEnthalpy store<double>;
 // Vector of multi-species convective flux (at face).
 $type msConvectiveFlux_f storeVec<double>;
 
-// Vector of multi-species diffusive flux (at faces).
-$type msDiffusiveFlux_f storeVec<double>;
+// Vector of multi-species diffusive flux (at face).
+//$type msDiffusiveFlux_f storeVec<double>;
 
-// Vector of multi-species residual (at cells).
+// Vector of multi-species residual (at cell).
 $type msResidual storeVec<double>;
 
 // =============================================================================
@@ -290,13 +309,6 @@ $type lastRK param<bool>;
 // =============================================================================
 $type eosType param<std::string>;
 $type idealGas Constraint;
-
-// =============================================================================
-// Variables related to thermodynamic model.
-// =============================================================================
-
-$type thermodynamicModel param<std::string>;
-$type caloricallyPerfectModel Constraint;
 
 // =============================================================================
 // Variables related to milti-species management.
@@ -333,16 +345,19 @@ $type speciesW param<std::vector<double> >;
 $type speciesConstantCp param<std::vector<double> >;
 
 // Constant viscosity of the species: [Pa.s].
-$type speciesConstantViscosity param<std::vector<double> >;
+$type speciesViscosity_Constant param<std::vector<double> >;
 
 // Parameters for Sutherland's viscosity of the species.
-$type speciesSutherlandViscosityParameters param<std::vector<Loci::vector3d<double> > >;
+$type speciesViscosity_SutherlandParameters param<std::vector<Loci::Array<double, 3> > >;
+
+// Constant conductivity of the species: [W/m.K].
+$type speciesConductivity_Constant param<std::vector<double> >;
+
+// Parameters for Sutherland's conductivity of the species.
+$type speciesConductivity_SutherlandParameters param<std::vector<Loci::Array<double, 3> > >;
 
 // Specific gas constant of the species: [J/kg.K].
 $type speciesR param<std::vector<double> >;
-
-// Ratio of specific heats of the species: [-].
-$type speciesGamma param<std::vector<double> >;
 
 // =============================================================================
 // Variables related to computing, plotting and printing CFL number.
@@ -360,7 +375,3 @@ $type cfl store<double>;
 // Maximum and minimum CFL value (over all cells).
 $type maxCFL param<double>;
 $type minCFL param<double>;
-
-// Merge this functionality with printSettings
-$type cflPrintFrequency param<int>;
-$type doPrintCFL param<bool>;

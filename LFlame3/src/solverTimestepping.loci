@@ -1,10 +1,10 @@
+#include <flame.hh>
+#include <plot.hh>
+
 $include "flame.lh"
 $include "FVM.lh"
 
-#include <logger.hh>
-#include <plot.hh>
-
-#include <Loci.h>
+#include <glog/logging.h>
 
 // =============================================================================
 // Default values for parameters that control the time loop.
@@ -32,31 +32,15 @@ $rule constraint(timeIntegrationRK <- timeIntegrationMethod) {
     $timeIntegrationRK = ~EMPTY;
   } else {
     $[Once] {
-      flame::logger.severe("unknown timeIntegrationMethod ", $timeIntegrationMethod);
+      LOG(ERROR) << "unknown timeIntegrationMethod " << $timeIntegrationMethod;
     }
     Loci::Abort();
   }
 }
 
 // =============================================================================
-// Set unit values for single-species fluxes and the source term.
+// Set unit values for single-species source term.
 // =============================================================================
-
-//$rule unit(ssConvectiveFlux_f), constraint(area, singleSpecies) {
-//  $ssConvectiveFlux_f[0] = 0.0;
-//  $ssConvectiveFlux_f[1] = 0.0;
-//  $ssConvectiveFlux_f[2] = 0.0;
-//  $ssConvectiveFlux_f[3] = 0.0;
-//  $ssConvectiveFlux_f[4] = 0.0;
-//}
-//
-//$rule unit(ssDiffusiveFlux_f), constraint(area, singleSpecies) {
-//  $ssDiffusiveFlux_f[0] = 0.0;
-//  $ssDiffusiveFlux_f[1] = 0.0;
-//  $ssDiffusiveFlux_f[2] = 0.0;
-//  $ssDiffusiveFlux_f[3] = 0.0;
-//  $ssDiffusiveFlux_f[4] = 0.0;
-//}
 
 $rule unit(ssResidual), constraint(geom_cells, singleSpecies) {
   $ssResidual[0] = 0.0;
@@ -67,20 +51,8 @@ $rule unit(ssResidual), constraint(geom_cells, singleSpecies) {
 }
 
 // =============================================================================
-// Set unit values for multi-species fluxes and the source term.
+// Set unit values for multi-species source term.
 // =============================================================================
-
-//$rule unit(msConvectiveFlux_f <- Ns), constraint(area, multiSpecies), prelude {
-//  $msConvectiveFlux_f.setVecSize(*$Ns+4);
-//} {
-//  $msConvectiveFlux_f = mk_Scalar(0.0);
-//}
-//
-//$rule unit(msDiffusiveFlux_f <- Ns), constraint(area, multiSpecies), prelude {
-//  $msDiffusiveFlux_f.setVecSize(*$Ns+4);
-//} {
-//  $msDiffusiveFlux_f = mk_Scalar(0.0);
-//}
 
 $rule unit(msResidual <- Ns), constraint(geom_cells, multiSpecies), prelude {
   $msResidual.setVecSize(*$Ns+4);
@@ -111,19 +83,19 @@ constraint(boundary_faces, singleSpecies) {
 }
 
 // Add diffusive contribution from a face to its left cell.
-$rule apply((cl,cr)->ssResidual <- ssDiffusiveFlux_f)[Loci::Summation],
-constraint((cl,cr)->geom_cells, singleSpecies) {
-  for(int i = 0; i < 5; ++i) {
-    $cl->$ssResidual[i] += $ssDiffusiveFlux_f[i];
-    $cr->$ssResidual[i] -= $ssDiffusiveFlux_f[i];
+$rule apply((cl,cr)->ssResidual <- viscousFlux_f)[Loci::Summation],
+constraint((cl,cr)->geom_cells, singleSpecies, viscousFlow) {
+  for(int i = 0; i < 4; ++i) {
+    $cl->$ssResidual[i] += $viscousFlux_f[i];
+    $cr->$ssResidual[i] -= $viscousFlux_f[i];
   }
 }
 
 // Add diffusive contribution from a face to its right cell.
-$rule apply(cl->ssResidual <- ssDiffusiveFlux_f)[Loci::Summation],
-constraint(boundary_faces, singleSpecies) {
-  for(int i = 0; i < 5; ++i) {
-    $cl->$ssResidual[i] += $ssDiffusiveFlux_f[i];
+$rule apply(cl->ssResidual <- viscousFlux_f)[Loci::Summation],
+constraint(boundary_faces, singleSpecies, viscousFlow) {
+  for(int i = 0; i < 4; ++i) {
+    $cl->$ssResidual[i] += $viscousFlux_f[i];
   }
 }
 
@@ -132,7 +104,7 @@ constraint(boundary_faces, singleSpecies) {
 // compute contribution to the source term at a cell.
 // =============================================================================
 
-// Add convetive contribution from a face to its left cell.
+// Add convective contribution from a face to its left cell.
 $rule apply((cl,cr)->msResidual <- msConvectiveFlux_f, Ns)[Loci::Summation],
 constraint((cl,cr)->geom_cells, multiSpecies) {
   for(int i = 0; i < $Ns+4; ++i) {
@@ -150,19 +122,19 @@ constraint(boundary_faces, multiSpecies) {
 }
 
 // Add diffusive contribution from a face to its left cell.
-$rule apply((cl,cr)->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
-constraint((cl,cr)->geom_cells, multiSpecies) {
-  for(int i = 0; i < $Ns+4; ++i) {
-    $cl->$msResidual[i] += $msDiffusiveFlux_f[i];
-    $cr->$msResidual[i] -= $msDiffusiveFlux_f[i];
+$rule apply((cl,cr)->msResidual <- viscousFlux_f)[Loci::Summation],
+constraint((cl,cr)->geom_cells, multiSpecies, viscousFlow) {
+  for(int i = 0; i < 4; ++i) {
+    $cl->$msResidual[i] += $viscousFlux_f[i];
+    $cr->$msResidual[i] -= $viscousFlux_f[i];
   }
 }
 
 // Add diffusive contribution from a face to its right cell.
-$rule apply(cl->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
-constraint(boundary_faces, multiSpecies) {
-  for(int i = 0; i < $Ns+4; ++i) {
-    $cl->$msResidual[i] += $msDiffusiveFlux_f[i];
+$rule apply(cl->msResidual <- viscousFlux_f, Ns)[Loci::Summation],
+constraint(boundary_faces, multiSpecies, viscousFlow) {
+  for(int i = 0; i < 4; ++i) {
+    $cl->$msResidual[i] += $viscousFlux_f[i];
   }
 }
 
@@ -196,17 +168,106 @@ $rule pointwise(speciesY{n=0} <- speciesY_ic, Ns), prelude {
   $speciesY{n=0} = $speciesY_ic;
 }
 
-$rule pointwise(mixtureW{n=0} <- mixtureW_ic) {
-  $mixtureW{n=0} = $mixtureW_ic;
+$rule pointwise(mixtureW{n} <- speciesY{n}, speciesW, Ns),
+constraint(geom_cells) {
+  double rW = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    rW += $speciesY{n}[i]/$speciesW[i];
+  }
+  $mixtureW{n} = 1.0/rW;
 }
 
-$rule pointwise(mixtureR{n=0} <- mixtureR_ic) {
-  $mixtureR{n=0} = $mixtureR_ic;
+$rule pointwise(mixtureR{n} <- mixtureW{n}, Runiv),
+constraint(geom_cells) {
+  $mixtureR{n} = $Runiv/$mixtureW{n};
 }
 
-$rule pointwise(mixtureGamma{n=0} <- mixtureGamma_ic) {
-  $mixtureGamma{n=0} = $mixtureGamma_ic;
+$rule pointwise(speciesX{n} <- speciesY{n}, mixtureW{n}, speciesW, Ns),
+constraint(geom_cells), prelude {
+  $speciesX{n}.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesX{n}[i] = $speciesY{n}[i]*$mixtureW{n}/$speciesW[i];
+  }
 }
+
+$rule pointwise(mixtureCp{n} <- speciesY{n}, speciesConstantCp, Ns),
+constraint(geom_cells, multiSpecies, caloricallyPerfectGas) {
+  double Cp = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Cp += $speciesY{n}[i]*$speciesConstantCp[i];
+  }
+  $mixtureCp{n} = Cp;
+}
+
+//$rule pointwise(speciesX{n=0} <- speciesY_ic, speciesW, mixtureW{n=0}, Ns),
+//constraint(geom_cells), prelude {
+//  $speciesX{n=0}.setVecSize(*$Ns);
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    $speciesX{n=0}[i] = $speciesY_ic[i]*$mixtureW{n=0}/$speciesW[i];
+//  }
+//}
+//
+//$rule pointwise(mixtureW{n=0} <- speciesY_ic, speciesW, Ns), constraint(geom_cells) {
+//  double rW = 0.0;
+//  for(int i = 0; i < $Ns; ++i) {
+//    rW += $speciesY_ic[i]/$speciesW[i];
+//  }
+//  $mixtureW{n=0} = 1.0/rW;
+//}
+//
+//$rule pointwise(mixtureR{n=0} <- Runiv, mixtureW{n=0}), constraint(geom_cells) {
+//  $mixtureR{n=0} = $Runiv/$mixtureW{n=0};
+//}
+//
+//$rule pointwise(mixtureCp{n=0} <- speciesY_ic, speciesConstantCp, Ns),
+//constraint(geom_cells, multiSpecies, caloricallyPerfectGas) {
+//  double Cp = 0.0;
+//  for(int i = 0; i < $Ns; ++i) {
+//    Cp += $speciesY_ic[i]*$speciesConstantCp[i];
+//  }
+//  $mixtureCp{n=0} = Cp;
+//}
+
+//$rule pointwise(
+//  speciesX{n=0}, mixtureW{n=0}, mixtureR{n=0}, mixtureCp{n=0}
+//  <-
+//  speciesY_ic, speciesW, speciesConstantCp, Runiv, Ns
+//), constraint(multiSpecies, caloricallyPerfectGas, geom_cells), prelude {
+//  $speciesX{n=0}.setVecSize(*$Ns);
+//} {
+//  double rW = 0.0;
+//  double R = 0.0;
+//  double Cp = 0.0;
+//  for(int i = 0; i < $Ns; ++i) {
+//    rW += $speciesY_ic[i]/$speciesW[i];
+//    Cp += $speciesY_ic[i]*$speciesConstantCp[i];
+//  }
+//  R = $Runiv*rW;
+//  double W = 1.0/rW;
+//  
+//  for(int i = 0; i < $Ns; ++i) {
+//    $speciesX{n=0}[i] = $speciesY_ic[i]*W/$speciesW[i];
+//  }
+//  $mixtureW{n=0} = W;
+//  $mixtureR{n=0} = R;
+//  $mixtureCp{n=0} = Cp;
+//}
+
+//$rule pointwise(mixtureW{n=0} <- mixtureY_ic, Ns), prelude {
+//  $mixtureW{n=0}.setVecSize(*$Ns);
+//} {
+//  $mixtureW{n=0} = $mixtureW_ic;
+//}
+//
+//$rule pointwise(mixtureR{n=0} <- mixtureR_ic) {
+//  $mixtureR{n=0} = $mixtureR_ic;
+//}
+//
+//$rule pointwise(mixtureCp{n=0} <- mixtureCp_ic) {
+//  $mixtureCp{n=0} = $mixtureCp_ic;
+//}
 
 //$rule pointwise(
 //  speciesY{n=0}, mixtureW{n=0}, mixtureR{n=0}, mixtureGamma{n=0}

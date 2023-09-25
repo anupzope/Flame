@@ -1,10 +1,55 @@
+#include <flame.hh>
 #include <plot.hh>
+
+#include <mpi.h>
+#include <glog/logging.h>
 
 #include <sstream>
 
-#include <logger.hh>
-
 namespace flame {
+
+// =============================================================================
+
+PrintParameterDB::PrintParameterDB() : printHeader(true) {
+}
+
+void PrintParameterDB::clear() {
+  name.clear();
+  value.clear();
+}
+
+void PrintParameterDB::add(int const root, std::string const & n, double const v) {
+  double val = v;
+  MPI_Bcast(&val, 1, MPI_DOUBLE, root, MPI_COMM_WORLD);
+  name.push_back(n);
+  value.push_back(val);
+}
+
+std::ostream & PrintParameterDB::print(int const timeStep, std::ostream & s) {
+  int const nvalues = value.size();
+  
+  if(printHeader) {
+    s << "timeStep ";
+    for(int i = 0; i < nvalues; ++i) {
+      s << name[i] << ' ';
+    }
+    s << std::endl;
+    printHeader = false;
+  }
+  
+  s << timeStep << ' ';
+  for(int i = 0; i < nvalues; ++i) {
+    s << value[i] << ' ';
+  }
+  s << std::endl;
+  
+  return s;
+}
+
+// =============================================================================
+
+PrintParameterFile printParameterFile;
+PrintParameterDB printParameterDB;
 
 // =============================================================================
 
@@ -67,6 +112,7 @@ int PrintSettings::fromOptionsList(options_list const & ol, std::string & err) {
       err += "[Unknown option in \"printOptions\": " + optionName + "]";
       ++error;
     }
+    ++iter;
   }
   
   if(!error) {
@@ -331,7 +377,8 @@ void NodalScalarOutput::compute(sequence const & seq) {
 // =============================================================================
 
 NodalVecComponentsOutput::NodalVecComponentsOutput(
-  char const * vname, char const * valname, char const * cnames
+  char const * vname, char const * valname, char const * cnames,
+  char const * extraConstraints
 ) {
   var_name = std::string(vname);
   value_name = std::string(valname);
@@ -348,6 +395,7 @@ NodalVecComponentsOutput::NodalVecComponentsOutput(
   
   constraint("pos");
   constraint(constraintName);
+  constraint(extraConstraints);
   
   input("caseName");
   input("plotPostfix");
@@ -364,10 +412,8 @@ void NodalVecComponentsOutput::compute(sequence const & seq) {
   int const vs = c2n.vecSize();
   
   if(names.size() != vs) {
-    flame::logger.severe(
-      "NodalVecComponentsOutput: vector size and component "
-      "name size does not match"
-    );
+    LOG(ERROR) << "NodalVecComponentsOutput: vector size and component "
+      "name size does not match";
     Loci::Abort();
   }
   

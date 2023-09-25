@@ -11,7 +11,6 @@ LFlame3_SOURCES=src/main.cc \
   src/boundary_checker.cc \
   src/grid_post_processor.cc \
   src/bcImpermeable.cc \
-  src/logger.cc \
   src/plot.cc \
   src/totalVolume.cc \
   src/species.cc \
@@ -32,7 +31,9 @@ LFlame3_SOURCES=src/main.cc \
   src/solverVolumeIntegrated.cc \
   src/solverCFL.cc \
   src/solverThermodynamics.cc \
-  src/solverTransport.cc
+  src/solverTransport.cc \
+  src/solverFlowRegime.cc \
+  src/solverFaceValues.cc
 LFlame3_LDFLAGS = 
 LFlame3_LDADD = 
 LFlame3_CXXFLAGS = -I$(srcdir)/include

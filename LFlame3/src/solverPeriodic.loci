@@ -5,11 +5,15 @@ $include "flame.lh"
 
 namespace flame {
 
+// -----------------------------------------------------------------------------
+
 $rule pointwise(cr->cellcenter <- pmap->cl->cellcenter, pmap->ref->periodicTransform),
 constraint(periodicFaces) {
   Loci::rigid_transform const & frame = $pmap->$ref->$periodicTransform;
   $cr->$cellcenter = frame.transform($pmap->$cl->$cellcenter);
 }
+
+// -----------------------------------------------------------------------------
 
 $rule pointwise(cr->vol <- pmap->cl->vol) {
   $cr->$vol = $pmap->$cl->$vol;
@@ -18,6 +22,8 @@ $rule pointwise(cr->vol <- pmap->cl->vol) {
 //$rule pointwise(cr->dist_noslip <- pmap->cl->dist_noslip) {
 //  $cr->$dist_noslip = $pmap->$cl->$dist_noslip ;
 //}
+
+// -----------------------------------------------------------------------------
 
 $rule pointwise(cr->velocity <- pmap->cl->velocity, pmap->ref->periodicTransform) {
   Loci::rigid_transform const & frame = $pmap->$ref->$periodicTransform;
@@ -28,6 +34,8 @@ $rule pointwise(cr->velocity <- pmap->cl->velocity, pmap->ref->periodicTransform
 // are periodic
 $rule pointwise(velocity_f), constraint(ci->velocity, geom_cells) {}
 
+// -----------------------------------------------------------------------------
+
 $rule pointwise(cr->temperature <- pmap->cl->temperature) {
   $cr->$temperature = $pmap->$cl->$temperature;
 }
@@ -36,6 +44,7 @@ $rule pointwise(cr->temperature <- pmap->cl->temperature) {
 // boundaries are periodic
 $rule pointwise(temperature_f), constraint(ci->temperature, geom_cells) {}
 
+// -----------------------------------------------------------------------------
 
 $rule pointwise(cr->gagePressure <- pmap->cl->gagePressure) {
   $cr->$gagePressure = $pmap->$cl->$gagePressure;
@@ -45,6 +54,7 @@ $rule pointwise(cr->gagePressure <- pmap->cl->gagePressure) {
 // boundaries are periodic
 $rule pointwise(gagePressure_f), constraint(ci->gagePressure, geom_cells) {}
 
+// -----------------------------------------------------------------------------
 
 $rule pointwise(cr->speciesY <- pmap->cl->speciesY) {
   $cr->$speciesY = $pmap->$cl->$speciesY;
@@ -56,6 +66,7 @@ $rule pointwise(speciesY_f <- Ns), constraint(ci->speciesY, geom_cells), prelude
   $speciesY_f.setVecSize(*$Ns);
 } {}
 
+// -----------------------------------------------------------------------------
 
 $rule pointwise(cr->mixtureW <- pmap->cl->mixtureW) {
   $cr->$mixtureW = $pmap->$cl->$mixtureW;
@@ -65,6 +76,7 @@ $rule pointwise(cr->mixtureW <- pmap->cl->mixtureW) {
 // all boundaries are periodic
 $rule pointwise(mixtureW_f), constraint(ci->mixtureW, geom_cells) {}
 
+// -----------------------------------------------------------------------------
 
 $rule pointwise(cr->mixtureR <- pmap->cl->mixtureR) {
   $cr->$mixtureR = $pmap->$cl->$mixtureR;
@@ -74,14 +86,29 @@ $rule pointwise(cr->mixtureR <- pmap->cl->mixtureR) {
 // boundaries are periodic
 $rule pointwise(mixtureR_f), constraint(ci->mixtureR, geom_cells) {}
 
+// -----------------------------------------------------------------------------
 
-$rule pointwise(cr->mixtureGamma <- pmap->cl->mixtureGamma) {
-  $cr->$mixtureGamma = $pmap->$cl->$mixtureGamma;
+$rule pointwise(cr->speciesX <- pmap->cl->speciesX) {
+  $cr->$speciesX = $pmap->$cl->$speciesX;
+}
+
+// this fix will allow gradients of species molar fractions to be computed when all
+// boundaries are periodic
+$rule pointwise(speciesX_f <- Ns), constraint(ci->speciesX, geom_cells), prelude {
+  $speciesX_f.setVecSize(*$Ns);
+};
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(cr->mixtureCp <- pmap->cl->mixtureCp) {
+  $cr->$mixtureCp = $pmap->$cl->$mixtureCp;
 }
 
 // this fix will allow gradients of mixture adiabatic index to be computed when
 // all boundaries are periodic
-$rule pointwise(mixtureGamma_f), constraint(ci->mixtureGamma, geom_cells) {}
+$rule pointwise(mixtureCp_f), constraint(ci->mixtureCp, geom_cells) {}
+
+// -----------------------------------------------------------------------------
 
 //$rule pointwise(cr->tmu<-pmap->cl->tmu) {
 //  $cr->$tmu = $pmap->$cl->$tmu ;

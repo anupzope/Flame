@@ -10,6 +10,8 @@
 
 namespace flame {
 
+// =============================================================================
+
 struct PrintSettings {
   std::vector<std::string> parameters;
   int frequency;
@@ -22,6 +24,8 @@ struct PrintSettings {
 
 std::ostream & operator<<(std::ostream & s, PrintSettings const & rhs);
 std::istream & operator>>(std::istream & s, PrintSettings & rhs);
+
+// =============================================================================
 
 struct PlotSettings {
   std::vector<int> frequencies;
@@ -37,9 +41,13 @@ struct PlotSettings {
 std::ostream & operator<<(std::ostream & s, PlotSettings const & rhs);
 std::istream & operator>>(std::istream & s, PlotSettings & rhs);
 
+// =============================================================================
+
 } // end: namespace flame
 
 namespace Loci {
+
+// =============================================================================
 
 class PrintSettingsSchemaConverter {
   flame::PrintSettings & ref;
@@ -73,6 +81,8 @@ struct data_schema_traits<flame::PrintSettings> {
   typedef PrintSettingsSchemaConverter Converter_Type;
 };
 
+// =============================================================================
+
 class PlotSettingsSchemaConverter {
   flame::PlotSettings & ref;
   std::string fmt;
@@ -105,13 +115,41 @@ struct data_schema_traits<flame::PlotSettings> {
   typedef PlotSettingsSchemaConverter Converter_Type;
 };
 
+// =============================================================================
+
 } // end: namespace Loci
 
 namespace flame {
 
-//class ScalarPrint : public Loci::pointwise_rule {
-//  std::string var_name
-//}
+// =============================================================================
+
+struct PrintParameterFile {
+  std::ofstream * file;
+  PrintParameterFile() : file(nullptr) { }
+  ~PrintParameterFile() {
+    if(file) {
+      file->close();
+    }
+  }
+};
+
+extern PrintParameterFile printParameterFile;
+
+// =============================================================================
+
+class PrintParameterDB {
+  std::vector<std::string> name;
+  std::vector<double> value;
+  bool printHeader;
+  
+public:
+  PrintParameterDB();
+  void clear();
+  void add(int const root, std::string const & n, double const v);
+  std::ostream & print(int const timeStep, std::ostream & s);
+};
+
+extern PrintParameterDB printParameterDB;
 
 // =============================================================================
 
@@ -151,7 +189,8 @@ class NodalVecComponentsOutput : public Loci::pointwise_rule {
   
 public:
   NodalVecComponentsOutput(
-    char const * vname, char const * valname, char const * cnames
+    char const * vname, char const * valname, char const * cnames,
+    char const * extraConstraints
   );
   virtual void compute(Loci::sequence const & seq);
 };
@@ -264,9 +303,9 @@ public:\
 };\
 register_rule<OUT_##Y> register_OUT_##Y;
 
-#define OUTPUT_VEC_COMPONENTS(X,Y,Z) class OUT_##Y : public flame::NodalVecComponentsOutput {\
+#define OUTPUT_VEC_COMPONENTS(X,Y,Z,C) class OUT_##Y : public flame::NodalVecComponentsOutput {\
 public:\
-  OUT_##Y() : flame::NodalVecComponentsOutput(X,#Y,Z){}\
+  OUT_##Y() : flame::NodalVecComponentsOutput(X,#Y,Z,C){}\
 };\
 register_rule<OUT_##Y> register_OUT_##Y;
 

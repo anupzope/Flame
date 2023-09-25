@@ -1,10 +1,6 @@
-//#include <easylogging++.h>
-
-#include <boundary_checker.hh>
-#include <logger.hh>
+#include <flame.hh>
 #include <plot.hh>
-
-#include <Loci.h>
+#include <boundary_checker.hh>
 
 #include <iostream>
 #include <iomanip>
@@ -61,8 +57,6 @@ static error_t parse_opt(int key, char * arg, argp_state * state) {
 
 static struct argp argp = { options, parse_opt, args_doc, doc };
 
-//INITIALIZE_EASYLOGGINGPP
-
 void logPrefix(std::ostream& s, const google::LogMessageInfo& l, void* data) {
   s << l.severity;
 }
@@ -86,10 +80,10 @@ int main(int argc, char * argv[]) {
   
   argp_parse(&argp, argc, argv, 0, 0, &arg);
   
-  {
-    // Initialize logging system
-    flame::logger.initialize("debug/log", Loci::MPI_rank);
-  }
+  //{
+  //  // Initialize logging system
+  //  flame::logger.initialize("debug/log", Loci::MPI_rank);
+  //}
   
   LOG(INFO) << "Program Arguments:";
   LOG(INFO) << "  case = " << arg.caseName;
@@ -285,6 +279,30 @@ int main(int argc, char * argv[]) {
     
     *plotInfo = plotInfoValue.str();
     facts.create_fact("plotInfo", plotInfo);
+  }
+  
+  // Sanity check for print variables
+  {
+    param<options_list> printOptions;
+    facts.get_variable("printOptions");
+    
+    flame::PrintSettings settings;
+    std::string err;
+    if(settings.fromOptionsList(*printOptions, err)) {
+      LOG(ERROR) << err;
+      Loci::Abort();
+    }
+    
+    int const nParams = settings.parameters.size();
+    for(int i = 0; i < nParams; ++i) {
+      Loci::storeRepP sp = facts.get_variable(settings.parameters[i]);
+      if(sp != 0) {
+        if(sp->RepType() != Loci::PARAMETER) {
+          LOG(ERROR) << settings.parameters[i] << ": is not a PARAMETER";
+          Loci::Abort();
+        }
+      }
+    }
   }
   
   // Dump parameters from the fact database.
