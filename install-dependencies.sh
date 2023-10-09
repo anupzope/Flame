@@ -404,9 +404,11 @@ if [[ ${INSTALL_LOCI} -eq 1 ]]; then
   echo "Configuring Loci..."
   ./configure --prefix "${LOCI_IPATH}" --with-metis "${METIS_IPATH}" --with-mpi "${MPI_DIR}"
   echo "Building Loci..."
+  cd OBJ && echo "Directory: ${PWD}"
   make -j4
   echo "Installing Loci..."
   make install
+  cd .. && echo "Directory: ${PWD}"
   cd .. && echo "Directory: ${PWD}"
   cd .. && echo "Directory: ${PWD}"
   

@@ -35,34 +35,37 @@ $rule pointwise(
   <-
   speciesR, Pambient, cellcenter
 ), constraint(geom_cells, singleSpecies) {
-  double x = $cellcenter.x;
-  double y = $cellcenter.y;
-  double z = $cellcenter.z;
+  double const x = $cellcenter.x;
+  double const y = $cellcenter.y;
+  double const z = $cellcenter.z;
   
-  double x0 = 0.0;
-  double y0 = 0.0;
-  double z0 = 0.0;
+  double const x0 = 0.0;
+  double const y0 = 0.0;
+  double const z0 = 0.0;
   
-  double Lx = 0.5;
-  double Ly = 0.5;
-  double Lz = 0.5;
+  double const Lx = 0.5;
+  double const Ly = 0.5;
+  double const Lz = 0.5;
   
-  double U0 = 1.0;
-  double U02 = U0*U0;
+  //double const K = (std::atan(1.0)*4.0);
+  double const K = 1.0;
   
-  double P0 = $Pambient + 100.0;
+  double const U0 = 1.0;
+  double const U02 = U0*U0;
   
-  double rho0 = 1.0;
+  double const P0 = $Pambient + 100.0;
   
-  double T0 = P0/($speciesR[0]*rho0);
+  double const rho0 = 1.0;
   
-  $gagePressure_TGV_ic = P0 + 0.0625*rho0*(
-    std::cos(2.0*(x-x0)/Lx) + std::cos(2.0*(y-y0)/Ly)
-  )*(2.0 + std::cos(2.0*(z-z0)/Lz)) - $Pambient;
+  double const T0 = P0/($speciesR[0]*rho0);
+  
+  $gagePressure_TGV_ic = P0 + 0.0625*rho0*U02*(
+    std::cos(2.0*K*(x-x0)/Lx) + std::cos(2.0*K*(y-y0)/Ly)
+  )*(2.0 + std::cos(2.0*K*(z-z0)/Lz)) - $Pambient;
   
   $velocity_TGV_ic = Loci::vector3d<double>(
-     U0*std::sin((x-x0)/Lx)*std::cos((y-y0)/Ly)*std::cos((z-z0)/Lz),
-    -U0*std::cos((x-x0)/Lx)*std::sin((y-y0)/Ly)*std::cos((z-z0)/Lz),
+     U0*std::sin(K*(x-x0)/Lx)*std::cos(K*(y-y0)/Ly)*std::cos(K*(z-z0)/Lz),
+    -U0*std::cos(K*(x-x0)/Lx)*std::sin(K*(y-y0)/Ly)*std::cos(K*(z-z0)/Lz),
     0.0
   );
   
@@ -76,24 +79,27 @@ $rule pointwise(
 ), constraint(geom_cells, multiSpecies), prelude {
   $speciesY_TGV_ic.setVecSize(*$Ns);
 } {
-  double x = $cellcenter.x;
-  double y = $cellcenter.y;
-  double z = $cellcenter.z;
+  double const x = $cellcenter.x;
+  double const y = $cellcenter.y;
+  double const z = $cellcenter.z;
   
-  double x0 = 0.0;
-  double y0 = 0.0;
-  double z0 = 0.0;
+  double const x0 = 0.0;
+  double const y0 = 0.0;
+  double const z0 = 0.0;
   
-  double Lx = 1.0;
-  double Ly = 1.0;
-  double Lz = 1.0;
+  double const Lx = 1.0;
+  double const Ly = 1.0;
+  double const Lz = 1.0;
   
-  double U0 = 1.0;
-  double U02 = U0*U0;
+  //double const K = (std::atan(1.0)*4.0);
+  double const K = 1.0;
   
-  double P0 = $Pambient + 100.0;
+  double const U0 = 1.0;
+  double const U02 = U0*U0;
   
-  double rho0 = 1.0;
+  double const P0 = $Pambient + 100.0;
+  
+  double const rho0 = 1.0;
   
   if($cellcenter.y > 0.5 || $cellcenter.y < -0.5) {
     for(int i = 0; i < $Ns; ++i) {
@@ -107,31 +113,17 @@ $rule pointwise(
     $speciesY_TGV_ic[1] = 1.0;
   }
   
-  //for(int i = 0; i < $Ns; ++i) {
-  //  $speciesY_TGV_ic[i] = 0.0;
-  //}
-  //$speciesY_TGV_ic[0] = 0.5;
-  //$speciesY_TGV_ic[1] = 0.5;
-  
-  //for(int i = 0; i < $Ns; ++i) {
-  //  $speciesY_TGV_ic[i] = 0.0;
-  //}
-  //$speciesY_TGV_ic[0] = 0.232909218;
-  //$speciesY_TGV_ic[1] = 0.767090782;
-  
   double mixtureW = 0.0;
   for(int i = 0; i < $Ns; ++i) {
     mixtureW += $speciesY_TGV_ic[i]/$speciesW[i];
   }
   mixtureW = 1.0/mixtureW;
   
-  double mixtureR = $Runiv/mixtureW;
+  double const mixtureR = $Runiv/mixtureW;
   
-  double T0 = P0/(mixtureR*rho0);
+  double const T0 = P0/(mixtureR*rho0);
   
-  double const K = (std::atan(1.0)*4.0);
-  
-  $gagePressure_TGV_ic = P0 + 0.0625*rho0*(
+  $gagePressure_TGV_ic = P0 + 0.0625*rho0*U02*(
     std::cos(2.0*K*(x-x0)/Lx) + std::cos(2.0*K*(y-y0)/Ly)
   )*(2.0 + std::cos(2.0*K*(z-z0)/Lz)) - $Pambient;
   
