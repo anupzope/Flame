@@ -1,37 +1,54 @@
 #!/bin/bash
 
 # On Warhawk1
-# module load gcc/10.2.0 mpich/3.3.2 zlib/1.2.11
-# BDIR="build-warhawk1"
-# IPATH=/var/tmp/anup/flame-deps
-# MPATH=/var/tmp/anup/flame-deps/modulefiles
-# 
-# Setup commands
-#module load gcc/10.2.0 mpich/3.3.2 zlib/1.2.11
-#module use /var/tmp/anup/flame-deps/modulefiles
-#module load FlameCGNS/4.3.0 FlameHDF5/1.14.1 FlameLoci/4.0 FlameMETIS/master FlameOpenBLAS/0.3.23 FlamePETSc/3.19.2
-#PATH=/cavs/projects/nasafsi_codes/adz8/projects/Flame/build-warhawk1/LFlame3:$PATH
+#COMPILER_MODULE="gcc/10.2.0"
+#MPI_MODULE="openmpi/4.0.4"
+#ZLIB_MODULE="zlib/1.2.11"
+#BDIR="build-warhawk1"
+#IPATH=/apps/contrib/fsi/Flame-Stack/01
+#MPATH=/apps/contrib/fsi/Flame-Stack/01/modulefiles
+#module load ${COMPILER_MODULE} ${MPI_MODULE} ${ZLIB_MODULE}
+#module load cmake texlive python
 
 # On Rifle
-#module load zlib/1.2.13 gcc/12.2.0 mpich/4.0.2
-#BDIR="build-rifle"
-#IPATH=/var/tmp/anup/flame-deps
-#MPATH=/var/tmp/anup/flame-deps/modulefiles
+COMPILER_MODULE="gcc/12.2.0"
+MPI_MODULE="openmpi/4.1.4"
+ZLIB_MODULE="zlib/1.2.13"
+BDIR="build-rifle"
+IPATH=/var/tmp/anup/Flame-Stack/01
+MPATH=/var/tmp/anup/Flame-Stack/01/modulefiles
+module load ${COMPILER_MODULE} ${MPI_MODULE} ${ZLIB_MODULE}
+module load cmake texlive python
+
+# On Scout
+#COMPILER_MODULE="gcc/10.2.0"
+#MPI_MODULE="openmpi/4.0.4"
+#ZLIB_MODULE="zlib/1.2.11"
+#BDIR="build-scout"
+#IPATH=/apps/contrib/fsi/Flame-Stack/01
+#MPATH=/apps/contrib/fsi/Flame-Stack/01/modulefiles
+#module load ${COMPILER_MODULE} ${MPI_MODULE} ${ZLIB_MODULE}
+#module load cmake texlive python
 
 # On Guppy
-# module load zlib/1.2.12 gcc/12.1.0 mpich/4.0.2
-# BDIR="build-guppy"
-# IPATH=/var/tmp/anup/flame-deps
-# MPATH=/var/tmp/anup/flame-deps/modulefiles
+#COMPILER_MODULE="gcc/12.2.0"
+#MPI_MODULE="openmpi/4.1.4"
+#ZLIB_MODULE="zlib/1.2.13"
+#BDIR="build-guppy"
+#IPATH=/local/scratch/adz8/FlameStack/01
+#MPATH=/local/scratch/adz8/FlameStack/01/modulefiles
+#module load ${COMPILER_MODULE} ${MPI_MODULE} ${ZLIB_MODULE}
+#module load texlive python
 
 # On Orion
-module load zlib/1.2.11 gcc/11.3.0 mpich/3.3.2
-BDIR="build-orion"
-IPATH=/apps/contrib/FSI/Flame-Stack/01
-MPATH=/apps/contrib/FSI/Flame-Stack/01/modulefiles
-
-# Additional dependencies required for building Flame dependencies:
-module load cmake texlive python
+#COMPILER_MODULE="gcc/11.3.0"
+#MPI_MODULE="openmpi/4.0.4"
+#ZLIB_MODULE="zlib/1.2.11"
+#BDIR="build-orion"
+#IPATH=/apps/contrib/FSI/Flame-Stack/01
+#MPATH=/apps/contrib/FSI/Flame-Stack/01/modulefiles
+#module load ${COMPILER_MODULE} ${MPI_MODULE} ${ZLIB_MODULE}
+#module load cmake texlive python
 
 module list
 
@@ -72,6 +89,8 @@ if [[ ${INSTALL_GLOG} -eq 1 ]]; then
   mkdir -p "${GLOG_MPATH}"
   cat > "${GLOG_MPATH}/${GLOG_VERSION}.lua" <<EOF
 family("${GLOG_MODULENAME}")
+
+depends_on("${COMPILER_MODULE}")
 
 local package="Glog"
 local version="${GLOG_VERSION}"
@@ -148,6 +167,9 @@ if [[ ${INSTALL_METIS} -eq 1 ]]; then
   cat > "${METIS_MPATH}/${METIS_VERSION}.lua" <<EOF
 family("${METIS_MODULENAME}")
 
+depends_on("${COMPILER_MODULE}")
+depends_on("${MPI_MODULE}")
+
 local package="GKlib, METIS, and ParMETIS"
 local version="${METIS_VERSION}"
 local path="${METIS_IPATH}"
@@ -200,6 +222,10 @@ if [[ ${INSTALL_HDF5} -eq 1 ]]; then
   mkdir -p "${HDF5_MPATH}"
   cat > "${HDF5_MPATH}/${HDF5_VERSION}.lua" <<EOF
 family("${HDF5_MODULENAME}")
+
+depends_on("${COMPILER_MODULE}")
+depends_on("${MPI_MODULE}")
+depends_on("${ZLIB_MODULE}")
 
 local package="HDF5"
 local version="${HDF5_VERSION}"
@@ -256,6 +282,11 @@ if [[ ${INSTALL_CGNS} -eq 1 ]]; then
   cat > "${CGNS_MPATH}/${CGNS_VERSION}.lua" <<EOF
 family("${CGNS_MODULENAME}")
 
+depends_on("${COMPILER_MODULE}")
+depends_on("${MPI_MODULE}")
+depends_on("${ZLIB_MODULE}")
+depends_on("${HDF5_MODULENAME}/${HDF5_VERSION}")
+
 local package="CGNS"
 local version="${CGNS_VERSION}"
 local path="${CGNS_IPATH}"
@@ -301,6 +332,8 @@ if [[ ${INSTALL_OpenBLAS} -eq 1 ]]; then
   mkdir -p "${OpenBLAS_MPATH}"
   cat > "${OpenBLAS_MPATH}/${OpenBLAS_VERSION}.lua" <<EOF
 family("${OpenBLAS_MODULENAME}")
+
+depends_on("${COMPILER_MODULE}")
 
 local package="OpenBLAS"
 local version="${OpenBLAS_VERSION}"
@@ -359,6 +392,14 @@ if [[ ${INSTALL_PETSc} -eq 1 ]]; then
   cat > "${PETSc_MPATH}/${PETSc_VERSION}.lua" <<EOF
 family("${PETSc_MODULENAME}")
 
+depends_on("${COMPILER_MODULE}")
+depends_on("${MPI_MODULE}")
+depends_on("${ZLIB_MODULE}")
+depends_on("${METIS_MODULENAME}/${METIS_VERSION}")
+depends_on("${HDF5_MODULENAME}/${HDF5_VERSION}")
+depends_on("${CGNS_MODULENAME}/${CGNS_VERSION}")
+depends_on("${OpenBLAS_MODULENAME}/${OpenBLAS_VERSION}")
+
 local package="PETSc"
 local version="${PETSc_VERSION}"
 local path="${PETSc_IPATH}"
@@ -368,7 +409,7 @@ prepend_path("LD_LIBRARY_PATH", pathJoin(path,"lib"))
 prepend_path("PKG_CONFIG_PATH", pathJoin(pathJoin(path, "lib"), "pkgconfig"))
 setenv("PETSC_DIR", path)
 setenv("PETSC_ROOT", path)
-setenv("PETSC_ARCH", path)
+setenv("PETSC_ARCH", "")
 
 whatis("Package: "..package)
 whatis("Version: "..version)
@@ -416,6 +457,15 @@ if [[ ${INSTALL_LOCI} -eq 1 ]]; then
   mkdir -p "${LOCI_MPATH}"
   cat > "${LOCI_MPATH}/${LOCI_VERSION}.lua" <<EOF
 family("${LOCI_MODULENAME}")
+
+depends_on("${COMPILER_MODULE}")
+depends_on("${MPI_MODULE}")
+depends_on("${ZLIB_MODULE}")
+depends_on("${GLOG_MODULENAME}/${GLOG_VERSION}")
+depends_on("${METIS_MODULENAME}/${METIS_VERSION}")
+depends_on("${HDF5_MODULENAME}/${HDF5_VERSION}")
+depends_on("${CGNS_MODULENAME}/${CGNS_VERSION}")
+depends_on("${PETSc_MODULENAME}/${PETSc_VERSION}")
 
 local package="Loci"
 local version="${LOCI_VERSION}"
