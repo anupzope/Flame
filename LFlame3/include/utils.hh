@@ -6,6 +6,24 @@
 #include <vector>
 #include <string>
 
+namespace flame {
+
+int getOptionValue(
+  options_list const & ol, std::string const & optName,
+  std::string const & unit, double & value,
+  std::ostream & errmsg
+);
+
+int getOptionValues(
+  options_list const & ol, std::string const & optName,
+  std::vector<std::string> const & units,
+  int const minValues, int const maxValues,
+  std::vector<double> & values,
+  std::ostream & errmsg
+);
+
+} // end: namespace flame
+
 namespace Loci {
 
 class STDStringVectorSchemaConverter {

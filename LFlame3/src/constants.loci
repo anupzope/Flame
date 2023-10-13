@@ -6,7 +6,8 @@ $include "flame.lh"
 namespace flame {
 
 $rule singleton(Runiv), constraint(UNIVERSE) {
-  $Runiv = 8314.4621;
+  //$Runiv = 8314.4621;
+  $Runiv = 8314.46261815324;
 }
 
 }

@@ -25,11 +25,13 @@ void PrintParameterDB::add(int const root, std::string const & n, double const v
   value.push_back(val);
 }
 
-std::ostream & PrintParameterDB::print(int const timeStep, std::ostream & s) {
+std::ostream & PrintParameterDB::print(
+  int const timeStep, double const stime, std::ostream & s
+) {
   int const nvalues = value.size();
   
   if(printHeader) {
-    s << "timeStep ";
+    s << "timeStep stime ";
     for(int i = 0; i < nvalues; ++i) {
       s << name[i] << ' ';
     }
@@ -37,7 +39,7 @@ std::ostream & PrintParameterDB::print(int const timeStep, std::ostream & s) {
     printHeader = false;
   }
   
-  s << timeStep << ' ';
+  s << timeStep << ' ' << stime << ' ';
   for(int i = 0; i < nvalues; ++i) {
     s << value[i] << ' ';
   }

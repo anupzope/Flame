@@ -146,7 +146,9 @@ public:
   PrintParameterDB();
   void clear();
   void add(int const root, std::string const & n, double const v);
-  std::ostream & print(int const timeStep, std::ostream & s);
+  std::ostream & print(
+    int const timeStep, double const stime, std::ostream & s
+  );
 };
 
 extern PrintParameterDB printParameterDB;

@@ -100,6 +100,24 @@ $type solution store<double>;
 // Variables related to solver initial conditions.
 // =============================================================================
 
+// User supplied options list for specifying uniform initial conditions.
+$type initialConditions param<options_list>;
+
+// Params to store the initial conditions specified by initialConditions
+// options_list.
+$type icGagePressure param<double>;
+$type icTemperature param<double>;
+$type icVelocity param<Loci::vector3d<double> >;
+$type icSpeciesY param<std::vector<double> >;
+
+// User supplied options list for specifying parameters for setting up TGV
+// initial conditions.
+$type initialConditionsTGV param<options_list>;
+
+// Param to store the TGV initial condition parameters specified by
+// initialConditionsTGV options_list.
+$type tgvICParameters param<TGVICParameters>;
+
 // Initial value of cycle number.
 $type timeStep_ic param<int>;
 
@@ -145,7 +163,9 @@ $type Pambient param<double>;
 
 $type totalVolume param<double>;
 
-$type totalKE param<double>;
+$type totalKineticEnergy param<double>;
+
+$type totalEnstrophy param<double>;
 
 // =============================================================================
 // Boundary condition constraints.
@@ -223,6 +243,22 @@ $type conductivity_f store<double>;
 
 // Shear stress (at face).
 $type shearStress_f store<SymmetricTensor>;
+
+// Strain rate tensor (at cell).
+$type strainRate store<SymmetricTensor>;
+
+// Vorticity vector (at cell). It is twice the rotation rate vector. Rotation
+// rate vector is the axial vector of the rotation rate tensor.
+$type vorticity store<Loci::vector3d<double> >;
+
+// Magnitude of the strain rate (at cell).
+$type strainRateMagnitude store<double>;
+
+// Magnitude of the vorticity (at cell).
+$type vorticityMagnitude store<double>;
+
+// Q-criterion (at cell).
+$type Qcriterion store<double>;
 
 // =============================================================================
 // Variables related to single-species solver state.

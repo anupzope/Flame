@@ -14,18 +14,37 @@ $rule apply(totalVolume <- vol)[Loci::Summation] {
   join($totalVolume, $vol);
 }
 
-$rule unit(totalKE), constraint(geom_cells) {
-  $totalKE = 0.0;
+// =============================================================================
+
+$rule unit(totalKineticEnergy), constraint(geom_cells) {
+  $totalKineticEnergy = 0.0;
 }
 
-$rule apply(totalKE <- vol, velocity, density)[Loci::Summation] {
+$rule apply(totalKineticEnergy <- vol, velocity, density)[Loci::Summation] {
   double const cellKE = 0.5*$density*dot($velocity,$velocity)*$vol;
-  join($totalKE, cellKE);
+  join($totalKineticEnergy, cellKE);
 }
 
-$rule apply(printParameterDBIdx <- totalKE)[Loci::NullOp],
+$rule apply(printParameterDBIdx <- totalKineticEnergy)[Loci::NullOp],
 conditional(doPrint), option(disable_threading), prelude {
-  printParameterDB.add(Loci::MPI_rank, "totalKE", *$totalKE);
+  printParameterDB.add(Loci::MPI_rank, "totalKineticEnergy", *$totalKineticEnergy);
+  *$printParameterDBIdx += 1;
+};
+
+// =============================================================================
+
+$rule unit(totalEnstrophy), constraint(geom_cells) {
+  $totalEnstrophy = 0.0;
+}
+
+$rule apply(totalEnstrophy <- vol, vorticityMagnitude)[Loci::Summation] {
+  double const cellEnstropy = $vorticityMagnitude*$vorticityMagnitude*$vol;
+  join($totalEnstrophy, cellEnstropy);
+}
+
+$rule apply(printParameterDBIdx <- totalEnstrophy)[Loci::NullOp],
+conditional(doPrint), option(disable_threading), prelude {
+  printParameterDB.add(Loci::MPI_rank, "totalEnstrophy", *$totalEnstrophy);
   *$printParameterDBIdx += 1;
 };
 

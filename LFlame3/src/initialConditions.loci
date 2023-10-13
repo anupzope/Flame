@@ -1,10 +1,25 @@
 #include <flame.hh>
 #include <plot.hh>
+#include <initialConditions.hh>
 
 $include "FVM.lh"
 $include "flame.lh"
 
 #include <sstream>
+
+#include <glog/logging.h>
+
+namespace flame {
+
+// =============================================================================
+
+$rule optional(initialConditions) {
+}
+
+$rule optional(initialConditionsTGV) {
+}
+
+// =============================================================================
 
 $rule unit(gagePressure_ic), constraint(geom_cells) {
   $gagePressure_ic = 0.0;
@@ -25,115 +40,570 @@ constraint(geom_cells, multiSpecies), prelude {
   $speciesY_ic = mk_Scalar(0.0);
 }
 
+// =============================================================================
+
+$rule singleton(
+  icGagePressure, icTemperature, icVelocity
+  <-
+  initialConditions, Pambient
+), constraint(singleSpecies) {
+  LOG(INFO) << "Parsing initialConditions for single species";
+  
+  bool pSet = false;
+  double gagePressure = 0.0;
+  
+  bool tSet = false;
+  double temperature = 0.0;
+  
+  bool vSet = false;
+  Loci::vector3d<double> velocity(0.0, 0.0, 0.0);
+  
+  options_list::option_namelist li = $initialConditions.getOptionNameList();
+  
+  std::ostringstream errmsg;
+  int error = 0;
+  
+  for(auto const & optName : li) {
+    if(optName == "p") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditions, optName, "Pa", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditions::p : " << ss.str() << "]";
+        ++error;
+      } else {
+        pSet = true;
+        gagePressure = value - $Pambient;
+      }
+    } else if(optName == "T") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditions, optName, "K", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditions::T : " << ss.str() << "]";
+        ++error;
+      } else {
+        tSet = true;
+        temperature = value;
+      }
+    } else if(optName == "u" || optName == "v") {
+      std::stringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditions, optName, {"m/s", "m/s", "m/s"}, 1, 3, values, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditions::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        vSet = true;
+        switch(values.size()) {
+        case 1:
+          velocity.x = values[0];
+          velocity.y = 0.0;
+          velocity.z = 0.0;
+          break;
+        case 2:
+          velocity.x = values[0];
+          velocity.y = values[1];
+          velocity.z = 0.0;
+          break;
+        case 3:
+          velocity.x = values[0];
+          velocity.y = values[1];
+          velocity.z = values[2];
+          break;
+        }
+      }
+    } else {
+      errmsg << "[unknown option " << optName << " in initialConditions]";
+      ++error;
+    }
+  }
+  
+  if(!pSet || !tSet || !vSet) {
+    errmsg << "[initialConditions requires p, T, and v/u]";
+    ++error;
+  }
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  $icGagePressure = gagePressure;
+  $icTemperature = temperature;
+  $icVelocity = velocity;
+}
+
+// -----------------------------------------------------------------------------
+
+$rule singleton(
+  icGagePressure, icTemperature, icVelocity, icSpeciesY
+  <-
+  initialConditions, Pambient, Ns
+), constraint(multiSpecies) {
+  LOG(INFO) << "Parsing initialConditions for multi species";
+  
+  bool pSet = false;
+  double gagePressure = 0.0;
+  
+  bool tSet = false;
+  double temperature = 0.0;
+  
+  bool vSet = false;
+  Loci::vector3d<double> velocity(0.0, 0.0, 0.0);
+  
+  bool ySet = false;
+  std::vector<double> speciesY($Ns, 0.0);
+  
+  options_list::option_namelist li = $initialConditions.getOptionNameList();
+  
+  std::ostringstream errmsg;
+  int error = 0;
+  
+  for(auto const & optName : li) {
+    if(optName == "p") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditions, optName, "Pa", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditions::p : " << ss.str() << "]";
+        ++error;
+      } {
+        pSet = true;
+        gagePressure = value;
+      }
+    } else if(optName == "T") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditions, optName, "K", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditions::T : " << ss.str() << "]";
+        ++error;
+      } else {
+        tSet = true;
+        temperature = value;
+      }
+    } else if(optName == "u" || optName == "v") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditions, optName, {"m/s", "m/s", "m/s"}, 1, 3, values, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditions::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        vSet = true;
+        switch(values.size()) {
+        case 1:
+          velocity.x = values[0];
+          velocity.y = 0.0;
+          velocity.z = 0.0;
+          break;
+        case 2:
+          velocity.x = values[0];
+          velocity.y = values[1];
+          velocity.z = 0.0;
+          break;
+        case 3:
+          velocity.x = values[0];
+          velocity.y = values[1];
+          velocity.z = values[2];
+          break;
+        }
+      }
+    } else if(optName == "Y") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditions, optName, {}, $Ns, $Ns, values, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditions::Y : " << ss.str() << "]";
+        ++error;
+      } else {
+        double sumY = 0.0;
+        for(int i = 0; i < $Ns; ++i) {
+          sumY += values[i];
+        }
+        
+        if(std::fabs(sumY-1.0) > 1e-16) {
+          errmsg << "[sum of the elements of initialConditions::Y must be 1.0]";
+          ++error;
+        }
+        
+        ySet = true;
+        for(int i = 0; i < $Ns; ++i) {
+          speciesY[i] = values[i];
+        }
+      }
+    } else {
+      errmsg << "[unknown option " << optName << " in initialConditions]";
+      ++error;
+    }
+  }
+  
+  if(!pSet || !tSet || !vSet || !ySet) {
+    errmsg << "[Need p, T, v/u, and Y in initialConditions]";
+    ++error;
+  }
+  
+  if(error) {
+    LOG(ERROR) << "Error/s parsing initialConditions: " << errmsg.str();
+    Loci::Abort();
+  }
+  
+  $icGagePressure = gagePressure;
+  $icTemperature = temperature;
+  $icVelocity = velocity;
+  $icSpeciesY = speciesY;
+}
+
+// -----------------------------------------------------------------------------
+
+$rule apply(gagePressure_ic <- icGagePressure)[Loci::Summation] {
+  join($gagePressure_ic, $icGagePressure);
+}
+
+$rule apply(velocity_ic <- icVelocity)[Loci::Summation] {
+  join($velocity_ic, $icVelocity);
+}
+
+$rule apply(temperature_ic <- icTemperature)[Loci::Summation] {
+  join($temperature_ic, $icTemperature);
+}
+
+$rule apply(speciesY_ic <- icSpeciesY, Ns)[Loci::Summation] {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesY_ic[i] += $icSpeciesY[i];
+  }
+}
+
+// =============================================================================
+
 $type gagePressure_TGV_ic store<double>;
 $type velocity_TGV_ic store<Loci::vector3d<double> >;
 $type temperature_TGV_ic store<double>;
 $type speciesY_TGV_ic storeVec<double>;
 
+$rule singleton(tgvICParameters <- initialConditionsTGV) {
+  LOG(INFO) << "Parsing initialConditionsTGV";
+  
+  bool XrefSet = false;
+  Loci::vector3d<double> Xref;
+  
+  bool LrefSet = false;
+  Loci::vector3d<double> Lref;
+  
+  bool KrefSet = false;
+  Loci::vector3d<double> Kref;
+  
+  bool PrefSet = false;
+  double Pref;
+  
+  bool TrefSet = false;
+  double Tref;
+  
+  bool rhorefSet = false;
+  double rhoref;
+  
+  bool UrefSet;
+  double Uref;
+  
+  std::ostringstream errmsg;
+  int error = 0;
+  
+  options_list::option_namelist li = $initialConditionsTGV.getOptionNameList();
+  for(auto const & optName : li) {
+    if(optName == "X") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditionsTGV, optName, {"m", "m", "m"}, 1, 3, values, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        XrefSet = true;
+        switch(values.size()) {
+        case 1:
+          Xref.x = values[0];
+          Xref.y = 0.0;
+          Xref.z = 0.0;
+          break;
+        case 2:
+          Xref.x = values[0];
+          Xref.y = values[1];
+          Xref.z = 0.0;
+          break;
+        case 3:
+          Xref.x = values[0];
+          Xref.y = values[1];
+          Xref.z = values[2];
+          break;
+        }
+      }
+    } else if(optName == "L") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditionsTGV, optName, {"m", "m", "m"}, 1, 3, values, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        LrefSet = true;
+        switch(values.size()) {
+        case 1:
+          Lref.x = values[0];
+          Lref.y = 1.0;
+          Lref.z = 1.0;
+          break;
+        case 2:
+          Lref.x = values[0];
+          Lref.y = values[1];
+          Lref.z = 1.0;
+          break;
+        case 3:
+          Lref.x = values[0];
+          Lref.y = values[1];
+          Lref.z = values[2];
+          break;
+        }
+      }
+    } else if(optName == "K") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditionsTGV, optName, {"", "", ""}, 1, 3, values, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::K : " << ss.str() << "]";
+        ++error;
+      } else {
+        KrefSet = true;
+        switch(values.size()) {
+        case 1:
+          Kref.x = values[0];
+          Kref.y = 1.0;
+          Kref.z = 1.0;
+          break;
+        case 2:
+          Kref.x = values[0];
+          Kref.y = values[1];
+          Kref.z = 1.0;
+          break;
+        case 3:
+          Kref.x = values[0];
+          Kref.y = values[1];
+          Kref.z = values[2];
+          break;
+        }
+      }
+    } else if(optName == "p") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsTGV, optName, "Pa", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        PrefSet = true;
+        Pref = value;
+      }
+    } else if(optName == "T") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsTGV, optName, "K", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        TrefSet = true;
+        Tref = value;
+      }
+    } else if(optName == "rho") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsTGV, optName, "kg/m/m/m", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        rhorefSet = true;
+        rhoref = value;
+      }
+    } else if(optName == "u" || optName == "v") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsTGV, optName, "m/s", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        UrefSet = true;
+        Uref = value;
+      }
+    } else {
+      errmsg << "[unknown option initialConditionsTGV::" << optName << "]";
+      ++error;
+    }
+  }
+  
+  if(!XrefSet || !LrefSet || !KrefSet || !PrefSet || !rhorefSet || !UrefSet) {
+    errmsg << "[initialConditionsTGV requires X, L, K, p, rho, and u/v]";
+    ++error;
+  }
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  } else {
+    $tgvICParameters.Xref = Xref;
+    $tgvICParameters.Lref = Lref;
+    $tgvICParameters.Kref = Kref;
+    $tgvICParameters.Pref = Pref;
+    $tgvICParameters.rhoref = rhoref;
+    $tgvICParameters.Uref = Uref;
+  }
+}
+
 $rule pointwise(
   gagePressure_TGV_ic, velocity_TGV_ic, temperature_TGV_ic
   <-
-  speciesR, Pambient, cellcenter
-), constraint(geom_cells, singleSpecies) {
+  speciesR, Pambient, cellcenter, tgvICParameters
+), constraint(geom_cells, idealGas, singleSpecies) {
   double const x = $cellcenter.x;
   double const y = $cellcenter.y;
   double const z = $cellcenter.z;
   
-  double const x0 = 0.0;
-  double const y0 = 0.0;
-  double const z0 = 0.0;
+  double const x0 = $tgvICParameters.Xref.x;
+  double const y0 = $tgvICParameters.Xref.y;
+  double const z0 = $tgvICParameters.Xref.z;
   
-  double const Lx = 0.5;
-  double const Ly = 0.5;
-  double const Lz = 0.5;
+  double const Lx = $tgvICParameters.Lref.x;
+  double const Ly = $tgvICParameters.Lref.y;
+  double const Lz = $tgvICParameters.Lref.z;
   
-  //double const K = (std::atan(1.0)*4.0);
-  double const K = 1.0;
+  double const Kx = $tgvICParameters.Kref.x;
+  double const Ky = $tgvICParameters.Kref.y;
+  double const Kz = $tgvICParameters.Kref.z;
   
-  double const U0 = 1.0;
+  double const P0 = $tgvICParameters.Pref;
+  double const T0 = $tgvICParameters.Tref;
+  double const rho0 = $tgvICParameters.rhoref;
+  double const U0 = $tgvICParameters.Uref;
+  
   double const U02 = U0*U0;
   
-  double const P0 = $Pambient + 100.0;
+  double const P = P0 + 0.0625*rho0*U02*(
+    std::cos(2.0*Kx*(x-x0)/Lx) + std::cos(2.0*Ky*(y-y0)/Ly)
+  )*(2.0 + std::cos(2.0*Kz*(z-z0)/Lz));
   
-  double const rho0 = 1.0;
-  
-  double const T0 = P0/($speciesR[0]*rho0);
-  
-  $gagePressure_TGV_ic = P0 + 0.0625*rho0*U02*(
-    std::cos(2.0*K*(x-x0)/Lx) + std::cos(2.0*K*(y-y0)/Ly)
-  )*(2.0 + std::cos(2.0*K*(z-z0)/Lz)) - $Pambient;
+  $gagePressure_TGV_ic = P - $Pambient;
   
   $velocity_TGV_ic = Loci::vector3d<double>(
-     U0*std::sin(K*(x-x0)/Lx)*std::cos(K*(y-y0)/Ly)*std::cos(K*(z-z0)/Lz),
-    -U0*std::cos(K*(x-x0)/Lx)*std::sin(K*(y-y0)/Ly)*std::cos(K*(z-z0)/Lz),
+     U0*std::sin(Kx*(x-x0)/Lx)*std::cos(Ky*(y-y0)/Ly)*std::cos(Kz*(z-z0)/Lz),
+    -U0*std::cos(Kx*(x-x0)/Lx)*std::sin(Ky*(y-y0)/Ly)*std::cos(Kz*(z-z0)/Lz),
     0.0
   );
   
-  $temperature_TGV_ic = T0;
+  $temperature_TGV_ic = P/($speciesR[0]*rho0);
 }
 
 $rule pointwise(
   gagePressure_TGV_ic, velocity_TGV_ic, temperature_TGV_ic, speciesY_TGV_ic
   <-
-  Pambient, speciesR, speciesW, Runiv, cellcenter, Ns
-), constraint(geom_cells, multiSpecies), prelude {
+  speciesR, Pambient, cellcenter, tgvICParameters, Ns
+), constraint(geom_cells, idealGas, multiSpecies), prelude {
   $speciesY_TGV_ic.setVecSize(*$Ns);
 } {
   double const x = $cellcenter.x;
   double const y = $cellcenter.y;
   double const z = $cellcenter.z;
   
-  double const x0 = 0.0;
-  double const y0 = 0.0;
-  double const z0 = 0.0;
+  double const x0 = $tgvICParameters.Xref.x;
+  double const y0 = $tgvICParameters.Xref.y;
+  double const z0 = $tgvICParameters.Xref.z;
   
-  double const Lx = 1.0;
-  double const Ly = 1.0;
-  double const Lz = 1.0;
+  double const Lx = $tgvICParameters.Lref.x;
+  double const Ly = $tgvICParameters.Lref.y;
+  double const Lz = $tgvICParameters.Lref.z;
   
-  //double const K = (std::atan(1.0)*4.0);
-  double const K = 1.0;
+  double const Kx = $tgvICParameters.Kref.x;
+  double const Ky = $tgvICParameters.Kref.y;
+  double const Kz = $tgvICParameters.Kref.z;
   
-  double const U0 = 1.0;
+  double const P0 = $tgvICParameters.Pref;
+  double const T0 = $tgvICParameters.Tref;
+  double const rho0 = $tgvICParameters.rhoref;
+  double const U0 = $tgvICParameters.Uref;
+  
+  double const dy = $tgvICParameters.Lref.y/$Ns;
+  
+  int const yi = ((int)(abs($cellcenter.y/dy)))%$Ns;
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesY_TGV_ic[i] = 0.0;
+  }
+  $speciesY_TGV_ic[yi] = 1.0;
+  
   double const U02 = U0*U0;
   
-  double const P0 = $Pambient + 100.0;
+  double const P = P0 + 0.0625*rho0*U02*(
+    std::cos(2.0*Kx*(x-x0)/Lx) + std::cos(2.0*Ky*(y-y0)/Ly)
+  )*(2.0 + std::cos(2.0*Kz*(z-z0)/Lz));
   
-  double const rho0 = 1.0;
-  
-  if($cellcenter.y > 0.5 || $cellcenter.y < -0.5) {
-    for(int i = 0; i < $Ns; ++i) {
-      $speciesY_TGV_ic[i] = 0.0;
-    }
-    $speciesY_TGV_ic[0] = 1.0;
-  } else {
-    for(int i = 0; i < $Ns; ++i) {
-      $speciesY_TGV_ic[i] = 0.0;
-    }
-    $speciesY_TGV_ic[1] = 1.0;
-  }
-  
-  double mixtureW = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    mixtureW += $speciesY_TGV_ic[i]/$speciesW[i];
-  }
-  mixtureW = 1.0/mixtureW;
-  
-  double const mixtureR = $Runiv/mixtureW;
-  
-  double const T0 = P0/(mixtureR*rho0);
-  
-  $gagePressure_TGV_ic = P0 + 0.0625*rho0*U02*(
-    std::cos(2.0*K*(x-x0)/Lx) + std::cos(2.0*K*(y-y0)/Ly)
-  )*(2.0 + std::cos(2.0*K*(z-z0)/Lz)) - $Pambient;
+  $gagePressure_TGV_ic = P - $Pambient;
   
   $velocity_TGV_ic = Loci::vector3d<double>(
-     U0*std::sin(K*(x-x0)/Lx)*std::cos(K*(y-y0)/Ly)*std::cos(K*(z-z0)/Lz),
-    -U0*std::cos(K*(x-x0)/Lx)*std::sin(K*(y-y0)/Ly)*std::cos(K*(z-z0)/Lz),
+     U0*std::sin(Kx*(x-x0)/Lx)*std::cos(Ky*(y-y0)/Ly)*std::cos(Kz*(z-z0)/Lz),
+    -U0*std::cos(Kx*(x-x0)/Lx)*std::sin(Ky*(y-y0)/Ly)*std::cos(Kz*(z-z0)/Lz),
     0.0
   );
   
-  $temperature_TGV_ic = T0;
+  $temperature_TGV_ic = P/($speciesR[yi]*rho0);
 }
 
 // =============================================================================
@@ -229,3 +699,5 @@ $rule singleton(timeStep_ic), constraint(UNIVERSE) {
 $rule singleton(stime_ic), constraint(UNIVERSE) {
   $stime_ic = 0;
 }
+
+} // end: namespace flame

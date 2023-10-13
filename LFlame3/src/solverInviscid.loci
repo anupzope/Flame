@@ -4,6 +4,7 @@ $include "flame.lh"
 #include <Loci.h>
 
 #include <flux.hh>
+#include <flame.hh>
 
 namespace flame {
 
@@ -60,6 +61,53 @@ $rule pointwise(
     Yr, Ur, Pgr, Tr, Rtilder, Cpr,
     $area.sada, $area.n, $Pambient,
     1.0
+  );
+}
+
+// =============================================================================
+
+$rule pointwise(strainRate, vorticity <- gradv3d(velocity)) {
+  double const & dudx = $gradv3d(velocity).x.x;
+  double const & dudy = $gradv3d(velocity).x.y;
+  double const & dudz = $gradv3d(velocity).x.z;
+  double const & dvdx = $gradv3d(velocity).y.x;
+  double const & dvdy = $gradv3d(velocity).y.y;
+  double const & dvdz = $gradv3d(velocity).y.z;
+  double const & dwdx = $gradv3d(velocity).z.x;
+  double const & dwdy = $gradv3d(velocity).z.y;
+  double const & dwdz = $gradv3d(velocity).z.z;
+  
+  $strainRate.xx = dudx;
+  $strainRate.xy = 0.5*(dudy+dvdx);
+  $strainRate.xz = 0.5*(dudz+dwdx);
+  $strainRate.yy = dvdy;
+  $strainRate.yz = 0.5*(dvdz+dwdy);
+  $strainRate.zz = dwdz;
+  
+  $vorticity.x = dwdy-dvdz;
+  $vorticity.y = dudz-dwdx;
+  $vorticity.z = dvdx-dudy;
+}
+
+$rule pointwise(
+  strainRateMagnitude, vorticityMagnitude <- strainRate, vorticity
+) {
+  $strainRateMagnitude = sqrt(
+    $strainRate.xx*$strainRate.xx +
+    2.0*$strainRate.xy*$strainRate.xy +
+    2.0*$strainRate.xz*$strainRate.xz +
+    $strainRate.yy*$strainRate.yy +
+    2.0*$strainRate.yz*$strainRate.yz +
+    $strainRate.zz*$strainRate.zz
+  );
+  
+  $vorticityMagnitude = norm($vorticity);
+}
+
+$rule pointwise(Qcriterion <- strainRateMagnitude, vorticityMagnitude) {
+  $Qcriterion = 0.25*(
+    $vorticityMagnitude*$vorticityMagnitude -
+    2.0*$strainRateMagnitude*$strainRateMagnitude
   );
 }
 

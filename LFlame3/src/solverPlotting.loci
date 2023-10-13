@@ -47,7 +47,7 @@ prelude {
   if(Loci::MPI_rank == 0) {
     std::ostringstream ss;
     ss << "output/" << $printSettings->filename;
-    printParameterFile.file = new std::ofstream(ss.str().c_str());
+    printParameterFile.file = new std::ofstream(ss.str().c_str(), std::ios_base::app);
     printParameterFile.file->precision(15);
     *$createPrintParameterFile = 1;
   } else {
@@ -61,11 +61,11 @@ conditional(doPrint) {
   $printParameterDBIdx = 0;
 }
 
-$rule pointwise(OUTPUT <- timeStep, printParameterDBIdx, createPrintParameterFile),
+$rule pointwise(OUTPUT <- timeStep, stime, printParameterDBIdx, createPrintParameterFile),
 conditional(doPrint),
 option(disable_threading), prelude {
   if(Loci::MPI_rank == 0) {
-    printParameterDB.print(*$timeStep, *printParameterFile.file);
+    printParameterDB.print(*$timeStep, *$stime, *printParameterFile.file);
   }
 };
 
@@ -216,7 +216,11 @@ $rule singleton(
 OUTPUT_PARAM("Pambient", Pambient);
 OUTPUT_SCALAR("cell2node(gagePressure)", pg);
 OUTPUT_SCALAR("cell2node(temperature)", t);
+OUTPUT_SCALAR("cell2node(density)", r);
 OUTPUT_VECTOR("cell2node_v3d(velocity)", v);
+
+OUTPUT_SCALAR("cell2node(viscosity)", mu);
+OUTPUT_SCALAR("cell2node(conductivity)", k);
 
 OUTPUT_SCALAR("cell2node(cfl)", cfl);
 
@@ -225,6 +229,10 @@ OUTPUT_BOUNDARY_SCALAR("temperature_f", bt, "ci");
 OUTPUT_BOUNDARY_VECTOR("velocity_f", bv, "ci");
 
 OUTPUT_VEC_COMPONENTS("cell2node_v(speciesY)", Y, "speciesNames", "multiSpecies");
+
+OUTPUT_VECTOR("cell2node_v3d(vorticity)", vorticity);
+OUTPUT_SCALAR("cell2node(strainRateMagnitude)", strainRateMagnitude);
+OUTPUT_SCALAR("cell2node(Qcriterion)", Q);
 
 // =============================================================================
 // TODO:
