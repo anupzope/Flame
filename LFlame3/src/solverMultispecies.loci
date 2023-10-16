@@ -16,7 +16,12 @@ $rule default(species) {
   $species = options_list("");
 }
 
-$rule singleton(Ns, speciesNames, speciesProperties <- species),
+$rule singleton(Ns <- species), option(disable_threading), constraint(UNIVERSE) {
+  options_list::option_namelist li = $species.getOptionNameList();
+  $Ns = li.size();
+}
+
+$rule singleton(speciesNames, speciesProperties <- species, Ns),
 option(disable_threading), constraint(UNIVERSE) {
   options_list const & ol = $species;
   options_list::option_namelist li = ol.getOptionNameList();
@@ -239,7 +244,11 @@ option(disable_threading), constraint(UNIVERSE) {
     Loci::Abort();
   }
   
-  $Ns = nSpecies;
+  if($Ns != nSpecies) {
+    LOG(ERROR) << "Parsed species mismatch";
+    Loci::Abort();
+  }
+  
   $speciesNames = names;
   $speciesProperties = props;
   
