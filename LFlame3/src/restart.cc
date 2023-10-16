@@ -39,11 +39,11 @@ int RestartSettings::fromOptionsList(options_list const & ol, std::string & err)
             if(intVal > 0) {
               freq.push_back(intVal);
             } else {
-              errmsg << "[" << optName << " must have a positive value/s]";
+              errmsg << "[elements of " << optName << " must be positive value/s]";
               ++error;
             }
           } else {
-            errmsg << "[" << optName << " must be a REAL]";
+            errmsg << "[elements of " << optName << " must be of type REAL]";
             ++error;
           }
         }
@@ -58,7 +58,7 @@ int RestartSettings::fromOptionsList(options_list const & ol, std::string & err)
           ++error;
         }
       } else {
-        errmsg << "[" << optName << " must be a LIST or REAL]";
+        errmsg << "[" << optName << " must be of type REAL or LIST]";
         ++error;
       }
     } else if(optName == "counts") {
@@ -79,7 +79,7 @@ int RestartSettings::fromOptionsList(options_list const & ol, std::string & err)
               ++error;
             }
           } else {
-            errmsg << "[" << optName << " must be a REAL]";
+            errmsg << "[" << optName << " must be of type REAL]";
             ++error;
           }
         }
@@ -94,7 +94,7 @@ int RestartSettings::fromOptionsList(options_list const & ol, std::string & err)
           ++error;
         }
       } else {
-        errmsg << "[" << optName << " must be a LIST or REAL]";
+        errmsg << "[" << optName << " must be of type REAL or LIST]";
         ++error;
       }
     } else {
@@ -103,7 +103,7 @@ int RestartSettings::fromOptionsList(options_list const & ol, std::string & err)
     }
   }
   
-  if(frequencies.size() != counts.size()) {
+  if(freq.size() != cnts.size()) {
     errmsg << "[freqeuncies and counts must have the same number of elements]";
     ++error;
   }

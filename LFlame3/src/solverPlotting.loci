@@ -115,9 +115,8 @@ $rule singleton(plotSettings <- plotOptions), option(disable_threading) {
 // Output grid position and topoogy.
 // =============================================================================
 
-//lastRK{n,rk}
 $rule singleton(doPlotGridPos{n,rk}<-timeStep{n,rk},$n{n},$rk{n,rk}) {
-  $doPlotGridPos{n,rk} = ($$n{n} == 0) && $$rk{n,rk} == 0; //$lastRK{n,rk} ;
+  $doPlotGridPos{n,rk} = ($$n{n} == 0) && $$rk{n,rk} == 0;
 }
 
 $rule pointwise(OUTPUT <- caseName, plotPostfix, pos),

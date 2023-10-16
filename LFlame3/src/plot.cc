@@ -68,59 +68,78 @@ void PrintSettings::fromString(std::string const & str) {
 
 int PrintSettings::fromOptionsList(options_list const & ol, std::string & err) {
   int error = 0;
-  std::vector<std::string> parameters;
-  int frequency;
-  std::string filename;
   
-  options_list::option_namelist nl = ol.getOptionNameList();
-  options_list::option_namelist::iterator iter = nl.begin();
+  std::ostringstream errmsg;
   
-  while(iter != nl.end()) {
-    std::string optionName = *iter;
-    if(optionName == "parameters") {
-      if(ol.getOptionValueType("parameters") == Loci::STRING) {
+  std::vector<std::string> params;
+  int freq;
+  std::string fname;
+  
+  options_list::option_namelist li = ol.getOptionNameList();
+  
+  for(auto const & optName : li) {
+    if(optName == "parameters") {
+      Loci::option_value_type type = ol.getOptionValueType(optName);
+      if(type == Loci::LIST) {
+        options_list::arg_list args;
+        ol.getOption(optName, args);
+        int const sz = args.size();
+        for(int i = 0; i < sz; ++i) {
+          if(args[i].type_of() == Loci::STRING || args[i].type_of() == Loci::NAME) {
+            std::string value;
+            args[i].get_value(value);
+            params.push_back(value);
+          } else {
+            errmsg << "[elements of " << optName << " must be of type STRING or NAME]";
+            ++error;
+          }
+        }
+      } else if(type == Loci::STRING || type == Loci::NAME) {
         std::string vars, var;
-        ol.getOption("parameters", vars);
+        ol.getOption(optName, vars);
         for(std::string::iterator i = vars.begin(); i != vars.end(); ++i) {
           if(*i == ',') {
-            if(var.size() > 0) parameters.push_back(var);
+            if(var.size() > 0) params.push_back(var);
             var.clear();
           } else if(!std::isspace(*i)) {
             var.push_back(*i);
           }
         }
-        if(var.size() > 0) parameters.push_back(var);
+        if(var.size() > 0) params.push_back(var);
       } else {
-        err += "[Expected STRING type for parameters option]";
+        errmsg << "[" << optName << " must be of type NAME or STRING or LIST]";
         ++error;
       }
-    } else if(optionName == "frequency") {
-      if(ol.getOptionValueType("frequency") == Loci::REAL) {
+    } else if(optName == "frequency") {
+      Loci::option_value_type type = ol.getOptionValueType(optName);
+      if(type == Loci::REAL) {
         double value;
-        ol.getOption("frequency", value);
-        frequency = (int)value;
+        ol.getOption(optName, value);
+        freq = (int)value;
       } else {
-        err += "[Expected REAL type for frequency option]";
+        errmsg << "[" << optName << " must be of type REAL]";
         ++error;
       }
-    } else if(optionName == "filename") {
-      if(ol.getOptionValueType("filename") == Loci::STRING) {
-        ol.getOption("filename", filename);
+    } else if(optName == "filename") {
+      Loci::option_value_type type = ol.getOptionValueType(optName);
+      if(type == Loci::STRING) {
+        ol.getOption(optName, fname);
       } else {
-        err += "[Expected STRING type for filename option]";
+        errmsg << "[" << optName << " must be of type STRING]";
         ++error;
       }
     } else {
-      err += "[Unknown option in \"printOptions\": " + optionName + "]";
+      errmsg << "[unknown option " + optName + "]";
       ++error;
     }
-    ++iter;
   }
   
-  if(!error) {
-    this->parameters = parameters;
-    this->frequency = frequency;
-    this->filename = filename;
+  if(error) {
+    err = errmsg.str();
+  } else {
+    parameters = params;
+    frequency = freq;
+    filename = fname;
   }
   
   return error;
@@ -172,103 +191,171 @@ void PlotSettings::fromString(std::string const & str) {
 
 int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
   int error = 0;
-  std::vector<int> frequencies;
-  std::vector<int> counts;
-  std::vector<std::string> nodalVariables;
   
-  options_list::option_namelist nl = ol.getOptionNameList();
-  options_list::option_namelist::iterator iter = nl.begin();
+  std::ostringstream errmsg;
   
-  while(iter != nl.end()) {
-    std::string optionName = *iter;
-    if(optionName == "nodalVariables") {
-      if(ol.getOptionValueType("nodalVariables") == Loci::STRING) {
+  std::vector<int> freq;
+  std::vector<int> cnts;
+  std::vector<std::string> nvars;
+  std::vector<std::string> bvars;
+  
+  options_list::option_namelist li = ol.getOptionNameList();
+  
+  for(auto const & optName : li) {
+    if(optName == "nodalVariables") {
+      Loci::option_value_type type = ol.getOptionValueType(optName);
+      if(type == Loci::LIST) {
+        options_list::arg_list args;
+        ol.getOption(optName, args);
+        int const sz = args.size();
+        for(int i = 0; i < sz; ++i) {
+          if(args[i].type_of() == Loci::STRING || args[i].type_of() == Loci::NAME) {
+            std::string value;
+            args[i].get_value(value);
+            nvars.push_back(value);
+          } else {
+            errmsg << "[elements of " << optName << " must be of type STRING or NAME]";
+            ++error;
+          }
+        }
+      } else if(type == Loci::STRING || type == Loci::NAME) {
         std::string vars, var;
-        ol.getOption("nodalVariables", vars);
+        ol.getOption(optName, vars);
         for(std::string::iterator i = vars.begin(); i != vars.end(); ++i) {
           if(*i == ',') {
-            if(var.size() > 0) nodalVariables.push_back(var);
+            if(var.size() > 0) nvars.push_back(var);
             var.clear();
           } else if(!std::isspace(*i)) {
             var.push_back(*i);
           }
         }
-        if(var.size() > 0) nodalVariables.push_back(var);
+        if(var.size() > 0) nvars.push_back(var);
       } else {
-        err += "[Expected STRING type for nodalVariables option.]";
+        errmsg << "[" << optName << " must be of type STRING or NAME or LIST]";
         ++error;
       }
-    } else if(optionName == "boundaryVariables") {
-      if(ol.getOptionValueType("boundaryVariables") == Loci::STRING) {
+    } else if(optName == "boundaryVariables") {
+      Loci::option_value_type type = ol.getOptionValueType(optName);
+      if(type == Loci::LIST) {
+        options_list::arg_list args;
+        ol.getOption(optName, args);
+        int const sz = args.size();
+        for(int i = 0; i < sz; ++i) {
+          if(args[i].type_of() == Loci::STRING || args[i].type_of() == Loci::NAME) {
+            std::string value;
+            args[i].get_value(value);
+            bvars.push_back(value);
+          } else {
+            errmsg << "[elements of " << optName << " must be of type STRING or NAME]";
+            ++error;
+          }
+        }
+      } else if(type == Loci::STRING || type == Loci::NAME) {
         std::string vars, var;
-        ol.getOption("boundaryVariables", vars);
+        ol.getOption(optName, vars);
         for(std::string::iterator i = vars.begin(); i != vars.end(); ++i) {
           if(*i == ',') {
-            if(var.size() > 0) boundaryVariables.push_back(var);
+            if(var.size() > 0) bvars.push_back(var);
             var.clear();
           } else if(!std::isspace(*i)) {
             var.push_back(*i);
           }
         }
-        if(var.size() > 0) boundaryVariables.push_back(var);
+        if(var.size() > 0) bvars.push_back(var);
       } else {
-        err += "[Expected STRING type for boundaryVariables option.]";
+        errmsg << "[" << optName << " must be of type STRING or NAME or LIST]";
         ++error;
       }
-    } else if(optionName == "frequencies") {
-      if(ol.getOptionValueType("frequencies") == Loci::LIST) {
-        options_list::arg_list valueList;
-        ol.getOption("frequencies", valueList);
-        int size = valueList.size();
+    } else if(optName == "frequencies") {
+      Loci::option_value_type type = ol.getOptionValueType(optName);
+      if(type == Loci::LIST) {
+        options_list::arg_list args;
+        ol.getOption(optName, args);
+        int size = args.size();
         for(int i = 0; i < size; ++i) {
-          if(valueList[i].type_of() == Loci::REAL) {
+          if(args[i].type_of() == Loci::REAL) {
             double value;
-            valueList[i].get_value(value);
-            frequencies.push_back((int)value);
+            args[i].get_value(value);
+            int intVal = (int)value;
+            if(intVal > 0) {
+              freq.push_back((int)value);
+            } else {
+              errmsg << "[elements of " << optName << " must be positive value/s]";
+              ++error;
+            }
           } else {
-            err += "[Expected REAL type for items in frequencies option]";
+            errmsg << "[elements of " << optName << " must be of type REAL]";
             ++error;
           }
         }
+      } else if(type == Loci::REAL) {
+        double value;
+        ol.getOption(optName, value);
+        int intVal = (int)value;
+        if(intVal > 0) {
+          freq.push_back(intVal);
+        } else {
+          errmsg << "[" << optName << " must have a positive value]";
+          ++error;
+        }
       } else {
-        err += "[Expected LIST type for frequencies option]";
+        errmsg << "[" << optName << " must be of type REAL or LIST]";
         ++error;
       }
-    } else if(optionName == "counts") {
-      if(ol.getOptionValueType("counts") == Loci::LIST) {
-        options_list::arg_list valueList;
-        ol.getOption("counts", valueList);
-        int size = valueList.size();
+    } else if(optName == "counts") {
+      Loci::option_value_type type = ol.getOptionValueType(optName);
+      if(type == Loci::LIST) {
+        options_list::arg_list args;
+        ol.getOption(optName, args);
+        int size = args.size();
         for(int i = 0; i < size; ++i) {
-          if(valueList[i].type_of() == Loci::REAL) {
+          if(args[i].type_of() == Loci::REAL) {
             double value;
-            valueList[i].get_value(value);
-            counts.push_back((int)value);
+            args[i].get_value(value);
+            int intVal = (int)value;
+            if(intVal > 0) {
+              cnts.push_back(intVal);
+            } else {
+              errmsg << "[elements of " << optName << " must be positive value/s]";
+              ++error;
+            }
           } else {
-            err += "[Expected REAL type for items in counts option]";
+            errmsg << "[" << optName << " must be of type REAL]";
             ++error;
           }
         }
+      } else if(type == Loci::REAL) {
+        double value;
+        ol.getOption(optName, value);
+        int intVal = (int)value;
+        if(intVal > 0) {
+          cnts.push_back(intVal);
+        } else {
+          errmsg << "[" << optName << " must have a positive value]";
+          ++error;
+        }
       } else {
-        err += "[Expected LIST type for counts option]";
+        errmsg << "[" << optName << " must be of type REAL or LIST]";
         ++error;
       }
     } else {
-      err += "[Unknown option in \"plotOptions\": " + optionName + "]";
+      errmsg << "[unknown option " + optName + "]";
       ++error;
     }
-    ++iter;
   }
   
-  if(frequencies.size() != counts.size()) {
-    err += "[frequencies and counts LISTs in plotOptions should have the same number of items]";
+  if(freq.size() != cnts.size()) {
+    errmsg << "[frequencies and counts must have the same number of elements]";
     ++error;
   }
   
-  if(!error) {
-    this->frequencies = frequencies;
-    this->counts = counts;
-    this->nodalVariables = nodalVariables;
+  if(error) {
+    err = errmsg.str();
+  } else {
+    frequencies = freq;
+    counts = cnts;
+    nodalVariables = nvars;
+    boundaryVariables = bvars;
   }
   
   return error;
