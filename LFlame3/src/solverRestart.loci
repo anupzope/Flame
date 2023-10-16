@@ -1,0 +1,159 @@
+#include <flame.hh>
+#include <restart.hh>
+
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <glog/logging.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+namespace flame {
+
+$rule default(restartOptions) {
+  $restartOptions = options_list("frequencies:counts");
+}
+
+$rule singleton(restartSettings <- restartOptions) {
+  std::string errmsg;
+  int error = $restartSettings.fromOptionsList($restartOptions, errmsg);
+  
+  if(error) {
+    $[Once] {
+      LOG(ERROR) << "Error parsing restartOptions: " << errmsg;
+    }
+    Loci::Abort();
+  } else {
+    $[Once] {
+      LOG(INFO) << "Restart Settings: " << $restartSettings;
+    }
+  }
+}
+
+$rule singleton(
+  doRestart{n,rk}, restartPostfix{n,rk}
+  <-
+  timeStep{n}, restartSettings, $rk{n,rk}
+), constraint(timeIntegrationRK) {
+  $doRestart{n,rk} = false;
+  $restartPostfix{n,rk} = "none";
+  
+  int const nLevels = $restartSettings.counts.size();
+  int const n = $timeStep{n};
+  
+  for(int i = 0; i < nLevels; ++i) {
+    int const f = $restartSettings.frequencies[i];
+    int const c = $restartSettings.counts[i];
+    
+    if(f > 0 && $$rk{n,rk} == 0) {
+      if(n%f == 0) {
+        $doRestart{n,rk} = true;
+        if(i == nLevels - 1) {
+          std::ostringstream ss;
+          ss << (n%(f*c));
+          $restartPostfix{n,rk} = ss.str();
+        } else {
+          std::ostringstream ss;
+          ss << (n%(f*c)) << "L" << i;
+          $restartPostfix{n,rk} = ss.str();
+        }
+      }
+    }
+  }
+}
+
+$rule singleton(restartDirectory <- doRestart, restartPostfix),
+conditional(doRestart) {
+  $restartDirectory = "restart/" + $restartPostfix + "/";
+  if($doRestart) {
+    $[Once] {
+      struct stat statbuf;
+      
+      int fid = open("restart", O_RDONLY);
+      if(fid < 0) {
+        mkdir("restart", 0755);
+      } else {
+        fstat(fid, &statbuf);
+        if(!S_ISDIR(statbuf.st_mode)) {
+          LOG(ERROR) << "file 'restart' must be a directory, rename 'restart' and start again";
+          $restartDirectory = "";
+        }
+        close(fid);
+      }
+      
+      fid = open($restartDirectory.c_str(), O_RDONLY);
+      if(fid < 0) {
+        mkdir($restartDirectory.c_str(), 0755);
+      } else {
+        fstat(fid, &statbuf);
+        if(!S_ISDIR(statbuf.st_mode)) {
+          LOG(ERROR) << "file '" << $restartDirectory
+            << "' must be a directory, rename '" << $restartDirectory
+            << "' and start again";
+          $restartDirectory = "";
+        }
+        close(fid);
+      }
+    }
+  }
+}
+
+$rule pointwise(
+  OUTPUT
+  <-
+  timeStep, stime, Pambient, gagePressure, velocity,
+  temperature, restartDirectory, caseName, $n
+), conditional(doRestart),
+constraint(geom_cells, timeIntegrationRK, singleSpecies), prelude {
+  if(*$timeStep != 0 && *$$n != 0) {
+    hid_t fileId = 0;
+    std::string filename = *$restartDirectory + "flowVars_" + *$caseName;
+    
+    $[Once] {
+      LOG(INFO) << "writing flow restart variables at iteration "
+        << *$timeStep << " to file '" << filename << "'";
+    }
+    
+    fileId = Loci::hdf5CreateFile(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    Loci::writeContainer(fileId, "timeStep", $timeStep.Rep());
+    Loci::writeContainer(fileId, "stime", $stime.Rep());
+    Loci::writeContainer(fileId, "Pambient", $Pambient.Rep());
+    Loci::writeContainer(fileId, "gagePressure", $gagePressure.Rep());
+    Loci::writeContainer(fileId, "velocity", $velocity.Rep());
+    Loci::writeContainer(fileId, "temperature", $temperature.Rep());
+    Loci::hdf5CloseFile(fileId);
+  }
+};
+
+$rule pointwise(
+  OUTPUT
+  <-
+  timeStep, stime, Pambient, gagePressure, velocity,
+  temperature, speciesY, restartDirectory, caseName, $n
+), conditional(doRestart),
+constraint(geom_cells, timeIntegrationRK, multiSpecies), prelude {
+  if(*$timeStep != 0 && *$$n != 0) {
+    hid_t fileId = 0;
+    std::string filename = *$restartDirectory + "flowVars_" + *$caseName;
+    
+    $[Once] {
+      LOG(INFO) << "writing flow restart variables at iteration "
+        << *$timeStep << " to file '" << filename << "'";
+    }
+    
+    fileId = Loci::hdf5CreateFile(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    Loci::writeContainer(fileId, "timeStep", $timeStep.Rep());
+    Loci::writeContainer(fileId, "stime", $stime.Rep());
+    Loci::writeContainer(fileId, "Pambient", $Pambient.Rep());
+    Loci::writeContainer(fileId, "gagePressure", $gagePressure.Rep());
+    Loci::writeContainer(fileId, "velocity", $velocity.Rep());
+    Loci::writeContainer(fileId, "temperature", $temperature.Rep());
+    Loci::writeContainer(fileId, "speciesY", $speciesY.Rep());
+    Loci::hdf5CloseFile(fileId);
+  }
+};
+
+} // end: namespace flame

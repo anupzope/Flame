@@ -6,6 +6,8 @@ $include "FVM.lh"
 
 #include <glog/logging.h>
 
+namespace flame {
+
 // =============================================================================
 // Default values for parameters that control the time loop.
 // =============================================================================
@@ -147,7 +149,7 @@ $rule singleton(timeStep{n=0} <- timeStep_ic) {
 }
 
 $rule singleton(stime{n=0} <- stime_ic) {
-  $stime{n=0} <- $stime_ic;
+  $stime{n=0} = $stime_ic;
 }
 
 $rule pointwise(gagePressure{n=0} <- gagePressure_ic) {
@@ -316,8 +318,8 @@ constraint(geom_cells, multiSpecies, caloricallyPerfectGas) {
 // Time loop collapse.
 // =============================================================================
 
-$rule singleton(timeStepFinished{n} <- timeStep{n}, nTimeSteps) {
-  $timeStepFinished{n} = $timeStep{n} == $nTimeSteps;
+$rule singleton(timeStepFinished{n} <- $n{n}, timeStep{n}, nTimeSteps) {
+  $timeStepFinished{n} = $$n{n} >= $nTimeSteps; //$timeStep{n} == $nTimeSteps;
 }
 
 $rule pointwise(solution <- gagePressure{n}, velocity{n}, temperature{n}),
@@ -331,4 +333,5 @@ conditional(timeStepFinished{n}),
 inplace(solution|gagePressure{n}), prelude {};
 
 // =============================================================================
-// =============================================================================
+
+} // end: namespace flame

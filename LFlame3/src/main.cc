@@ -227,11 +227,19 @@ int main(int argc, char * argv[]) {
     param<bool> hasICDirectory; *hasICDirectory = true;
     facts.create_fact("hasICDirectory", hasICDirectory);
     
+    constraint withICDirectory;
+    withICDirectory = ~EMPTY;
+    facts.create_fact("withICDirectory", withICDirectory);
+    
     param<std::string> icdir; *icdir = icDirectory;
     facts.create_fact("icDirectory", icdir);
   } else {
     param<bool> hasICDirectory; *hasICDirectory = false;
     facts.create_fact("hasICDirectory", hasICDirectory);
+    
+    constraint withoutICDirectory;
+    withoutICDirectory = ~EMPTY;
+    facts.create_fact("withoutICDirectory", withoutICDirectory);
   }
   
   // Setup constraints for plot variables.

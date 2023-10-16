@@ -4,9 +4,9 @@
 $include "FVM.lh"
 $include "flame.lh"
 
-#include <glog/logging.h>
-
 #include <fstream>
+
+#include <glog/logging.h>
 
 namespace flame {
 
@@ -27,7 +27,7 @@ $rule singleton(printSettings <- printOptions), option(disable_threading) {
     Loci::Abort();
   } else {
     $[Once] {
-      LOG(INFO) << "PrintSettings: " << $printSettings;
+      LOG(INFO) << "Print Settings: " << $printSettings;
     }
   }
 }
@@ -106,7 +106,7 @@ $rule singleton(plotSettings <- plotOptions), option(disable_threading) {
     Loci::Abort();
   } else {
     $[Once] {
-      LOG(INFO) << "PlotSettings: " << $plotSettings;
+      LOG(INFO) << "Plot Settings: " << $plotSettings;
     }
   }
 }
@@ -137,9 +137,8 @@ prelude {
   //}
 };
 
-// lastRK{n,rk}
 $rule singleton(doPlotTopology{n,rk}<-timeStep{n,rk},$n{n},$rk{n,rk}) {
-  $doPlotTopology{n,rk} = ($$n{n} == 0) && $$rk{n,rk}; //$lastRK{n,rk} ;
+  $doPlotTopology{n,rk} = ($$n{n} == 0) && $$rk{n,rk};
 }
 
 $rule pointwise(
@@ -178,7 +177,6 @@ $rule pointwise(
 // Calculate boolean parameter that controls when plotting occurs.
 // =============================================================================
 
-// lastRK{n,rk}
 $rule singleton(
   doPlot{n,rk}, plotPostfix{n,rk}
   <-
@@ -194,18 +192,20 @@ $rule singleton(
     int const f = $plotSettings.frequencies[i];
     int const c = $plotSettings.counts[i];
     
-    if(f > 0 && $$rk{n,rk}/*$lastRK{n,rk}*/) {
+    if(f > 0 && $$rk{n,rk} == 0) {
       if(n%f == 0) {
         $doPlot{n,rk} = true;
-        std::ostringstream ss;
-        ss << (n%(f*c)) << "L" << i;
-        $plotPostfix{n,rk} = ss.str();
+        if(i == nLevels-1) {
+          std::ostringstream ss;
+          ss << (n%(f*c));
+          $plotPostfix{n,rk} = ss.str();
+        } else {
+          std::ostringstream ss;
+          ss << (n%(f*c)) << "L" << i;
+          $plotPostfix{n,rk} = ss.str();
+        }
       }
     }
-  }
-  
-  if($doPlot{n,rk}) {
-    std::cout << "plotPostfix = " << $plotPostfix{n,rk} << std::endl;
   }
 }
 

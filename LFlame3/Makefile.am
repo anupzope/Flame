@@ -33,7 +33,9 @@ LFlame3_SOURCES=src/main.cc \
   src/solverThermodynamics.cc \
   src/solverTransport.cc \
   src/solverFlowRegime.cc \
-  src/solverFaceValues.cc
+  src/solverFaceValues.cc \
+  src/restart.cc \
+  src/solverRestart.cc
 LFlame3_LDFLAGS = 
 LFlame3_LDADD = 
 LFlame3_CXXFLAGS = -I$(srcdir)/include

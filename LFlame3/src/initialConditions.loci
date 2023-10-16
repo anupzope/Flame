@@ -9,6 +9,11 @@ $include "flame.lh"
 
 #include <glog/logging.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 namespace flame {
 
 // =============================================================================
@@ -280,19 +285,23 @@ $rule singleton(
 
 // -----------------------------------------------------------------------------
 
-$rule apply(gagePressure_ic <- icGagePressure)[Loci::Summation] {
+$rule apply(gagePressure_ic <- icGagePressure)[Loci::Summation],
+constraint(withoutICDirectory) {
   join($gagePressure_ic, $icGagePressure);
 }
 
-$rule apply(velocity_ic <- icVelocity)[Loci::Summation] {
+$rule apply(velocity_ic <- icVelocity)[Loci::Summation],
+constraint(withoutICDirectory) {
   join($velocity_ic, $icVelocity);
 }
 
-$rule apply(temperature_ic <- icTemperature)[Loci::Summation] {
+$rule apply(temperature_ic <- icTemperature)[Loci::Summation],
+constraint(withoutICDirectory) {
   join($temperature_ic, $icTemperature);
 }
 
-$rule apply(speciesY_ic <- icSpeciesY, Ns)[Loci::Summation] {
+$rule apply(speciesY_ic <- icSpeciesY, Ns)[Loci::Summation],
+constraint(withoutICDirectory) {
   for(int i = 0; i < $Ns; ++i) {
     $speciesY_ic[i] += $icSpeciesY[i];
   }
@@ -608,19 +617,23 @@ $rule pointwise(
 
 // =============================================================================
 
-$rule apply(gagePressure_ic <- gagePressure_TGV_ic)[Loci::Summation] {
+$rule apply(gagePressure_ic <- gagePressure_TGV_ic)[Loci::Summation],
+constraint(geom_cells, withoutICDirectory) {
   join($gagePressure_ic, $gagePressure_TGV_ic);
 }
 
-$rule apply(velocity_ic <- velocity_TGV_ic)[Loci::Summation] {
+$rule apply(velocity_ic <- velocity_TGV_ic)[Loci::Summation],
+constraint(geom_cells, withoutICDirectory) {
   join($velocity_ic, $velocity_TGV_ic);
 }
 
-$rule apply(temperature_ic <- temperature_TGV_ic)[Loci::Summation] {
+$rule apply(temperature_ic <- temperature_TGV_ic)[Loci::Summation],
+constraint(geom_cells, withoutICDirectory) {
   join($temperature_ic, $temperature_TGV_ic);
 }
 
-$rule apply(speciesY_ic <- speciesY_TGV_ic)[Loci::Summation] {
+$rule apply(speciesY_ic <- speciesY_TGV_ic)[Loci::Summation],
+constraint(geom_cells, withoutICDirectory) {
   join($speciesY_ic, $speciesY_TGV_ic);
 }
 
@@ -677,27 +690,142 @@ $rule apply(speciesY_ic <- speciesY_TGV_ic)[Loci::Summation] {
 //  $mixtureEnthalpy_ic = $mixtureCp_ic*$temperature_ic;
 //}
 
-//$rule apply(gagePressure_ic)[Loci::Summation], constraint(geom_cells) {
-//  double P = 101325.0;
-//  join($gagePressure_ic, P);
-//}
-//
-//$rule apply(velocity_ic)[Loci::Summation], constraint(geom_cells) {
-//  Loci::vector3d<double> U(100.0, 0.0, 0.0);
-//  join($velocity_ic, U);
-//}
-//
-//$rule apply(temperature_ic)[Loci::Summation], constraint(geom_cells) {
-//  double T = 300.0;
-//  join($temperature_ic, T);
-//}
-
-$rule singleton(timeStep_ic), constraint(UNIVERSE) {
+$rule unit(timeStep_ic), constraint(UNIVERSE) {
   $timeStep_ic = 0;
 }
 
-$rule singleton(stime_ic), constraint(UNIVERSE) {
-  $stime_ic = 0;
+$rule apply(timeStep_ic <- timeStepSize)[Loci::Maximum], prelude {
+};
+
+$rule unit(stime_ic), constraint(UNIVERSE) {
+  $stime_ic = 0.0;
+}
+
+$rule apply(stime_ic <- timeStepSize)[Loci::Maximum], prelude {
+};
+
+// =============================================================================
+// Load the initial conditions from file
+// =============================================================================
+
+$type timeStep_icf param<int>;
+$type stime_icf param<double>;
+$type gagePressure_icf store<double>;
+$type velocity_icf store<Loci::vector3d<double> >;
+$type temperature_icf store<double>;
+$type speciesY_icf storeVec<double>;
+
+class TimeStepFromFile : public singleton_rule {
+  const_param<std::string> icDirectory, caseName;
+  param<double> stime;
+  param<int> timeStep;
+  
+public:
+  TimeStepFromFile();
+  virtual void compute(sequence const & seq);
+};
+
+TimeStepFromFile::TimeStepFromFile() {
+  name_store("icDirectory", icDirectory);
+  name_store("caseName", caseName);
+  name_store("stime_icf", stime);
+  name_store("timeStep_icf", timeStep);
+  input("icDirectory,caseName");
+  output("stime_icf,timeStep_icf");
+  disable_threading();
+}
+
+void TimeStepFromFile::compute(sequence const & seq) {
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+  
+  std::string filename = *icDirectory + "flowVars_" + *caseName;
+  
+  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  Loci::entitySet dom = ~EMPTY;
+  *stime = 0.0;
+  *timeStep = 0;
+  Loci::readContainer(fileId, "stime", stime.Rep(), dom);
+  Loci::readContainer(fileId, "timeStep", timeStep.Rep(), dom);
+  Loci::hdf5CloseFile(fileId);
+}
+
+Loci::register_rule<TimeStepFromFile> registerTimeStepFromFile;
+
+$rule apply(timeStep_ic <- timeStep_icf)[Loci::Maximum] {
+  join($timeStep_ic, $timeStep_icf);
+}
+
+$rule apply(stime_ic <- stime_icf)[Loci::Maximum] {
+  join($stime_ic, $stime_icf);
+}
+
+$rule pointwise(
+  gagePressure_icf, velocity_icf, temperature_icf
+  <-
+  icDirectory, caseName, Pambient
+), constraint(geom_cells, singleSpecies, withICDirectory),
+option(disable_threading), prelude {
+  std::string filename = *$icDirectory + "flowVars_" + *$caseName;
+  
+  $[Once] {
+    LOG(INFO) << "Reading flow variables from " << filename;
+  }
+  
+  struct stat buf;
+  int has_file = 0;
+  $[Once] {
+    if(stat(filename.c_str(), &buf) == 0) {
+      if(buf.st_size != 0 && S_ISREG(buf.st_mode)) {
+        has_file = 1;
+      } else {
+        has_file = 2;
+      }
+    }
+  }
+  
+  MPI_Bcast(&has_file, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  if(has_file == 2) {
+    $[Once] {
+      LOG(ERROR) << "Unable to find file '" << filename << "'";
+    }
+    Loci::Abort();
+  }
+  
+  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  
+  Loci::entitySet readSet = entitySet(seq);
+  Loci::readContainer(fileId, "gagePressure", $gagePressure_icf.Rep(), readSet);
+  Loci::readContainer(fileId, "velocity", $velocity_icf.Rep(), readSet);
+  Loci::readContainer(fileId, "temperature", $temperature_icf.Rep(), readSet);
+  param<double> Pref;
+  Loci::readContainer(fileId, "Pambient", Pref.Rep(), readSet);
+  double dp = *Pref-*$Pambient;
+  FORALL(readSet, ii) {
+    $gagePressure_icf[ii] += dp;
+  } ENDFORALL;
+  Loci::hdf5CloseFile(fileId);
+};
+
+$rule apply(gagePressure_ic <- gagePressure_icf)[Loci::Summation],
+constraint(geom_cells, withICDirectory) {
+  join($gagePressure_ic, $gagePressure_icf);
+}
+
+$rule apply(velocity_ic <- velocity_icf)[Loci::Summation],
+constraint(geom_cells, withICDirectory) {
+  join($velocity_ic, $velocity_icf);
+}
+
+$rule apply(temperature_ic <- temperature_icf)[Loci::Summation],
+constraint(geom_cells, withICDirectory) {
+  join($temperature_ic, $temperature_icf);
+}
+
+$rule apply(speciesY_ic <- speciesY_icf)[Loci::Summation],
+constraint(geom_cells, withICDirectory) {
+  join($speciesY_ic, $speciesY_icf);
 }
 
 } // end: namespace flame

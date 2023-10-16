@@ -97,8 +97,32 @@ $type boundary_names store<string>;
 $type solution store<double>;
 
 // =============================================================================
+// Variables related to solver restart management.
+// =============================================================================
+
+// Options list for specifying restart settings.
+$type restartOptions param<options_list>;
+
+// Parameter to store restart settings.
+$type restartSettings param<RestartSettings>;
+
+// Conditional parameter for writing restart state of the solver.
+$type doRestart param<bool>;
+
+// Postfix for the restart directory.
+$type restartPostfix param<std::string>;
+
+// Restart directory;
+$type restartDirectory param<std::string>;
+
+// =============================================================================
 // Variables related to solver initial conditions.
 // =============================================================================
+
+$type hasICDirectory param<bool>;
+$type icDirectory param<std::string>;
+$type withICDirectory Constraint;
+$type withoutICDirectory Constraint;
 
 // User supplied options list for specifying uniform initial conditions.
 $type initialConditions param<options_list>;

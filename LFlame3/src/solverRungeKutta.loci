@@ -3,6 +3,8 @@ $include "FVM.lh"
 
 #include <Loci.h>
 
+#include <glog/logging.h>
+
 //==============================================================================
 
 $rule singleton(dtRK <- timeStepSize) {
@@ -35,8 +37,8 @@ $rule singleton(rkOrderWeights <- rkOrder) {
   $rkOrderWeights = wlist;
   
   if($rkOrder < 1 || $rkOrder > 3) {
-    std::cerr << "rkOrder should be between 1 and 3, it is set to "
-      << $rkOrder << std::endl;
+    LOG(ERROR) << "rkOrder should be between 1 and 3, it is set to "
+      << $rkOrder;
     Loci::Abort();
   }
 }
@@ -46,7 +48,7 @@ $rule singleton(rkOrderWeights <- rkOrder) {
 // =============================================================================
 
 $rule singleton(timeStep{n,rk=0} <- timeStep{n}) {
-  $timeStep{n, rk=0} = $timeStep{n} + 1;
+  $timeStep{n,rk=0} = $timeStep{n};
 }
 
 $rule singleton(stime{n,rk=0} <- stime{n}) {
@@ -235,9 +237,9 @@ constraint(timeIntegrationRK) {
   $timeStep{n,rk+1} = $timeStep{n,rk};
 }
 
-$rule singleton(stime{n,rk+1} <- stime{n,rk}, stime{n}, dtRK),
+$rule singleton(stime{n,rk+1} <- stime{n,rk}),
 constraint(timeIntegrationRK) {
-  $stime{n,rk+1} = $stime{n} + $dtRK;
+  $stime{n,rk+1} = $stime{n,rk};
 }
 
 // -----------------------------------------------------------------------------
@@ -569,13 +571,13 @@ constraint(timeIntegrationRK) {
 $rule singleton(timeStep{n+1} <- timeStep{n,rk}),
 constraint(timeIntegrationRK),
 conditional(rkFinished{n,rk}) {
-  $timeStep{n+1} = $timeStep{n,rk};
+  $timeStep{n+1} = $timeStep{n,rk} + 1;
 }
 
-$rule singleton(stime{n+1} <- stime{n,rk}),
+$rule singleton(stime{n+1} <- stime{n,rk}, dtRK),
 constraint(timeIntegrationRK),
 conditional(rkFinished{n,rk}) {
-  $stime{n+1} = $stime{n,rk};
+  $stime{n+1} = $stime{n,rk} + $dtRK;
 }
 
 $rule pointwise(gagePressure{n+1} <- gagePressure_i{n,rk}),

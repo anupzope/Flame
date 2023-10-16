@@ -336,7 +336,7 @@ void dumpScalar(
   ss << "output/" << sname << "_" << type << "." << plotPostfix
     << "_" << caseName;
   std::string filename = ss.str();
-  std::cout << "filename = " << filename << std::endl;
+  //std::cout << "filename = " << filename << std::endl;
   hid_t fileId = Loci::hdf5CreateFile(
     filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT
   );
@@ -452,7 +452,7 @@ void dumpVector(
   ss << "output/" << sname << "_" << type << "." << plotPostfix
     << "_" << caseName;
   std::string filename = ss.str();
-  std::cout << "filename = " << filename << std::endl;
+  //std::cout << "filename = " << filename << std::endl;
   hid_t fileId = Loci::hdf5CreateFile(
     filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT
   );
@@ -502,7 +502,7 @@ void dumpVar(
   ss << "output/" << sname << "_" << type << "." << plotPostfix
     << "_" << caseName;
   std::string filename = ss.str();
-  std::cout << "filename = " << filename << std::endl;
+  //std::cout << "filename = " << filename << std::endl;
   hid_t fileId = Loci::hdf5CreateFile(
     filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT
   );
