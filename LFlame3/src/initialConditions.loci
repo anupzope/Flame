@@ -808,6 +808,56 @@ option(disable_threading), prelude {
   Loci::hdf5CloseFile(fileId);
 };
 
+$rule pointwise(
+  gagePressure_icf, velocity_icf, temperature_icf, speciesY_icf
+  <-
+  icDirectory, caseName, Pambient, Ns
+), constraint(geom_cells, multiSpecies, withICDirectory),
+option(disable_threading), prelude {
+  $speciesY_icf.setVecSize(*$Ns);
+  
+  std::string filename = *$icDirectory + "flowVars_" + *$caseName;
+  
+  $[Once] {
+    LOG(INFO) << "Reading flow variables from " << filename;
+  }
+  
+  struct stat buf;
+  int has_file = 0;
+  $[Once] {
+    if(stat(filename.c_str(), &buf) == 0) {
+      if(buf.st_size != 0 && S_ISREG(buf.st_mode)) {
+        has_file = 1;
+      } else {
+        has_file = 2;
+      }
+    }
+  }
+  
+  MPI_Bcast(&has_file, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  if(has_file == 2) {
+    $[Once] {
+      LOG(ERROR) << "Unable to find file '" << filename << "'";
+    }
+    Loci::Abort();
+  }
+  
+  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  
+  Loci::entitySet readSet = entitySet(seq);
+  Loci::readContainer(fileId, "gagePressure", $gagePressure_icf.Rep(), readSet);
+  Loci::readContainer(fileId, "velocity", $velocity_icf.Rep(), readSet);
+  Loci::readContainer(fileId, "temperature", $temperature_icf.Rep(), readSet);
+  Loci::readContainer(fileId, "speciesY", $speciesY_icf.Rep(), readSet);
+  param<double> Pref;
+  Loci::readContainer(fileId, "Pambient", Pref.Rep(), readSet);
+  double dp = *Pref-*$Pambient;
+  FORALL(readSet, ii) {
+    $gagePressure_icf[ii] += dp;
+  } ENDFORALL;
+  Loci::hdf5CloseFile(fileId);
+};
+
 $rule apply(gagePressure_ic <- gagePressure_icf)[Loci::Summation],
 constraint(geom_cells, withICDirectory) {
   join($gagePressure_ic, $gagePressure_icf);
