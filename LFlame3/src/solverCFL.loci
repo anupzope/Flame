@@ -38,11 +38,11 @@ $rule pointwise(cflpdt <- vol,(upper,lower,boundary_map)->(area,maxUt_f)) {
   $cflpdt = 0.5*sum/$vol;
 }
 
-$rule unit(maxCFL), constraint(geom_cells) {
+$rule unit(maxCFL), constraint(UNIVERSE) {
   $maxCFL = 0.0;
 }
 
-$rule unit(minCFL), constraint(geom_cells) {
+$rule unit(minCFL), constraint(UNIVERSE) {
   auto tmp = $minCFL;
   $minCFL = std::numeric_limits<decltype(tmp)>::max();
 }
@@ -55,10 +55,14 @@ $rule apply(minCFL <- cfl)[Loci::Minimum] {
   join($minCFL, $cfl);
 }
 
-$rule apply(printParameterDBIdx <- maxCFL, minCFL)[Loci::NullOp],
+$rule apply(printParameterDBIdx <- maxCFL, minCFL)[Loci::Maximum],
 conditional(doPrint), option(disable_threading), prelude {
-  printParameterDB.add(Loci::MPI_rank, "cflMin", *$minCFL);
-  printParameterDB.add(Loci::MPI_rank, "cflMax", *$maxCFL);
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+  
+  printParameterDB.add("cflMin", *$minCFL);
+  printParameterDB.add("cflMax", *$maxCFL);
   *$printParameterDBIdx += 2;
 };
 

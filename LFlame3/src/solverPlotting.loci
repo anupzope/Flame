@@ -18,7 +18,8 @@ $rule default(printOptions) {
   $printOptions = options_list("parameters:frequency:file");
 }
 
-$rule singleton(printSettings <- printOptions), option(disable_threading) {
+$rule singleton(printSettings <- printOptions), constraint(UNIVERSE),
+option(disable_threading) {
   std::string err;
   if($printSettings.fromOptionsList($printOptions, err)) {
     $[Once] {
@@ -47,9 +48,12 @@ prelude {
   if(Loci::MPI_rank == 0) {
     std::ostringstream ss;
     ss << "output/" << $printSettings->filename;
-    printParameterFile.file = new std::ofstream(ss.str().c_str(), std::ios_base::app);
-    printParameterFile.file->precision(15);
-    *$createPrintParameterFile = 1;
+    int error = printParameterFile.create(ss.str().c_str());
+    if(error) {
+      *$createPrintParameterFile = 0;
+    } else {
+      *$createPrintParameterFile = 1;
+    }
   } else {
     *$createPrintParameterFile = 0;
   }
@@ -64,8 +68,12 @@ conditional(doPrint) {
 $rule pointwise(OUTPUT <- timeStep, stime, printParameterDBIdx, createPrintParameterFile),
 conditional(doPrint),
 option(disable_threading), prelude {
-  if(Loci::MPI_rank == 0) {
-    printParameterDB.print(*$timeStep, *$stime, *printParameterFile.file);
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+  
+  if(Loci::MPI_rank == 0 && *$createPrintParameterFile) {
+    printParameterDB.print(*$timeStep, *$stime, printParameterFile.getStream());
   }
 };
 

@@ -37,10 +37,16 @@ constraint(viscousFlow, area) {
 // Calculation of viscous flux.
 // =============================================================================
 
+$rule pointwise(heat_f <- grads_f(temperature), conductivity_f, area),
+constraint(viscousFlow, area) {
+  Loci::vector3d<double> q = -$conductivity_f*$area.sada*$grads_f(temperature);
+  $heat_f = dot(q, $area.n);
+}
+
 $rule pointwise(
   viscousFlux_f
   <-
-  area, shearStress_f, velocity_f, grads_f(temperature), conductivity_f
+  area, shearStress_f, velocity_f, heat_f
 ), constraint(viscousFlow, area) {
   Loci::Array<double, 4> & Fv = $viscousFlux_f;
   
@@ -52,8 +58,7 @@ $rule pointwise(
   Fv[0] = (tau.xx*an.x + tau.xy*an.y + tau.xz*an.z)*sada;
   Fv[1] = (tau.xy*an.x + tau.yy*an.y + tau.yz*an.z)*sada;
   Fv[2] = (tau.xz*an.x + tau.yz*an.y + tau.zz*an.z)*sada;
-  Fv[3] = (u.x*Fv[0] + u.y*Fv[1] + u.z*Fv[2]) + // viscous dissipation
-    dot($grads_f(temperature), an)*$conductivity_f*sada; // conduction
+  Fv[3] = (u.x*Fv[0] + u.y*Fv[1] + u.z*Fv[2]) - $heat_f;
 }
 
 } // end: namespace flame

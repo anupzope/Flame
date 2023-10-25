@@ -11,6 +11,7 @@ LFlame3_SOURCES=src/main.cc \
   src/boundary_checker.cc \
   src/grid_post_processor.cc \
   src/bcImpermeable.cc \
+  src/bcViscousWall.cc \
   src/plot.cc \
   src/totalVolume.cc \
   src/species.cc \

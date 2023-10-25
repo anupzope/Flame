@@ -1,0 +1,184 @@
+#include <flame.hh>
+#include <boundary_checker.hh>
+
+$include "FVM.lh"
+$include "flame.lh"
+
+namespace flame {
+
+// =============================================================================
+
+class ViscousWallBCChecker : public BoundaryChecker {
+  std::string err;
+  
+public:
+  std::string boundaryConditions() override {
+    return "viscousWall";
+  }
+  
+  std::string variablesChecked() override {
+    return "adiabatic,heatFlux,T";
+  }
+  
+  bool checkOptions(options_list const & ol) override {
+    std::ostringstream errmsg;
+    
+    int error = 0;
+    int count = 0;
+    
+    if(ol.optionExists("adiabatic")) {
+      ++count;
+    }
+    
+    if(ol.optionExists("heatFlux")) {
+      ++count;
+      Loci::option_value_type type = ol.getOptionValueType("heatFlux");
+      if(type == Loci::UNIT_VALUE) {
+        Loci::UNIT_type ut;
+        ol.getOption("heatFlux", ut);
+        if(!ut.is_compatible("W/m/m")) {
+          errmsg << "[heatFlux unit must be compatible with W/m/m]";
+          ++error;
+        }
+      } else if(type == Loci::REAL) { 
+        // do nothing
+      } else {
+        errmsg << "[heatFlux must be of type REAL or UNIT_VALUE]";
+        ++error;
+      }
+    }
+    
+    if(ol.optionExists("T")) {
+      ++count;
+      Loci::option_value_type type = ol.getOptionValueType("T");
+      if(type == Loci::UNIT_VALUE) {
+        Loci::UNIT_type ut;
+        ol.getOption("T", ut);
+        if(!ut.is_compatible("K")) {
+          errmsg << "[T unit must be compatible with K]";
+          ++error;
+        }
+      } else if(type == Loci::REAL) { 
+        // do nothing
+      } else {
+        errmsg << "[T must be of type REAL or UNIT_VALUE]";
+        ++error;
+      }
+    }
+    
+    if(count != 1) {
+      errmsg << "[must have one of adiabatic, heatFlux, or T option]";
+      ++error;
+    }
+    
+    if(error) {
+      err = errmsg.str();
+    }
+    
+    return error == 0;
+  }
+  
+  std::ostream & errorMessage(std::ostream & s) override {
+    s << err;
+    return s;
+  }
+};
+
+registerBoundaryChecker<ViscousWallBCChecker> viscousWallBCChecker;
+
+// =============================================================================
+
+$rule pointwise(viscousWallHeatFluxFaces), constraint(ref->adiabatic_BCoption) {
+}
+
+$rule pointwise(viscousWallHeatFluxFaces), constraint(ref->heatFlux_BCoption) {
+}
+
+// =============================================================================
+
+$rule pointwise(viscousWallHeat_f),
+constraint(viscousWall_BC, ref->adiabatic_BCoption) {
+  $viscousWallHeat_f = 0.0;
+}
+
+$rule pointwise(viscousWallHeat_f <- ref->heatFlux_BC, area),
+constraint(viscousWall_BC, ref->heatFlux_BCoption) {
+  $viscousWallHeat_f = $ref->$heatFlux_BC*$area.sada;
+}
+
+// =============================================================================
+
+$rule pointwise(viscousWall::heat_f <- viscousWallHeat_f),
+constraint(viscousFlow, viscousWall_BC, viscousWallHeatFluxFaces) {
+  $heat_f = $viscousWallHeat_f;
+}
+
+// =============================================================================
+
+$rule pointwise(viscousWallTemperature_f <- ref->T_BC),
+constraint(viscousWall_BC, ref->T_BCoption) {
+  $viscousWallTemperature_f = $ref->$T_BC;
+}
+
+$rule pointwise(
+  viscousWallTemperature_f
+  <-
+  ci->(conductivity,temperature,cellcenter),
+  area, facecenter, viscousWallHeat_f
+), constraint(viscousWall_BC, viscousWallHeatFluxFaces) {
+  double const dx = dot($facecenter-$ci->$cellcenter, $area.n);
+  $viscousWallTemperature_f =
+    -$viscousWallHeat_f*dx/($ci->$conductivity*$area.sada) + $ci->$temperature;
+}
+
+// =============================================================================
+
+$rule pointwise(gagePressure_f <- ci->gagePressure),
+constraint(viscousWall_BC) {
+  $gagePressure_f = $ci->$gagePressure;
+}
+
+$rule pointwise(velocity_f),
+constraint(viscousWall_BC) {
+  $velocity_f = Loci::vector3d<double>(0.0, 0.0, 0.0);
+}
+
+$rule pointwise(temperature_f <- viscousWallTemperature_f),
+constraint(viscousWall_BC) {
+  $temperature_f = $viscousWallTemperature_f;
+}
+
+// =============================================================================
+
+$rule pointwise(ssConvectiveFlux_f <- area, gagePressure_f),
+constraint(singleSpecies, idealGas, caloricallyPerfectGas, viscousWall_BC) {
+  double const pg = $gagePressure_f;
+  Loci::vector3d<double> const n = $area.n*$area.sada;
+  
+  $ssConvectiveFlux_f[0] = pg*n.x;
+  $ssConvectiveFlux_f[1] = pg*n.y;
+  $ssConvectiveFlux_f[2] = pg*n.z;
+  $ssConvectiveFlux_f[3] = 0.0;
+  $ssConvectiveFlux_f[4] = 0.0;
+}
+
+$rule pointwise(msConvectiveFlux_f <- area, gagePressure_f, Ns),
+constraint(multiSpecies, idealGas, caloricallyPerfectGas, viscousWall_BC), prelude{
+  $msConvectiveFlux_f.setVecSize(*$Ns+4);
+} {
+  double const pg = $gagePressure_f;
+  Loci::vector3d<double> const n = $area.n*$area.sada;
+  
+  $msConvectiveFlux_f[0] = pg*n.x;
+  $msConvectiveFlux_f[1] = pg*n.y;
+  $msConvectiveFlux_f[2] = pg*n.z;
+  $msConvectiveFlux_f[3] = 0.0;
+  $msConvectiveFlux_f[4] = 0.0;
+  for(int i = 0; i < $Ns-1; ++i) {
+    $msConvectiveFlux_f[i+5] = 0.0;
+  }
+}
+
+// =============================================================================
+
+} // end: namespace flame

@@ -10,6 +10,31 @@ namespace flame {
 
 // =============================================================================
 
+int PrintParameterFile::create(char const * filename) {
+  int error = 0;
+  
+  if(file == nullptr) {
+    LOF(INFO) << "Opening file '" << filename << "' for appending";
+    fileName = filename;
+    file = new std::ofstream(filename, std::ios_base::app);
+    file->precision(15);
+  }
+  
+  if(file->is_open()) {
+    if(!(*file)) {
+      LOG(ERROR) << "File '" << fileName << "' is in bad state";
+      error = 2;
+    }
+  } else {
+    LOG(ERROR) << "File '" << fileName << "' is not open";
+    error = 1;
+  }
+  
+  return error;
+}
+
+// =============================================================================
+
 PrintParameterDB::PrintParameterDB() : printHeader(true) {
 }
 
@@ -18,9 +43,8 @@ void PrintParameterDB::clear() {
   value.clear();
 }
 
-void PrintParameterDB::add(int const root, std::string const & n, double const v) {
+void PrintParameterDB::add(std::string const & n, double const v) {
   double val = v;
-  MPI_Bcast(&val, 1, MPI_DOUBLE, root, MPI_COMM_WORLD);
   name.push_back(n);
   value.push_back(val);
 }
@@ -72,8 +96,8 @@ int PrintSettings::fromOptionsList(options_list const & ol, std::string & err) {
   std::ostringstream errmsg;
   
   std::vector<std::string> params;
-  int freq;
-  std::string fname;
+  int freq = 0;
+  std::string fname = "integrated_parameters.txt";
   
   options_list::option_namelist li = ol.getOptionNameList();
   

@@ -6,7 +6,9 @@ $include "flame.lh"
 
 namespace flame {
 
-$rule unit(totalVolume), constraint(geom_cells) {
+// =============================================================================
+
+$rule unit(totalVolume), constraint(UNIVERSE) {
   $totalVolume = 0.0;
 }
 
@@ -16,7 +18,7 @@ $rule apply(totalVolume <- vol)[Loci::Summation] {
 
 // =============================================================================
 
-$rule unit(totalKineticEnergy), constraint(geom_cells) {
+$rule unit(totalKineticEnergy), constraint(UNIVERSE) {
   $totalKineticEnergy = 0.0;
 }
 
@@ -25,15 +27,19 @@ $rule apply(totalKineticEnergy <- vol, velocity, density)[Loci::Summation] {
   join($totalKineticEnergy, cellKE);
 }
 
-$rule apply(printParameterDBIdx <- totalKineticEnergy)[Loci::NullOp],
+$rule apply(printParameterDBIdx <- totalKineticEnergy)[Loci::Maximum],
 conditional(doPrint), option(disable_threading), prelude {
-  printParameterDB.add(Loci::MPI_rank, "totalKineticEnergy", *$totalKineticEnergy);
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+  
+  printParameterDB.add("totalKineticEnergy", *$totalKineticEnergy);
   *$printParameterDBIdx += 1;
 };
 
 // =============================================================================
 
-$rule unit(totalEnstrophy), constraint(geom_cells) {
+$rule unit(totalEnstrophy), constraint(UNIVERSE) {
   $totalEnstrophy = 0.0;
 }
 
@@ -42,10 +48,16 @@ $rule apply(totalEnstrophy <- vol, vorticityMagnitude)[Loci::Summation] {
   join($totalEnstrophy, cellEnstropy);
 }
 
-$rule apply(printParameterDBIdx <- totalEnstrophy)[Loci::NullOp],
+$rule apply(printParameterDBIdx <- totalEnstrophy)[Loci::Maximum],
 conditional(doPrint), option(disable_threading), prelude {
-  printParameterDB.add(Loci::MPI_rank, "totalEnstrophy", *$totalEnstrophy);
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+  
+  printParameterDB.add("totalEnstrophy", *$totalEnstrophy);
   *$printParameterDBIdx += 1;
 };
+
+// =============================================================================
 
 } // end: namespace flame

@@ -123,13 +123,23 @@ namespace flame {
 
 // =============================================================================
 
-struct PrintParameterFile {
+class PrintParameterFile {
+  std::string fileName;
   std::ofstream * file;
-  PrintParameterFile() : file(nullptr) { }
+  
+public:
+  PrintParameterFile() : fileName(""), file(nullptr) { }
+  
   ~PrintParameterFile() {
     if(file) {
       file->close();
     }
+  }
+  
+  int create(char const * filename);
+  
+  std::ostream & getStream() {
+    return *file;
   }
 };
 

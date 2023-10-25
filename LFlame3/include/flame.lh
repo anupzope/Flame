@@ -196,6 +196,12 @@ $type totalEnstrophy param<double>;
 // =============================================================================
 
 $type reflecting_BC Constraint;
+$type viscousWall_BC Constraint;
+$type adiabatic_BCoption Constraint;
+$type heatFlux_BCoption Constraint;
+$type heatFlux_BC store<double>;
+$type T_BCoption Constraint;
+$type T_BC store<double>;
 
 // =============================================================================
 // Variables related to model of transport properties.
@@ -283,6 +289,19 @@ $type vorticityMagnitude store<double>;
 
 // Q-criterion (at cell).
 $type Qcriterion store<double>;
+
+// Heat source (at face).
+$type heat_f store<double>;
+
+// Heat flux on viscousWall boundary (at face).
+$type viscousWallHeat_f store<double>;
+
+// Temperature on viscousWall boundary (at face).
+$type viscousWallTemperature_f store<double>;
+
+// Constraint-only store for faces on viscousWall boundary that have specified
+// heat flux.
+$type viscousWallHeatFluxFaces store<bool>;
 
 // =============================================================================
 // Variables related to single-species solver state.
