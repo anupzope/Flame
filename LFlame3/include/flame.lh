@@ -82,10 +82,16 @@ $type doPlotGridPos param<bool>;
 // Conditional for writing output variables in an iteration.
 $type doPlot param<bool>;
 
-// List of postfixes to use while writing output data.
+// Postfix to use while writing output data.
 $type plotPostfix param<std::string>;
 
-// Constraint for parametrix variables.
+// Conditional for writing boundary output variables in an iteration.
+$type doBoundaryPlot param<bool>;
+
+// Postfix to use while writing boundary output data.
+$type plotBoundaryPostfix param<std::string>;
+
+// Constraint for parametric variables.
 //$type plotNodal_X Constraint;
 
 $type boundary_names store<string>;

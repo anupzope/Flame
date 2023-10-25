@@ -43,6 +43,106 @@ int getOptionValue(
 
 int getOptionValues(
   options_list const & ol, std::string const & optName,
+  int const minValues, int const maxValues,
+  std::vector<std::string> & values,
+  std::ostream & errmsg
+) {
+  values.clear();
+  
+  int error = 0;
+  Loci::option_value_type type = ol.getOptionValueType(optName);
+  
+  if(type == Loci::LIST) {
+    options_list::arg_list args;
+    ol.getOption(optName, args);
+    int const sz = args.size();
+    for(int i = 0; i < sz; ++i) {
+      if(args[i].type_of() == Loci::STRING || args[i].type_of() == Loci::NAME) {
+        std::string value;
+        args[i].get_value(value);
+        values.push_back(value);
+      } else {
+        errmsg << "[elements of " << optName << " must be of type STRING or NAME]";
+        ++error;
+      }
+    }
+  } else if(type == Loci::STRING || type == Loci::NAME) {
+    std::string vars, var;
+    ol.getOption(optName, vars);
+    for(std::string::iterator i = vars.begin(); i != vars.end(); ++i) {
+      if(*i == ',') {
+        if(var.size() > 0) values.push_back(var);
+        var.clear();
+      } else if(!std::isspace(*i)) {
+        var.push_back(*i);
+      }
+    }
+    if(var.size() > 0) values.push_back(var);
+  } else {
+    errmsg << "[" << optName << " must be of type STRING or NAME or LIST]";
+    ++error;
+  }
+  
+  return error;
+}
+
+int getOptionValues(
+  options_list const & ol, std::string const & optName,
+  int const minValues, int const maxValues,
+  std::vector<int> & values,
+  std::ostream & errmsg
+) {
+  values.clear();
+  
+  int error = 0;
+  Loci::option_value_type type = ol.getOptionValueType(optName);
+  
+  if(type == Loci::LIST) {
+    options_list::arg_list args;
+    ol.getOption(optName, args);
+    int const sz = args.size();
+    if(minValues <= sz && sz <= maxValues) {
+      for(int i = 0; i < sz; ++i) {
+        if(args[i].type_of() == Loci::REAL) {
+          double value;
+          args[i].get_value(value);
+          double rvalue = std::round(value);
+          if(rvalue == value) {
+            values.push_back((int)rvalue);
+          } else {
+            errmsg << "[component " << i << " of " << optName
+              << " must have an integral value]";
+            ++error;
+          }
+        } else {
+          errmsg << "[component " << i << " of " << optName
+            << " must be of type REAL]";
+          ++error;
+        }
+      }
+    }
+  } else if(type == Loci::REAL) {
+    double value;
+    ol.getOption(optName, value);
+    double rvalue = std::round(value);
+    if(rvalue == value) {
+      values.push_back((int)rvalue);
+    } else {
+      errmsg << "[" << optName << " must have an integral value]";
+      ++error;
+    }
+  } else {
+    errmsg << "[" << optName << " must be of type LIST or REAL]";
+    ++error;
+  }
+  
+  return error;
+}
+
+// -----------------------------------------------------------------------------
+
+int getOptionValues(
+  options_list const & ol, std::string const & optName,
   std::vector<std::string> const & units,
   int const minValues, int const maxValues,
   std::vector<double> & values,
@@ -69,6 +169,7 @@ int getOptionValues(
             } else {
               errmsg << "[unit of component " << i << " of " << optName
                 << " must be compatible with " << units[i] << "]";
+              ++error;
             }
           } else {
             errmsg << "[component " << i << " of " << optName
@@ -81,7 +182,8 @@ int getOptionValues(
           values.push_back(value);
         } else {
           errmsg << "[component " << i << " of " << optName
-            << " must be a UNIT_VALUE or REAL]";
+            << " must be of type UNIT_VALUE or REAL]";
+          ++error;
         }
       }
     } else {
@@ -120,6 +222,9 @@ int getOptionValues(
       ++error;
     }
   } else {
+    errmsg << "[option " << optName
+      << " must be of type LIST, UNIT_VALUE or REAL]";
+    ++error;
   }
   
   return error;

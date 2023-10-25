@@ -14,7 +14,7 @@ int PrintParameterFile::create(char const * filename) {
   int error = 0;
   
   if(file == nullptr) {
-    LOF(INFO) << "Opening file '" << filename << "' for appending";
+    LOG(INFO) << "Opening file '" << filename << "' for appending";
     fileName = filename;
     file = new std::ofstream(filename, std::ios_base::app);
     file->precision(15);
@@ -220,6 +220,10 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
   
   std::vector<int> freq;
   std::vector<int> cnts;
+  std::vector<int> nfreq;
+  std::vector<int> ncnts;
+  std::vector<int> bfreq;
+  std::vector<int> bcnts;
   std::vector<std::string> nvars;
   std::vector<std::string> bvars;
   
@@ -227,145 +231,173 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
   
   for(auto const & optName : li) {
     if(optName == "nodalVariables") {
-      Loci::option_value_type type = ol.getOptionValueType(optName);
-      if(type == Loci::LIST) {
-        options_list::arg_list args;
-        ol.getOption(optName, args);
-        int const sz = args.size();
-        for(int i = 0; i < sz; ++i) {
-          if(args[i].type_of() == Loci::STRING || args[i].type_of() == Loci::NAME) {
-            std::string value;
-            args[i].get_value(value);
-            nvars.push_back(value);
-          } else {
-            errmsg << "[elements of " << optName << " must be of type STRING or NAME]";
-            ++error;
-          }
-        }
-      } else if(type == Loci::STRING || type == Loci::NAME) {
-        std::string vars, var;
-        ol.getOption(optName, vars);
-        for(std::string::iterator i = vars.begin(); i != vars.end(); ++i) {
-          if(*i == ',') {
-            if(var.size() > 0) nvars.push_back(var);
-            var.clear();
-          } else if(!std::isspace(*i)) {
-            var.push_back(*i);
-          }
-        }
-        if(var.size() > 0) nvars.push_back(var);
+      std::vector<std::string> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      
+      if(err == 0) {
+        nvars.swap(values);
       } else {
-        errmsg << "[" << optName << " must be of type STRING or NAME or LIST]";
+        errmsg << ss.str();
         ++error;
       }
     } else if(optName == "boundaryVariables") {
-      Loci::option_value_type type = ol.getOptionValueType(optName);
-      if(type == Loci::LIST) {
-        options_list::arg_list args;
-        ol.getOption(optName, args);
-        int const sz = args.size();
-        for(int i = 0; i < sz; ++i) {
-          if(args[i].type_of() == Loci::STRING || args[i].type_of() == Loci::NAME) {
-            std::string value;
-            args[i].get_value(value);
-            bvars.push_back(value);
-          } else {
-            errmsg << "[elements of " << optName << " must be of type STRING or NAME]";
-            ++error;
-          }
-        }
-      } else if(type == Loci::STRING || type == Loci::NAME) {
-        std::string vars, var;
-        ol.getOption(optName, vars);
-        for(std::string::iterator i = vars.begin(); i != vars.end(); ++i) {
-          if(*i == ',') {
-            if(var.size() > 0) bvars.push_back(var);
-            var.clear();
-          } else if(!std::isspace(*i)) {
-            var.push_back(*i);
-          }
-        }
-        if(var.size() > 0) bvars.push_back(var);
+      std::vector<std::string> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      
+      if(err == 0) {
+        bvars.swap(values);
       } else {
-        errmsg << "[" << optName << " must be of type STRING or NAME or LIST]";
+        errmsg << ss.str();
+        ++error;
+      }
+    } else if(optName == "boundaryFrequencies") {
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      
+      if(err == 0) {
+        bool hasError = false;
+        for(size_t i = 0; i < values.size(); ++i) {
+          if(values[i] <= 0) {
+            errmsg << "[element " << i << " of " << optName
+              << " must be a non-zero positive integer]";
+            ++error;
+            hasError = true;
+          }
+        }
+        if(!hasError) {
+          bfreq.swap(values);
+        }
+      } else {
+        errmsg << ss.str();
+        ++error;
+      }
+    } else if(optName == "boundaryCounts") {
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      
+      if(err == 0) {
+        bool hasError = false;
+        for(size_t i = 0; i < values.size(); ++i) {
+          if(values[i] <= 0) {
+            errmsg << "[element " << i << " of " << optName
+              << " must be a non-zero positive integer]";
+            ++error;
+            hasError = true;
+          }
+        }
+        if(!hasError) {
+          bcnts.swap(values);
+        }
+      } else {
+        errmsg << ss.str();
+        ++error;
+      }
+    } else if(optName == "nodalFrequencies") {
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      
+      if(err == 0) {
+        bool hasError = false;
+        for(size_t i = 0; i < values.size(); ++i) {
+          if(values[i] <= 0) {
+            errmsg << "[element " << i << " of " << optName
+              << " must be a non-zero positive integer]";
+            ++error;
+            hasError = true;
+          }
+        }
+        if(!hasError) {
+          nfreq.swap(values);
+        }
+      } else {
+        errmsg << ss.str();
+        ++error;
+      }
+    } else if(optName == "nodalCounts") {
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      
+      if(err == 0) {
+        bool hasError = false;
+        for(size_t i = 0; i < values.size(); ++i) {
+          if(values[i] <= 0) {
+            errmsg << "[element " << i << " of " << optName
+              << " must be a non-zero positive integer]";
+            ++error;
+            hasError = true;
+          }
+        }
+        if(!hasError) {
+          ncnts.swap(values);
+        }
+      } else {
+        errmsg << ss.str();
         ++error;
       }
     } else if(optName == "frequencies") {
-      Loci::option_value_type type = ol.getOptionValueType(optName);
-      if(type == Loci::LIST) {
-        options_list::arg_list args;
-        ol.getOption(optName, args);
-        int size = args.size();
-        for(int i = 0; i < size; ++i) {
-          if(args[i].type_of() == Loci::REAL) {
-            double value;
-            args[i].get_value(value);
-            int intVal = (int)value;
-            if(intVal > 0) {
-              freq.push_back((int)value);
-            } else {
-              errmsg << "[elements of " << optName << " must be positive value/s]";
-              ++error;
-            }
-          } else {
-            errmsg << "[elements of " << optName << " must be of type REAL]";
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      
+      if(err == 0) {
+        bool hasError = false;
+        for(size_t i = 0; i < values.size(); ++i) {
+          if(values[i] <= 0) {
+            errmsg << "[element " << i << " of " << optName
+              << " must be a non-zero positive integer]";
             ++error;
+            hasError = true;
           }
         }
-      } else if(type == Loci::REAL) {
-        double value;
-        ol.getOption(optName, value);
-        int intVal = (int)value;
-        if(intVal > 0) {
-          freq.push_back(intVal);
-        } else {
-          errmsg << "[" << optName << " must have a positive value]";
-          ++error;
+        if(!hasError) {
+          freq.swap(values);
         }
       } else {
-        errmsg << "[" << optName << " must be of type REAL or LIST]";
+        errmsg << ss.str();
         ++error;
       }
     } else if(optName == "counts") {
-      Loci::option_value_type type = ol.getOptionValueType(optName);
-      if(type == Loci::LIST) {
-        options_list::arg_list args;
-        ol.getOption(optName, args);
-        int size = args.size();
-        for(int i = 0; i < size; ++i) {
-          if(args[i].type_of() == Loci::REAL) {
-            double value;
-            args[i].get_value(value);
-            int intVal = (int)value;
-            if(intVal > 0) {
-              cnts.push_back(intVal);
-            } else {
-              errmsg << "[elements of " << optName << " must be positive value/s]";
-              ++error;
-            }
-          } else {
-            errmsg << "[" << optName << " must be of type REAL]";
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      
+      if(err == 0) {
+        bool hasError = false;
+        for(size_t i = 0; i < values.size(); ++i) {
+          if(values[i] <= 0) {
+            errmsg << "[element " << i << " of " << optName
+              << " must be a non-zero positive integer]";
             ++error;
+            hasError = true;
           }
         }
-      } else if(type == Loci::REAL) {
-        double value;
-        ol.getOption(optName, value);
-        int intVal = (int)value;
-        if(intVal > 0) {
-          cnts.push_back(intVal);
-        } else {
-          errmsg << "[" << optName << " must have a positive value]";
-          ++error;
+        if(!hasError) {
+          cnts.swap(values);
         }
       } else {
-        errmsg << "[" << optName << " must be of type REAL or LIST]";
+        errmsg << ss.str();
         ++error;
       }
     } else {
       errmsg << "[unknown option " + optName + "]";
       ++error;
     }
+  }
+  
+  if(nfreq.size() != ncnts.size()) {
+    errmsg << "[nodalFrequencies and nodalCounts must have the same number of elements]";
+    ++error;
+  }
+  
+  if(bfreq.size() != bcnts.size()) {
+    errmsg << "[boundaryFrequencies and boundaryCounts must have the same number of elements]";
+    ++error;
   }
   
   if(freq.size() != cnts.size()) {
@@ -376,28 +408,48 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
   if(error) {
     err = errmsg.str();
   } else {
-    frequencies = freq;
-    counts = cnts;
-    nodalVariables = nvars;
-    boundaryVariables = bvars;
+    if(bcnts.size() > 0) {
+      boundaryFrequencies.swap(bfreq);
+      boundaryCounts.swap(bcnts);
+    } else {
+      boundaryFrequencies = freq;
+      boundaryCounts = cnts;
+    }
+    
+    if(ncnts.size() > 0) {
+      nodalFrequencies.swap(nfreq);
+      nodalCounts.swap(ncnts);
+    } else {
+      nodalFrequencies = freq;
+      nodalCounts = cnts;
+    }
+    
+    nodalVariables.swap(nvars);
+    boundaryVariables.swap(bvars);
   }
   
   return error;
 }
 
 std::ostream & operator<<(std::ostream & s, PlotSettings const & rhs) {
-  int const nLevels = rhs.counts.size();
+  int const nNodalLevels = rhs.nodalCounts.size();
   int const nNodalVariables = rhs.nodalVariables.size();
+  int const nBoundaryLevels = rhs.boundaryCounts.size();
   int const nBoundaryVariables = rhs.boundaryVariables.size();
   
-  s << nLevels << " ";
-  for(int i = 0; i < nLevels; ++i) {
-    s << rhs.frequencies[i] << " " << rhs.counts[i] << " ";
+  s << nNodalLevels << " ";
+  for(int i = 0; i < nNodalLevels; ++i) {
+    s << rhs.nodalFrequencies[i] << " " << rhs.nodalCounts[i] << " ";
   }
   
   s << nNodalVariables << " ";
   for(int i = 0; i < nNodalVariables; ++i) {
     s << rhs.nodalVariables[i] << " ";
+  }
+  
+  s << nBoundaryLevels << " ";
+  for(int i = 0; i < nBoundaryLevels; ++i) {
+    s << rhs.boundaryFrequencies[i] << " " << rhs.boundaryCounts[i] << " ";
   }
   
   s << nBoundaryVariables << " ";
@@ -409,19 +461,27 @@ std::ostream & operator<<(std::ostream & s, PlotSettings const & rhs) {
 }
 
 std::istream & operator>>(std::istream & s, PlotSettings & rhs) {
-  int nLevels, nNodalVariables, nBoundaryVariables;
+  int nNodalLevels, nNodalVariables;
+  int nBoundaryLevels, nBoundaryVariables;
   
-  s >> nLevels;
-  rhs.frequencies.resize(nLevels);
-  rhs.counts.resize(nLevels);
-  for(int i = 0; i < nLevels; ++i) {
-    s >> rhs.frequencies[i] >> rhs.counts[i];
+  s >> nNodalLevels;
+  rhs.nodalFrequencies.resize(nNodalLevels);
+  rhs.nodalCounts.resize(nNodalLevels);
+  for(int i = 0; i < nNodalLevels; ++i) {
+    s >> rhs.nodalFrequencies[i] >> rhs.nodalCounts[i];
   }
   
   s >> nNodalVariables;
   rhs.nodalVariables.resize(nNodalVariables);
   for(int i = 0; i < nNodalVariables; ++i) {
     s >> rhs.nodalVariables[i];
+  }
+  
+  s >> nBoundaryLevels;
+  rhs.boundaryFrequencies.resize(nBoundaryLevels);
+  rhs.boundaryCounts.resize(nBoundaryLevels);
+  for(int i = 0; i < nBoundaryLevels; ++i) {
+    s >> rhs.boundaryFrequencies[i] >> rhs.boundaryCounts[i];
   }
   
   s >> nBoundaryVariables;
@@ -649,19 +709,19 @@ void ParamOutput::compute(Loci::sequence const & seq) {
   dumpVar(seq, tmp.Rep(), *caseName, *plotPostfix, "par", "Pambient");
 }
 
-class SurfaceBoundaryScalar : public Loci::pointwise_rule {
-  std::string var_name;
-  std::string value_name;
-  Loci::const_param<std::string> boundaryName;
-  Loci::const_store<double> var;
-  Loci::const_param<std::string> caseName;
-  Loci::const_param<std::string> plotPostfix;
-  Loci::param<bool> OUTPUT;
-  
-public:
-  SurfaceBoundaryScalar(char const * vname, char const * valname);
-  virtual void compute(Loci::sequence const & seq);
-};
+//class SurfaceBoundaryScalar : public Loci::pointwise_rule {
+//  std::string var_name;
+//  std::string value_name;
+//  Loci::const_param<std::string> boundaryName;
+//  Loci::const_store<double> var;
+//  Loci::const_param<std::string> caseName;
+//  Loci::const_param<std::string> plotPostfix;
+//  Loci::param<bool> OUTPUT;
+//  
+//public:
+//  SurfaceBoundaryScalar(char const * vname, char const * valname);
+//  virtual void compute(Loci::sequence const & seq);
+//};
 
 BoundaryScalarOutput::BoundaryScalarOutput(char const * vname, char const * valname) {
   var_name = string(vname);
@@ -669,18 +729,18 @@ BoundaryScalarOutput::BoundaryScalarOutput(char const * vname, char const * valn
   std::string constraintName = std::string("plotBoundary_") + value_name;
   
   name_store(var_name, var);
-  name_store("plotPostfix", plotPostfix);
+  name_store("plotBoundaryPostfix", plotPostfix);
   name_store("OUTPUT", OUTPUT);
   name_store("caseName", caseName);
   
-  conditional("doPlot");
+  conditional("doBoundaryPlot");
   
   constraint("ci->vol");
   constraint(constraintName);
   
   input(var_name);
   input("caseName");
-  input("plotPostfix");
+  input("plotBoundaryPostfix");
   
   output("OUTPUT");
   
@@ -704,18 +764,18 @@ BoundaryVectorOutput::BoundaryVectorOutput(char const * vname, char const * valn
   std::string constraintName = std::string("plotBoundary_") + value_name;
   
   name_store(var_name, var);
-  name_store("plotPostfix", plotPostfix);
+  name_store("plotBoundaryPostfix", plotPostfix);
   name_store("OUTPUT", OUTPUT);
   name_store("caseName", caseName);
   
-  conditional("doPlot");
+  conditional("doBoundaryPlot");
   
   constraint("ci->vol");
   constraint(constraintName);
   
   input(var_name);
   input("caseName");
-  input("plotPostfix");
+  input("plotBoundaryPostfix");
   
   output("OUTPUT");
   

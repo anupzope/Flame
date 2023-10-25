@@ -28,10 +28,12 @@ std::istream & operator>>(std::istream & s, PrintSettings & rhs);
 // =============================================================================
 
 struct PlotSettings {
-  std::vector<int> frequencies;
-  std::vector<int> counts;
   std::vector<std::string> nodalVariables;
+  std::vector<int> nodalFrequencies;
+  std::vector<int> nodalCounts;
   std::vector<std::string> boundaryVariables;
+  std::vector<int> boundaryFrequencies;
+  std::vector<int> boundaryCounts;
   
   std::string toString() const;
   void fromString(std::string const & str);
@@ -155,7 +157,7 @@ class PrintParameterDB {
 public:
   PrintParameterDB();
   void clear();
-  void add(int const root, std::string const & n, double const v);
+  void add(std::string const & n, double const v);
   std::ostream & print(
     int const timeStep, double const stime, std::ostream & s
   );

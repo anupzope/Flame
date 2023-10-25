@@ -85,11 +85,13 @@ int main(int argc, char * argv[]) {
   //  flame::logger.initialize("debug/log", Loci::MPI_rank);
   //}
   
-  LOG(INFO) << "Program Arguments:";
-  LOG(INFO) << "  case = " << arg.caseName;
-  LOG(INFO) << "  fpe enabled = " << arg.fpe;
-  LOG(INFO) << "  IC directory = " << arg.icDirectory;
-  LOG(INFO) << "  query = " << arg.query;
+  if(Loci::MPI_rank == 0) {
+    LOG(INFO) << "Program Arguments:";
+    LOG(INFO) << "  case = " << arg.caseName;
+    LOG(INFO) << "  fpe enabled = " << arg.fpe;
+    LOG(INFO) << "  IC directory = " << arg.icDirectory;
+    LOG(INFO) << "  query = " << arg.query;
+  }
   
   // Create debug directory if it does not exist.
   {

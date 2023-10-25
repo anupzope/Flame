@@ -37,7 +37,9 @@ option(disable_threading), constraint(UNIVERSE) {
       std::string filename;
       ol.getOption(species, filename);
       
-      LOG(INFO) << "Reading properties of species " << species << " from file: " << filename << std::endl;
+      $[Once] {
+        LOG(INFO) << "Reading properties of species " << species << " from file: " << filename << std::endl;
+      }
       
       std::ifstream file(filename);
       if(file.is_open()) {
@@ -48,7 +50,9 @@ option(disable_threading), constraint(UNIVERSE) {
         pol.Input(file);
         options_list::option_namelist pli = pol.getOptionNameList();
         for(auto const & pname : pli) {
-          DLOG(INFO) << "  Processing " << pname;
+          $[Once] {
+            LOG(INFO) << "  Processing " << pname;
+          }
           
           if(pname == "molecularWeight") {
             Loci::option_value_type type = pol.getOptionValueType(pname);
@@ -252,21 +256,23 @@ option(disable_threading), constraint(UNIVERSE) {
   $speciesNames = names;
   $speciesProperties = props;
   
-  for(int i = 0; i < $Ns; ++i) {
-    LOG(INFO) << "Species: " << $speciesNames[i];
-    LOG(INFO) << "  molecularWeight=" << $speciesProperties[i].molecularWeight << " kg/kmol";
-    LOG(INFO) << "  constantSpecificHeat=" << $speciesProperties[i].constantSpecificHeat << " J/kg/K";
-    LOG(INFO) << "  constantGamma=" << $speciesProperties[i].constantGamma;
-    LOG(INFO) << "  constantViscosity=" << $speciesProperties[i].constantViscosity << " Pa*s";
-    LOG(INFO) << "  sutherlandViscosityParameters=["
-      << $speciesProperties[i].sutherlandViscosityParameters[0] << " Pa*s, "
-      << $speciesProperties[i].sutherlandViscosityParameters[1] << " K, "
-      << $speciesProperties[i].sutherlandViscosityParameters[2] << " K]";
-    LOG(INFO) << "  constantConductivity=" << $speciesProperties[i].constantConductivity << " W/m/K";
-    LOG(INFO) << "  sutherlandConductivityParameters=["
-      << $speciesProperties[i].sutherlandConductivityParameters[0] << " W/m/K, "
-      << $speciesProperties[i].sutherlandConductivityParameters[1] << " K, "
-      << $speciesProperties[i].sutherlandConductivityParameters[2] << " K]";
+  $[Once] {
+    for(int i = 0; i < $Ns; ++i) {
+      LOG(INFO) << "Species: " << $speciesNames[i];
+      LOG(INFO) << "  molecularWeight=" << $speciesProperties[i].molecularWeight << " kg/kmol";
+      LOG(INFO) << "  constantSpecificHeat=" << $speciesProperties[i].constantSpecificHeat << " J/kg/K";
+      LOG(INFO) << "  constantGamma=" << $speciesProperties[i].constantGamma;
+      LOG(INFO) << "  constantViscosity=" << $speciesProperties[i].constantViscosity << " Pa*s";
+      LOG(INFO) << "  sutherlandViscosityParameters=["
+        << $speciesProperties[i].sutherlandViscosityParameters[0] << " Pa*s, "
+        << $speciesProperties[i].sutherlandViscosityParameters[1] << " K, "
+        << $speciesProperties[i].sutherlandViscosityParameters[2] << " K]";
+      LOG(INFO) << "  constantConductivity=" << $speciesProperties[i].constantConductivity << " W/m/K";
+      LOG(INFO) << "  sutherlandConductivityParameters=["
+        << $speciesProperties[i].sutherlandConductivityParameters[0] << " W/m/K, "
+        << $speciesProperties[i].sutherlandConductivityParameters[1] << " K, "
+        << $speciesProperties[i].sutherlandConductivityParameters[2] << " K]";
+    }
   }
 }
 

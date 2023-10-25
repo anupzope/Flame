@@ -64,16 +64,16 @@ bool check_boundary_conditions(fact_db & facts) {
   options_list::option_namelist::iterator li;
   
   // Print boundary names.
-  std::cout << "Boundary names:" << std::endl;
-  for(li = nl.begin(); li != nl.end(); ++li) {
-    std::string bName = *li;
-    std::cout << "  " << bName << std::endl;
-  }
+  //std::cout << "Boundary names:" << std::endl;
+  //for(li = nl.begin(); li != nl.end(); ++li) {
+  //  std::string bName = *li;
+  //  std::cout << "  " << bName << std::endl;
+  //}
   
   // Validate boundary types and boundary options.
   for(li = nl.begin(); li != nl.end(); ++li) {
     std::string bName = *li;
-    std::cout << "Boundary Name = " << bName << std::endl;
+    //std::cout << "Boundary Name = " << bName << std::endl;
     Loci::option_value_type valueType = bcInfo->getOptionValueType(bName);
     Loci::option_values values = bcInfo->getOption(bName);
     

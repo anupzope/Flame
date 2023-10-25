@@ -16,6 +16,20 @@ int getOptionValue(
 
 int getOptionValues(
   options_list const & ol, std::string const & optName,
+  int const minValues, int const maxValues,
+  std::vector<std::string> & values,
+  std::ostream & errmsg
+);
+
+int getOptionValues(
+  options_list const & ol, std::string const & optName,
+  int const minValues, int const maxValues,
+  std::vector<int> & values,
+  std::ostream & errmsg
+);
+
+int getOptionValues(
+  options_list const & ol, std::string const & optName,
   std::vector<std::string> const & units,
   int const minValues, int const maxValues,
   std::vector<double> & values,

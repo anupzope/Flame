@@ -156,7 +156,7 @@ $rule pointwise(
     std::string basename = *$caseName + ".topo";
     std::string filename = "output/" + basename;
     
-    if(Loci::MPI_rank==0) {
+    if(Loci::MPI_rank == 0) {
       std::string topolink = std::string("output/topo_file.") + *$plotPostfix + std::string("_") + *$caseName;
       std::ofstream file(topolink.c_str(), std::ios::trunc);
       file << basename << std::endl;
@@ -192,12 +192,12 @@ $rule singleton(
   $doPlot{n,rk} = false;
   $plotPostfix{n,rk} = "none";
   
-  int const nLevels = $plotSettings.counts.size();
+  int const nLevels = $plotSettings.nodalCounts.size();
   int const n = $timeStep{n};
   
   for(int i = 0; i < nLevels; ++i) {
-    int const f = $plotSettings.frequencies[i];
-    int const c = $plotSettings.counts[i];
+    int const f = $plotSettings.nodalFrequencies[i];
+    int const c = $plotSettings.nodalCounts[i];
     
     if(f > 0 && $$rk{n,rk} == 0) {
       if(n%f == 0) {
@@ -210,6 +210,38 @@ $rule singleton(
           std::ostringstream ss;
           ss << (n%(f*c)) << "L" << i;
           $plotPostfix{n,rk} = ss.str();
+        }
+      }
+    }
+  }
+}
+
+$rule singleton(
+  doBoundaryPlot{n,rk}, plotBoundaryPostfix{n,rk}
+  <-
+  timeStep{n}, plotSettings, $rk{n,rk}
+) {
+  $doBoundaryPlot{n,rk} = false;
+  $plotBoundaryPostfix{n,rk} = "none";
+  
+  int const nLevels = $plotSettings.boundaryCounts.size();
+  int const n = $timeStep{n};
+  
+  for(int i = 0; i < nLevels; ++i) {
+    int const f = $plotSettings.boundaryFrequencies[i];
+    int const c = $plotSettings.boundaryCounts[i];
+    
+    if(f > 0 && $$rk{n,rk} == 0) {
+      if(n%f == 0) {
+        $doBoundaryPlot{n,rk} = true;
+        if(i == nLevels-1) {
+          std::ostringstream ss;
+          ss << (n%(f*c));
+          $plotBoundaryPostfix{n,rk} = ss.str();
+        } else {
+          std::ostringstream ss;
+          ss << (n%(f*c)) << "L" << i;
+          $plotBoundaryPostfix{n,rk} = ss.str();
         }
       }
     }
