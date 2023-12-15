@@ -139,6 +139,8 @@ $type icGagePressure param<double>;
 $type icTemperature param<double>;
 $type icVelocity param<Loci::vector3d<double> >;
 $type icSpeciesY param<std::vector<double> >;
+$type icMixtureW param<double>;
+$type icMixtureR param<double>;
 
 // User supplied options list for specifying parameters for setting up TGV
 // initial conditions.
@@ -192,22 +194,60 @@ $type Pambient param<double>;
 // =============================================================================
 
 $type totalVolume param<double>;
-
 $type totalKineticEnergy param<double>;
-
 $type totalEnstrophy param<double>;
+$type totalEnstrophy1 param<double>;
+$type totalEnstrophy3 param<double>;
 
 // =============================================================================
 // Boundary condition constraints.
 // =============================================================================
 
+$type supersonicInflow_BC Constraint;
+$type supersonicOutflow_BC Constraint;
+$type farfield_BC Constraint;
+$type symmetry_BC Constraint;
 $type reflecting_BC Constraint;
 $type viscousWall_BC Constraint;
+
+$type pressure_BCoption Constraint;
+$type temperature_BCoption Constraint;
+$type density_BCoption Constraint;
+$type massFractions_BCoption Constraint;
+$type molarFractions_BCoption Constraint;
+$type velocity_BCoption Constraint;
+$type Mach_BCoption Constraint;
 $type adiabatic_BCoption Constraint;
 $type heatFlux_BCoption Constraint;
+
+$type pressure_BC store<double>;
+$type temperature_BC store<double>;
+$type density_BC store<double>;
+$type massFractions_BC storeVec<double>;
+$type molarFractions_BC storeVec<double>;
+$type velocity_BC store<Loci::vector3d<double> >;
+$type Mach_BC store<Loci::vector3d<double> >;
 $type heatFlux_BC store<double>;
-$type T_BCoption Constraint;
-$type T_BC store<double>;
+
+$type gagePressureRef_BC store<double>;
+$type temperatureRef_BC store<double>;
+$type densityRef_BC store<double>;
+$type speciesYRef_BC storeVec<double>;
+$type velocityRef_BC store<Loci::vector3d<double> >;
+$type mixtureWRef_BC store<double>;
+$type mixtureRRef_BC store<double>;
+$type mixtureCpRef_BC store<double>;
+$type soundSpeedRef_BC store<double>;
+
+$type gagePressureRef store<double>;
+$type temperatureRef store<double>;
+$type densityRef store<double>;
+$type speciesYRef storeVec<double>;
+$type velocityRef store<Loci::vector3d<double> >;
+$type mixtureWRef store<double>;
+$type mixtureRRef store<double>;
+$type mixtureCpRef store<double>;
+$type soundSpeedRef store<double>;
 
 // =============================================================================
 // Variables related to model of transport properties.
@@ -460,3 +500,14 @@ $type cfl store<double>;
 // Maximum and minimum CFL value (over all cells).
 $type maxCFL param<double>;
 $type minCFL param<double>;
+
+// =============================================================================
+// Constraints for print parameters.
+// =============================================================================
+
+$type printParam_maxCFL Constraint;
+$type printParam_minCFL Constraint;
+$type printParam_totalKineticEnergy Constraint;
+$type printParam_totalEnstrophy Constraint;
+$type printParam_totalEnstrophy1 Constraint;
+$type printParam_totalEnstrophy3 Constraint;

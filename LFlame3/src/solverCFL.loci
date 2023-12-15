@@ -43,8 +43,7 @@ $rule unit(maxCFL), constraint(UNIVERSE) {
 }
 
 $rule unit(minCFL), constraint(UNIVERSE) {
-  auto tmp = $minCFL;
-  $minCFL = std::numeric_limits<decltype(tmp)>::max();
+  $minCFL = std::numeric_limits<double>::max();
 }
 
 $rule apply(maxCFL <- cfl)[Loci::Maximum] {
@@ -55,15 +54,26 @@ $rule apply(minCFL <- cfl)[Loci::Minimum] {
   join($minCFL, $cfl);
 }
 
-$rule apply(printParameterDBIdx <- maxCFL, minCFL)[Loci::Maximum],
-conditional(doPrint), option(disable_threading), prelude {
+$rule apply(printParameterDBIdx <- maxCFL)[Loci::Maximum],
+conditional(doPrint), constraint(printParam_maxCFL),
+option(disable_threading), prelude {
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+  
+  printParameterDB.add("cflMax", *$maxCFL);
+  *$printParameterDBIdx += 1;
+};
+
+$rule apply(printParameterDBIdx <- minCFL)[Loci::Maximum],
+conditional(doPrint), constraint(printParam_minCFL),
+option(disable_threading), prelude {
   if(Loci::GLOBAL_AND(seq == EMPTY)) {
     return;
   }
   
   printParameterDB.add("cflMin", *$minCFL);
-  printParameterDB.add("cflMax", *$maxCFL);
-  *$printParameterDBIdx += 2;
+  *$printParameterDBIdx += 1;
 };
 
 } // end: namespace flame

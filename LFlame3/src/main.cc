@@ -244,73 +244,145 @@ int main(int argc, char * argv[]) {
     facts.create_fact("withoutICDirectory", withoutICDirectory);
   }
   
-  // Setup constraints for plot variables.
-  {
-    param<std::string> plotInfo;
-    std::stringstream plotInfoValue;
-    param<options_list> plotOptions;
-    plotOptions = facts.get_variable("plotOptions");
-    
-    flame::PlotSettings settings;
-    std::string err;
-    if(settings.fromOptionsList(*plotOptions, err)) {
-      LOG(ERROR) << err;
-      Loci::Abort();
-    }
-    
-    int const nNodalVariables = settings.nodalVariables.size();
-    int const nBoundaryVariables = settings.boundaryVariables.size();
-    int const nTotalVariables = nNodalVariables + nBoundaryVariables;
-    
-    for(int i = 0; i < nNodalVariables; ++i) {
-      constraint x;
-      x = ~EMPTY;
-      std::string constraintName = std::string("plotNodal_") + settings.nodalVariables[i];
-      facts.create_fact(constraintName, x);
-      plotInfoValue << constraintName << ":";
-    }
-    
-    for(int i = 0; i < nBoundaryVariables; ++i) {
-      constraint x;
-      x = ~EMPTY;
-      std::string constraintName = std::string("plotBoundary_") + settings.boundaryVariables[i];
-      facts.create_fact(constraintName, x);
-      plotInfoValue << constraintName << ":";
-    }
-    
-    // Pambient is a special param that always needs to be written out
-    {
-      std::string constraintName = "plotParam_Pambient";
-      constraint plotParam_Pambient;
-      plotParam_Pambient = ~EMPTY;
-      facts.create_fact(constraintName, plotParam_Pambient);
-      plotInfoValue << constraintName;
-    }
-    
-    *plotInfo = plotInfoValue.str();
-    facts.create_fact("plotInfo", plotInfo);
-  }
+  //// Setup constraints for plot variables.
+  //{
+  //  param<std::string> plotInfo;
+  //  std::stringstream plotInfoValue;
+  //  param<options_list> plotOptions;
+  //  plotOptions = facts.get_variable("plotOptions");
+  //  
+  //  flame::PlotSettings settings;
+  //  std::string err;
+  //  if(settings.fromOptionsList(*plotOptions, err)) {
+  //    LOG(ERROR) << err;
+  //    Loci::Abort();
+  //  }
+  //  
+  //  int const nNodalVariables = settings.nodalVariables.size();
+  //  int const nBoundaryVariables = settings.boundaryVariables.size();
+  //  int const nTotalVariables = nNodalVariables + nBoundaryVariables;
+  //  
+  //  for(int i = 0; i < nNodalVariables; ++i) {
+  //    constraint x;
+  //    x = ~EMPTY;
+  //    std::string constraintName = std::string("plotNodal_") + settings.nodalVariables[i];
+  //    facts.create_fact(constraintName, x);
+  //    plotInfoValue << constraintName << ":";
+  //  }
+  //  
+  //  for(int i = 0; i < nBoundaryVariables; ++i) {
+  //    constraint x;
+  //    x = ~EMPTY;
+  //    std::string constraintName = std::string("plotBoundary_") + settings.boundaryVariables[i];
+  //    facts.create_fact(constraintName, x);
+  //    plotInfoValue << constraintName << ":";
+  //  }
+  //  
+  //  // Pambient is a special param that always needs to be written out
+  //  {
+  //    std::string constraintName = "plotParam_Pambient";
+  //    constraint plotParam_Pambient;
+  //    plotParam_Pambient = ~EMPTY;
+  //    facts.create_fact(constraintName, plotParam_Pambient);
+  //    plotInfoValue << constraintName;
+  //  }
+  //  
+  //  *plotInfo = plotInfoValue.str();
+  //  facts.create_fact("plotInfo", plotInfo);
+  //}
   
-  // Sanity check for print variables
+  // Process printOptions
   {
-    param<options_list> printOptions;
-    facts.get_variable("printOptions");
-    
-    flame::PrintSettings settings;
-    std::string err;
-    if(settings.fromOptionsList(*printOptions, err)) {
-      LOG(ERROR) << err;
-      Loci::Abort();
+    Loci::storeRepP posp = facts.get_variable("printOptions");
+    if(posp != 0 && posp->RepType() == Loci::PARAMETER) {
+      param<options_list> printOptions;
+      printOptions.setRep(posp);
+
+      // Parse printOptions.
+      flame::PrintSettings settings;
+      std::string err;
+      if(settings.fromOptionsList(*printOptions, err)) {
+        LOG(ERROR) << err;
+        Loci::Abort();
+      }
+
+      // Create fact for printSettings.
+      param<flame::PrintSettings> printSettings;
+      *printSettings = settings;
+      facts.create_fact("printSettings", printSettings);
+
+      // Create constraints for individual parameters to print.
+      int const nParams = settings.parameters.size();
+      for(int i = 0; i < nParams; ++i) {
+        std::string constraintName = std::string("printParam_") + settings.parameters[i];
+        constraint x;
+        x = ~EMPTY;
+        facts.create_fact(constraintName, x);
+      }
+    } else {
+      if(Loci::MPI_rank == 0) {
+        LOG(INFO) << "printOptions not specified";
+      }
     }
-    
-    int const nParams = settings.parameters.size();
-    for(int i = 0; i < nParams; ++i) {
-      Loci::storeRepP sp = facts.get_variable(settings.parameters[i]);
-      if(sp != 0) {
-        if(sp->RepType() != Loci::PARAMETER) {
-          LOG(ERROR) << settings.parameters[i] << ": is not a PARAMETER";
-          Loci::Abort();
-        }
+  }
+
+  // Process plotOptions.
+  {
+    Loci::storeRepP posp = facts.get_variable("plotOptions");
+    if(posp != 0 && posp->RepType() == Loci::PARAMETER) {
+      param<std::string> plotInfo;
+      std::stringstream plotInfoValue;
+      param<options_list> plotOptions;
+      plotOptions.setRep(posp);
+
+      // Parse plotOptions.
+      flame::PlotSettings settings;
+      std::string err;
+      if(settings.fromOptionsList(*plotOptions, err)) {
+        LOG(ERROR) << err;
+        Loci::Abort();
+      }
+
+      // Create fact for plotSettings.
+      param<flame::PlotSettings> plotSettings;
+      *plotSettings = settings;
+      facts.create_fact("plotSettings", plotSettings);
+
+      // Create constraints for individual plotting variables.
+      int const nNodalVariables = settings.nodalVariables.size();
+      int const nBoundaryVariables = settings.boundaryVariables.size();
+      int const nTotalVariables = nNodalVariables + nBoundaryVariables;
+
+      for(int i = 0; i < nNodalVariables; ++i) {
+        constraint x;
+        x = ~EMPTY;
+        std::string constraintName = std::string("plotNodal_") + settings.nodalVariables[i];
+        facts.create_fact(constraintName, x);
+        plotInfoValue << constraintName << ":";
+      }
+
+      for(int i = 0; i < nBoundaryVariables; ++i) {
+        constraint x;
+        x = ~EMPTY;
+        std::string constraintName = std::string("plotBoundary_") + settings.boundaryVariables[i];
+        facts.create_fact(constraintName, x);
+        plotInfoValue << constraintName << ":";
+      }
+
+      // Pambient is a special param that always needs to be written out
+      {
+        std::string constraintName = "plotParam_Pambient";
+        constraint x;
+        x = ~EMPTY;
+        facts.create_fact(constraintName, x);
+        plotInfoValue << constraintName;
+      }
+
+      *plotInfo = plotInfoValue.str();
+      facts.create_fact("plotInfo", plotInfo);
+    } else {
+      if(Loci::MPI_rank == 0) {
+        LOG(INFO) << "plotOptions not specified";
       }
     }
   }

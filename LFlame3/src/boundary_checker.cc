@@ -1,5 +1,7 @@
 #include <boundary_checker.hh>
 
+#include <glog/logging.h>
+
 namespace flame {
 
 BoundaryCheckerList::Item * BoundaryCheckerList::items = nullptr;
@@ -30,7 +32,7 @@ bool check_boundary_conditions(fact_db & facts) {
     int i = 0;
     while(bcChecker != nullptr) {
       Loci::variableSet bcNames;
-      std::cerr << bcChecker->entry->boundaryConditions() << std::endl;
+      
       if(bcChecker->entry->boundaryConditions() == "*") {
         bcNames = ~EMPTY;
       } else {
@@ -73,7 +75,7 @@ bool check_boundary_conditions(fact_db & facts) {
   // Validate boundary types and boundary options.
   for(li = nl.begin(); li != nl.end(); ++li) {
     std::string bName = *li;
-    //std::cout << "Boundary Name = " << bName << std::endl;
+    
     Loci::option_value_type valueType = bcInfo->getOptionValueType(bName);
     Loci::option_values values = bcInfo->getOption(bName);
     
@@ -90,7 +92,7 @@ bool check_boundary_conditions(fact_db & facts) {
       break;
     default:
       if(Loci::MPI_rank == 0) {
-        std::cerr << "cannot interprete value assigned to boundary \""
+        LOG(ERROR) << "cannot interprete value assigned to boundary \""
           << bName << "\"" << std::endl;
       }
       error = true;
@@ -134,9 +136,10 @@ bool check_boundary_conditions(fact_db & facts) {
             }
           } catch(Loci::BasicException & err) {
             if(Loci::MPI_rank == 0) {
-              std::cerr << "ERROR: boundary type " << bcName << " for boundary id \""
-                << bName << "\":" << std::endl;
-              err.Print(std::cerr);
+              std::ostringstream ss;
+              err.Print(ss);
+              LOG(ERROR) << "ERROR: boundary type " << bcName << " for boundary id \""
+                << bName << "\":" << ss.str();
             }
           }
         }
@@ -145,14 +148,14 @@ bool check_boundary_conditions(fact_db & facts) {
     
     if(!foundBCMatch) {
       if(Loci::MPI_rank == 0) {
-        std::cerr << "Boundary type \"" << bcName << "\" is unknown for boundary id \""
-          << bName << "\"" << std::endl;
+        LOG(ERROR) << "Boundary type \"" << bcName << "\" is unknown for boundary id \""
+          << bName << "\"";
       }
       error = true;
     } else if(bcOptionVars == EMPTY && !foundEmptyMatch) {
       if(Loci::MPI_rank == 0) {
-        std::cerr << "Boundary type \"" << bcName
-          << "\" requires argument(s) for boundary id \"" << bName << "\"" << std::endl;
+        LOG(ERROR) << "Boundary type \"" << bcName
+          << "\" requires argument(s) for boundary id \"" << bName << "\"";
       }
       error = true;
     } else if(uncheckedBCOptions != EMPTY) {
@@ -161,17 +164,19 @@ bool check_boundary_conditions(fact_db & facts) {
         for(int i = 0; i < nBCChecker; ++i) {
           if(bcCheckerInfo[i].bcNames.inSet(bcVar)) {
             if((bcCheckerInfo[i].bcOptions & uncheckedBCOptions) != EMPTY) {
-              std::cerr << "check failed for boundary condition "
-                << bcName << " on boundary id \"" << bName << "\"" << std::endl;
-              bcCheckerInfo[i].checker->errorMessage(std::cerr);
+              std::ostringstream ss;
+              bcCheckerInfo[i].checker->errorMessage(ss);
+              LOG(ERROR) << "check failed for boundary condition "
+                << bcName << " on boundary id \"" << bName << "\":"
+                << ss.str();
               errorPrinted = true;
             }
           }
         }
         if(!errorPrinted) {
-          std::cerr << "options " << uncheckedBCOptions
+          LOG(ERROR) << "options " << uncheckedBCOptions
             << " not compatible with boundary condition "
-            << bcName << " for boundary id \"" << bName << "\"" << std::endl;
+            << bcName << " for boundary id \"" << bName << "\"";
         }
       }
       error = true;

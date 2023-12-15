@@ -1,0 +1,84 @@
+#include <flame.hh>
+
+$include "flame.lh"
+$include "FVM.lh"
+
+namespace flame {
+
+// =============================================================================
+
+$rule pointwise(gagePressureRef <- ref->gagePressureRef_BC) {
+  $gagePressureRef = $ref->$gagePressureRef_BC;
+}
+
+$rule pointwise(temperatureRef <- ref->temperatureRef_BC) {
+  $temperatureRef = $ref->$temperatureRef_BC;
+}
+
+$rule pointwise(velocityRef <- ref->velocityRef_BC) {
+  $velocityRef = $ref->$velocityRef_BC;
+}
+
+$rule pointwise(speciesYRef <- ref->speciesYRef_BC, Ns), prelude {
+  $speciesYRef.setVecSize(*$Ns);
+} {
+  $speciesYRef = $ref->$speciesYRef_BC;
+}
+
+// =============================================================================
+
+$rule pointwise(
+  mixtureWRef, mixtureRRef <- speciesYRef, speciesW, Runiv, Ns
+), constraint(multiSpecies, speciesYRef) {
+  double Winv = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Winv += $speciesYRef[i]/$speciesW[i];
+  }
+  $mixtureWRef = 1.0/Winv;
+  $mixtureRRef = $Runiv*Winv;
+}
+
+$rule pointwise(mixtureCpRef <- speciesYRef, speciesConstantCp, Ns),
+constraint(multiSpecies, caloricallyPerfectGas, speciesYRef) {
+  double Cp = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Cp += $speciesYRef[i]*$speciesConstantCp[i];
+  }
+  $mixtureCpRef = Cp;
+}
+
+// =============================================================================
+
+$rule pointwise(soundSpeedRef <- temperatureRef, speciesConstantCp, speciesR),
+constraint(singleSpecies, idealGas, caloricallyPerfectGas, temperatureRef) {
+  double const & Cp = $speciesConstantCp[0];
+  double const & R = $speciesR[0];
+  double const & T = $temperatureRef;
+  $soundSpeedRef = sqrt((Cp*R*T)/(Cp-R));
+}
+
+$rule pointwise(soundSpeedRef <- temperatureRef, mixtureCpRef, mixtureRRef),
+constraint(multiSpecies, idealGas, caloricallyPerfectGas, temperatureRef) {
+  double const & Cp = $mixtureCpRef;
+  double const & R = $mixtureRRef;
+  double const & T = $temperatureRef;
+  $soundSpeedRef = sqrt((Cp*R*T)/(Cp-R));
+}
+
+// =============================================================================
+
+// Calculate density of single species ideal gas.
+$rule pointwise(densityRef <- gagePressureRef, temperatureRef, speciesR, Pambient),
+constraint(singleSpecies, idealGas, temperatureRef) {
+  $densityRef = ($gagePressureRef+$Pambient)/($speciesR[0]*$temperatureRef);
+}
+
+// Calculate density of multi-species ideal gas.
+$rule pointwise(densityRef <- gagePressureRef, temperatureRef, mixtureRRef, Pambient),
+constraint(multiSpecies, idealGas, temperatureRef) {
+  $densityRef = ($gagePressureRef+$Pambient)/($mixtureRRef*$temperatureRef);
+}
+
+// =============================================================================
+
+} // end: namespace flame

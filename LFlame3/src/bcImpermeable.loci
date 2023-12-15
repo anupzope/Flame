@@ -7,6 +7,79 @@ $include "flame.lh"
 
 namespace flame {
 
+// =============================================================================
+
+class SymmetryBCChecker : public BoundaryChecker {
+public:
+  std::string boundaryConditions() override {
+    return "symmetry";
+  }
+  
+  std::string variablesChecked() override {
+    return "";
+  }
+  
+  bool checkOptions(options_list const & bc_options) override {
+    return true;
+  }
+  
+  std::ostream & errorMessage(std::ostream & s) override {
+    return s;
+  }
+};
+
+registerBoundaryChecker<SymmetryBCChecker> symmetryBCChecker;
+
+$rule pointwise(velocity_f <- area, ci->velocity), constraint(symmetry_BC) {
+  double const uit = dot($ci->$velocity, $area.n);
+  $velocity_f = $ci->$velocity - uit*$area.n;
+}
+
+$rule pointwise(gagePressure_f <- area, ci->(velocity,gagePressure,density), Pambient),
+constraint(symmetry_BC) {
+  double const uit = dot($ci->$velocity, $area.n);
+  double const U = norm($ci->$velocity);
+  $gagePressure_f = $ci->$gagePressure + 0.5*($ci->$density)*U*uit;
+}
+
+$rule pointwise(temperature_f <- ci->temperature), constraint(symmetry_BC) {
+  $temperature_f = $ci->$temperature;
+}
+
+$rule pointwise(speciesX_f <- ci->speciesX, Ns), constraint(symmetry_BC),
+prelude {
+  $speciesX_f.setVecSize(*$Ns);
+} {
+  $speciesX_f = $ci->$speciesX;
+}
+
+$rule pointwise(ssConvectiveFlux_f <- gagePressure_f, velocity_f, area),
+constraint(singleSpecies, symmetry_BC) {
+  Loci::vector3d<double> const momentum = $gagePressure_f*$area.sada*$area.n;
+  $ssConvectiveFlux_f[0] = momentum.x;
+  $ssConvectiveFlux_f[1] = momentum.y;
+  $ssConvectiveFlux_f[2] = momentum.z;
+  $ssConvectiveFlux_f[3] = dot($velocity_f, momentum);
+  $ssConvectiveFlux_f[4] = 0.0;
+}
+
+$rule pointwise(msConvectiveFlux_f <- gagePressure_f, velocity_f, area, Ns),
+constraint(multiSpecies, symmetry_BC), prelude {
+  $msConvectiveFlux_f.setVecSize(*$Ns+4);
+} {
+  Loci::vector3d<double> const momentum = $gagePressure_f*$area.sada*$area.n;
+  $msConvectiveFlux_f[0] = momentum.x;
+  $msConvectiveFlux_f[1] = momentum.y;
+  $msConvectiveFlux_f[2] = momentum.z;
+  $msConvectiveFlux_f[3] = dot($velocity_f, momentum);
+  $msConvectiveFlux_f[4] = 0.0;
+  for(int i = 0; i < $Ns-1; ++i) {
+    $msConvectiveFlux_f[5+i] = 0.0;
+  }
+}
+
+// =============================================================================
+
 class ReflectingBCChecker : public BoundaryChecker {
 public:
   std::string boundaryConditions() override {
@@ -37,7 +110,7 @@ $rule pointwise(gagePressure_f <- area, ci->(velocity,gagePressure,density), Pam
 constraint(reflecting_BC) {
   double const uit = dot($ci->$velocity,$area.n);
   double const Pmin = 0.5*($ci->$gagePressure+$Pambient)-$Pambient;
-  $gagePressure_f = std::max(Pmin, $ci->$gagePressure + 0.5*($ci->$density)*uit*fabs(uit));
+  $gagePressure_f = max(Pmin, $ci->$gagePressure + 0.5*($ci->$density)*uit*fabs(uit));
 }
 
 $rule pointwise(temperature_f <- ci->temperature), constraint(reflecting_BC) {
@@ -92,8 +165,8 @@ $rule pointwise(
 $rule pointwise(
   msConvectiveFlux_f
   <-
-  leftsP(gagePressure,minPg), leftv3d(velocity), leftsP(temperature,Zero), leftvM(speciesY),
-  ci->(mixtureCp, mixtureR), area, Pambient, Ns
+  leftsP(gagePressure,minPg), leftv3d(velocity), leftsP(temperature,Zero),
+  leftvM(speciesY), ci->(mixtureCp, mixtureR), area, Pambient, Ns
 ), constraint(multiSpecies, idealGas, reflecting_BC), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {
@@ -127,5 +200,7 @@ $rule pointwise(
     flux[5+i] = 0.0;
   }
 }
+
+// =============================================================================
 
 } // end: namespace flame

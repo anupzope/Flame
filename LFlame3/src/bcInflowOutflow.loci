@@ -1,0 +1,316 @@
+$include "flame.lh"
+$include "FVM.lh"
+
+#include <flux.hh>
+#include <flame.hh>
+#include <utils.hh>
+#include <boundary_checker.hh>
+
+namespace flame {
+
+// =============================================================================
+
+class SupersonicOutflowBCChecker : public BoundaryChecker {
+public:
+  std::string boundaryConditions() override {
+    return "supersonicOutflow";
+  }
+  
+  std::string variablesChecked() override {
+    return "";
+  }
+  
+  bool checkOptions(options_list const & bcOptions) override {
+    return true;
+  }
+  
+  std::ostream & errorMessage(std::ostream & s) override {
+    return s;
+  }
+};
+
+registerBoundaryChecker<SupersonicOutflowBCChecker> supersonicOutflowBCChecker;
+
+// =============================================================================
+
+class InflowBCChecker : public BoundaryChecker {
+  std::string message;
+  
+public:
+  std::string boundaryConditions() override {
+    return "supersonicInflow,farfield";
+  }
+  
+  std::string variablesChecked() override {
+    return "pressure,temperature,density,velocity,Mach,massFractions,molarFractions";
+  }
+  
+  bool checkOptions(options_list const & bcOptions) override {
+    int error = 0;
+    std::stringstream errmsg;
+    
+    int thermoCount = 0;
+    int speedCount = 0;
+    int speciesCount = 0;
+    
+    std::string pName = "pressure", tName = "temperature", rName = "density";
+    std::string vName = "velocity", mName = "Mach";
+    std::string yName = "massFractions", xName = "molarFractions";
+    
+    if(bcOptions.optionExists(pName)) {
+      ++thermoCount;
+    }
+    
+    if(bcOptions.optionExists(tName)) {
+      ++thermoCount;
+    }
+    
+    if(bcOptions.optionExists(rName)) {
+      ++thermoCount;
+    }
+    
+    if(bcOptions.optionExists(vName)) {
+      ++speedCount;
+    }
+    
+    if(bcOptions.optionExists(mName)) {
+      ++speedCount;
+    }
+    
+    if(bcOptions.optionExists(yName)) {
+      ++speciesCount;
+    }
+    
+    if(bcOptions.optionExists(xName)) {
+      ++speciesCount;
+    }
+    
+    if(thermoCount != 2 && speedCount != 1 && speciesCount != 1) {
+      errmsg << "[only two of the thermodynamic variables:"
+        << pName << "," << tName << "," << rName << ", "
+        << "one of the speed variables:" << vName << "," << mName << ", "
+        << "and one of the species fractions variables:" << yName << "," << xName
+        << " is required]";
+      ++error;
+    }
+    
+    message = (error ? errmsg.str() : "");
+    
+    return error == 0;
+  }
+  
+  std::ostream & errorMessage(std::ostream & s) override {
+    s << message;
+    return s;
+  }
+};
+
+registerBoundaryChecker<InflowBCChecker> inflowBCChecker;
+
+// =============================================================================
+
+$rule pointwise(gagePressure_f <- gagePressureRef),
+constraint(supersonicInflow_BC) {
+  $gagePressure_f = $gagePressureRef;
+}
+
+$rule pointwise(temperature_f <- temperatureRef),
+constraint(supersonicInflow_BC) {
+  $temperature_f = $temperatureRef;
+}
+
+$rule pointwise(velocity_f <- velocityRef),
+constraint(supersonicInflow_BC) {
+  $velocity_f = $velocityRef;
+}
+
+$rule pointwise(speciesY_f <- speciesYRef, Ns),
+constraint(supersonicInflow_BC), prelude {
+  $speciesY_f.setVecSize(*$Ns);
+} {
+  $speciesY_f = $speciesYRef;
+}
+
+// =============================================================================
+
+$rule pointwise(gagePressure_f <- ci->gagePressure),
+constraint(supersonicOutflow_BC) {
+  $gagePressure_f = $ci->$gagePressure;
+}
+
+$rule pointwise(temperature_f <- ci->temperature),
+constraint(supersonicOutflow_BC) {
+  $temperature_f = $ci->$temperature;
+}
+
+$rule pointwise(velocity_f <- ci->velocity),
+constraint(supersonicOutflow_BC) {
+  $velocity_f = $ci->$velocity;
+}
+
+$rule pointwise(speciesY_f <- ci->speciesY, Ns),
+constraint(supersonicOutflow_BC), prelude {
+  $speciesY_f.setVecSize(*$Ns);
+} {
+  $speciesY_f = $ci->$speciesY;
+}
+
+// =============================================================================
+
+$rule pointwise(
+  gagePressure_f, temperature_f, velocity_f, speciesY_f
+  <-
+  gagePressureRef, temperatureRef, velocityRef, densityRef, speciesYRef, area,
+  ci->(gagePressure,temperature,velocity,density,speciesY),
+  Pambient, mixtureRRef, soundSpeedRef, Ns
+), constraint(multiSpecies, idealGas, farfield_BC), prelude {
+  $speciesY_f.setVecSize(*$Ns);
+} {
+  Loci::vector3d<double> const & ui = $ci->$velocity;
+  double const & ri = $ci->$density;
+  double const & pgi = $ci->$gagePressure;
+  double const & Ti = $ci->$temperature;
+  const_Vect<double> const & Yi = $ci->$speciesY;
+  
+  Loci::vector3d<double> const & uo = $velocityRef;
+  double const & ro = $densityRef;
+  double const & pgo = $gagePressureRef;
+  double const & To = $temperatureRef;
+  const_Vect<double> const & Yo = $speciesYRef;
+  
+  double const uti = dot(ui, $area.n);
+  double const uto = dot(uo, $area.n);
+  
+  double const r0 = ro;
+  double const c0 = $soundSpeedRef;
+  double const r0c0 = r0*c0;
+  
+  if(uti > 0.0) { // outflow
+    if(uti > $soundSpeedRef) { // supersonic outflow
+      $gagePressure_f = pgi;
+      $temperature_f = Ti;
+      $velocity_f = ui;
+      $speciesY_f = Yi;
+    } else { // subsonic outflow
+      double const pgb = 0.5*(pgi+pgo+r0c0*(uti-uto));
+      double const rb = ri+(pgb-pgi)/(c0*c0);
+      Loci::vector3d<double> ub = ui+((pgi-pgb)/r0c0)*$area.n;
+      double const Tb = (pgb+$Pambient)/($mixtureRRef*rb);
+      
+      $gagePressure_f = pgb;
+      $temperature_f = Tb;
+      $velocity_f = ub;
+      $speciesY_f = Yi;
+    }
+  } else {
+    if(-uti > $soundSpeedRef) { // supersonic inflow
+      $gagePressure_f = pgo;
+      $temperature_f = To;
+      $velocity_f = uo;
+      $speciesY_f = Yo;
+    } else { // subsonic inflow
+      double const pgb = 0.5*(pgo+pgi+r0c0*(uti-uto));
+      double const rb = r0+(pgb-pgo)/(c0*c0);
+      Loci::vector3d<double> ub = uo+((pgb-pgo)/r0c0)*$area.n;
+      double const Tb = (pgb+$Pambient)/($mixtureRRef*rb);
+      
+      $gagePressure_f = pgb;
+      $temperature_f = Tb;
+      $velocity_f = ub;
+      $speciesY_f = Yo;
+    }
+  }
+}
+
+$rule pointwise(
+  gagePressure_f, temperature_f, velocity_f
+  <-
+  gagePressureRef, temperatureRef, velocityRef, densityRef, soundSpeedRef, area,
+  ci->(gagePressure,temperature,velocity,density), Pambient, speciesR
+), constraint(singleSpecies, idealGas, farfield_BC) {
+  Loci::vector3d<double> const & ui = $ci->$velocity;
+  double const & ri = $ci->$density;
+  double const & pgi = $ci->$gagePressure;
+  double const & Ti = $ci->$temperature;
+  
+  Loci::vector3d<double> const & uo = $velocityRef;
+  double const & ro = $densityRef;
+  double const & pgo = $gagePressureRef;
+  double const & To = $temperatureRef;
+  
+  double const uti = dot(ui, $area.n);
+  double const uto = dot(uo, $area.n);
+  
+  double const r0 = ro;
+  double const c0 = $soundSpeedRef;
+  double const r0c0 = r0*c0;
+  
+  if(uti > 0.0) { // outflow
+    if(uti > $soundSpeedRef) { // supersonic outflow
+      $gagePressure_f = pgi;
+      $temperature_f = Ti;
+      $velocity_f = ui;
+    } else { // subsonic outflow
+      double const pgb = 0.5*(pgi+pgo+r0c0*(uti-uto));
+      double const rb = ri+(pgb-pgi)/(c0*c0);
+      Loci::vector3d<double> ub = ui+((pgi-pgb)/r0c0)*$area.n;
+      double const Tb = (pgb+$Pambient)/($speciesR[0]*rb);
+      
+      $gagePressure_f = pgb;
+      $temperature_f = Tb;
+      $velocity_f = ub;
+    }
+  } else {
+    if(-uti > $soundSpeedRef) { // supersonic inflow
+      $gagePressure_f = pgo;
+      $temperature_f = To;
+      $velocity_f = uo;
+    } else { // subsonic inflow
+      double const pgb = 0.5*(pgo+pgi+r0c0*(uti-uto));
+      double const rb = r0+(pgb-pgo)/(c0*c0);
+      Loci::vector3d<double> ub = uo+((pgb-pgo)/r0c0)*$area.n;
+      double const Tb = (pgb+$Pambient)/($speciesR[0]*rb);
+      
+      $gagePressure_f = pgb;
+      $temperature_f = Tb;
+      $velocity_f = ub;
+    }
+  }
+}
+
+// =============================================================================
+
+  $rule pointwise(
+    ssConvectiveFlux_f
+    <-
+    leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
+    gagePressure_f, temperature_f, velocity_f,
+    area, Pambient, speciesConstantCp, speciesR
+                  ), constraint(singleSpecies, caloricallyPerfectGas, farfield_BC) {
+  AUSMPlusUpFluxIdealGas(
+    $ssConvectiveFlux_f,
+    $leftv3d(velocity), $leftsP(gagePressure,minPg), $leftsP(temperature,Zero),
+    $velocity_f, $gagePressure_f, $temperature_f,
+    $area.sada, $area.n, $Pambient,
+    $speciesR[0], $speciesConstantCp[0], 1.0
+  );
+}
+
+//$rule pointwise(msConvectiveFlux_f <- gagePressure_f, velocity_f, area, Ns),
+//constraint(multiSpecies, farfield_BC), prelude {
+//  $msConvectiveFlux_f.setVecSize(*$Ns+4);
+//} {
+//  Loci::vector3d<double> const momentum = $gagePressure_f*$area.sada*$area.n;
+//  $msConvectiveFlux_f[0] = momentum.x;
+//  $msConvectiveFlux_f[1] = momentum.y;
+//  $msConvectiveFlux_f[2] = momentum.z;
+//  $msConvectiveFlux_f[3] = dot($velocity_f, momentum);
+//  $msConvectiveFlux_f[4] = 0.0;
+//  for(int i = 0; i < $Ns-1; ++i) {
+//    $msConvectiveFlux_f[5+i] = 0.0;
+//  }
+//}
+
+// =============================================================================
+
+} // end: namespace flame

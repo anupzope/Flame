@@ -17,7 +17,7 @@ public:
   }
   
   std::string variablesChecked() override {
-    return "adiabatic,heatFlux,T";
+    return "adiabatic,heatFlux,temperature";
   }
   
   bool checkOptions(options_list const & ol) override {
@@ -48,26 +48,26 @@ public:
       }
     }
     
-    if(ol.optionExists("T")) {
+    if(ol.optionExists("temperature")) {
       ++count;
-      Loci::option_value_type type = ol.getOptionValueType("T");
+      Loci::option_value_type type = ol.getOptionValueType("temperature");
       if(type == Loci::UNIT_VALUE) {
         Loci::UNIT_type ut;
-        ol.getOption("T", ut);
+        ol.getOption("temperature", ut);
         if(!ut.is_compatible("K")) {
-          errmsg << "[T unit must be compatible with K]";
+          errmsg << "[unit of temperature must be compatible with K]";
           ++error;
         }
       } else if(type == Loci::REAL) { 
         // do nothing
       } else {
-        errmsg << "[T must be of type REAL or UNIT_VALUE]";
+        errmsg << "[temperature must be of type REAL or UNIT_VALUE]";
         ++error;
       }
     }
     
     if(count != 1) {
-      errmsg << "[must have one of adiabatic, heatFlux, or T option]";
+      errmsg << "[must have one of adiabatic, heatFlux, or temperature option]";
       ++error;
     }
     
@@ -115,9 +115,9 @@ constraint(viscousFlow, viscousWall_BC, viscousWallHeatFluxFaces) {
 
 // =============================================================================
 
-$rule pointwise(viscousWallTemperature_f <- ref->T_BC),
-constraint(viscousWall_BC, ref->T_BCoption) {
-  $viscousWallTemperature_f = $ref->$T_BC;
+$rule pointwise(viscousWallTemperature_f <- ref->temperature_BC),
+constraint(viscousWall_BC, ref->temperature_BCoption) {
+  $viscousWallTemperature_f = $ref->$temperature_BC;
 }
 
 $rule pointwise(

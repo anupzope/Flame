@@ -47,240 +47,189 @@ constraint(geom_cells, multiSpecies), prelude {
 
 // =============================================================================
 
-$rule singleton(
-  icGagePressure, icTemperature, icVelocity
-  <-
-  initialConditions, Pambient
-), constraint(singleSpecies) {
-  LOG(INFO) << "Parsing initialConditions for single species";
+$type thermoIC param<ThermoSpec>;
+$type velocityIC param<VelSpec>;
+$type speciesIC param<SpeciesSpec>;
+
+$rule singleton(thermoIC <- initialConditions), constraint(UNIVERSE) {
+  LOG(INFO) << "Parsing thermodynamic variables from initialConditions";
   
-  bool pSet = false;
-  double gagePressure = 0.0;
-  
-  bool tSet = false;
-  double temperature = 0.0;
-  
-  bool vSet = false;
-  Loci::vector3d<double> velocity(0.0, 0.0, 0.0);
-  
-  options_list::option_namelist li = $initialConditions.getOptionNameList();
-  
-  std::ostringstream errmsg;
   int error = 0;
+  std::ostringstream errmsg;
   
-  for(auto const & optName : li) {
-    if(optName == "p") {
-      std::ostringstream ss;
-      double value;
-      int err = getOptionValue(
-        $initialConditions, optName, "Pa", value, ss
-      );
-      
-      if(err) {
-        errmsg << "[Error parsing initialConditions::p : " << ss.str() << "]";
-        ++error;
-      } else {
-        pSet = true;
-        gagePressure = value - $Pambient;
-      }
-    } else if(optName == "T") {
-      std::ostringstream ss;
-      double value;
-      int err = getOptionValue(
-        $initialConditions, optName, "K", value, ss
-      );
-      
-      if(err) {
-        errmsg << "[Error parsing initialConditions::T : " << ss.str() << "]";
-        ++error;
-      } else {
-        tSet = true;
-        temperature = value;
-      }
-    } else if(optName == "u" || optName == "v") {
-      std::stringstream ss;
-      std::vector<double> values;
-      int err = getOptionValues(
-        $initialConditions, optName, {"m/s", "m/s", "m/s"}, 1, 3, values, ss
-      );
-      
-      if(err) {
-        errmsg << "[Error parsing initialConditions::" << optName
-          << " : " << ss.str() << "]";
-        ++error;
-      } else {
-        vSet = true;
-        switch(values.size()) {
-        case 1:
-          velocity.x = values[0];
-          velocity.y = 0.0;
-          velocity.z = 0.0;
-          break;
-        case 2:
-          velocity.x = values[0];
-          velocity.y = values[1];
-          velocity.z = 0.0;
-          break;
-        case 3:
-          velocity.x = values[0];
-          velocity.y = values[1];
-          velocity.z = values[2];
-          break;
-        }
-      }
-    } else {
-      errmsg << "[unknown option " << optName << " in initialConditions]";
-      ++error;
-    }
-  }
-  
-  if(!pSet || !tSet || !vSet) {
-    errmsg << "[initialConditions requires p, T, and v/u]";
-    ++error;
-  }
+  error += getThermoSpec(
+    $initialConditions, "initialConditions",
+    "pressure", "temperature", "density",
+     $thermoIC, errmsg
+  );
   
   if(error) {
     LOG(ERROR) << errmsg.str();
     Loci::Abort();
   }
+}
+
+$rule singleton(velocityIC <- initialConditions), constraint(UNIVERSE) {
+  LOG(INFO) << "Parsing velocity variables from initialConditions";
   
-  $icGagePressure = gagePressure;
-  $icTemperature = temperature;
-  $icVelocity = velocity;
+  int error = 0;
+  std::ostringstream errmsg;
+  
+  error += getVelSpec(
+    $initialConditions, "initialConditions",
+    "velocity", "Mach",
+    $velocityIC, errmsg
+  );
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+}
+
+$rule singleton(speciesIC <- initialConditions, Ns), constraint(UNIVERSE) {
+  LOG(INFO) << "Parsing species fractions from initialConditions";
+  
+  int error = 0;
+  std::ostringstream errmsg;
+  
+  error += getSpeciesSpec(
+    $initialConditions, "initialConditions",
+    "molarFractions", "massFractions", $Ns,
+     $speciesIC, errmsg
+  );
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
 }
 
 // -----------------------------------------------------------------------------
 
 $rule singleton(
-  icGagePressure, icTemperature, icVelocity, icSpeciesY
+  icGagePressure, icTemperature
   <-
-  initialConditions, Pambient, Ns
-), constraint(multiSpecies) {
-  LOG(INFO) << "Parsing initialConditions for multi species";
-  
-  bool pSet = false;
-  double gagePressure = 0.0;
-  
-  bool tSet = false;
-  double temperature = 0.0;
-  
-  bool vSet = false;
-  Loci::vector3d<double> velocity(0.0, 0.0, 0.0);
-  
-  bool ySet = false;
-  std::vector<double> speciesY($Ns, 0.0);
-  
-  options_list::option_namelist li = $initialConditions.getOptionNameList();
-  
-  std::ostringstream errmsg;
-  int error = 0;
-  
-  for(auto const & optName : li) {
-    if(optName == "p") {
-      std::ostringstream ss;
-      double value;
-      int err = getOptionValue(
-        $initialConditions, optName, "Pa", value, ss
-      );
-      
-      if(err) {
-        errmsg << "[Error parsing initialConditions::p : " << ss.str() << "]";
-        ++error;
-      } {
-        pSet = true;
-        gagePressure = value;
-      }
-    } else if(optName == "T") {
-      std::ostringstream ss;
-      double value;
-      int err = getOptionValue(
-        $initialConditions, optName, "K", value, ss
-      );
-      
-      if(err) {
-        errmsg << "[Error parsing initialConditions::T : " << ss.str() << "]";
-        ++error;
-      } else {
-        tSet = true;
-        temperature = value;
-      }
-    } else if(optName == "u" || optName == "v") {
-      std::ostringstream ss;
-      std::vector<double> values;
-      int err = getOptionValues(
-        $initialConditions, optName, {"m/s", "m/s", "m/s"}, 1, 3, values, ss
-      );
-      
-      if(err) {
-        errmsg << "[Error parsing initialConditions::" << optName
-          << " : " << ss.str() << "]";
-        ++error;
-      } else {
-        vSet = true;
-        switch(values.size()) {
-        case 1:
-          velocity.x = values[0];
-          velocity.y = 0.0;
-          velocity.z = 0.0;
-          break;
-        case 2:
-          velocity.x = values[0];
-          velocity.y = values[1];
-          velocity.z = 0.0;
-          break;
-        case 3:
-          velocity.x = values[0];
-          velocity.y = values[1];
-          velocity.z = values[2];
-          break;
-        }
-      }
-    } else if(optName == "Y") {
-      std::ostringstream ss;
-      std::vector<double> values;
-      int err = getOptionValues(
-        $initialConditions, optName, {}, $Ns, $Ns, values, ss
-      );
-      
-      if(err) {
-        errmsg << "[Error parsing initialConditions::Y : " << ss.str() << "]";
-        ++error;
-      } else {
-        double sumY = 0.0;
-        for(int i = 0; i < $Ns; ++i) {
-          sumY += values[i];
-        }
-        
-        if(std::fabs(sumY-1.0) > 1e-16) {
-          errmsg << "[sum of the elements of initialConditions::Y must be 1.0]";
-          ++error;
-        }
-        
-        ySet = true;
-        for(int i = 0; i < $Ns; ++i) {
-          speciesY[i] = values[i];
-        }
-      }
-    } else {
-      errmsg << "[unknown option " << optName << " in initialConditions]";
-      ++error;
+  thermoIC, speciesR, Pambient
+), constraint(singleSpecies, idealGas) {
+  switch($thermoIC.type) {
+  case THERMO_SPEC_PT:
+    $icGagePressure = $thermoIC.pressure - $Pambient;
+    $icTemperature = $thermoIC.temperature;
+    break;
+  case THERMO_SPEC_DT:
+    $icGagePressure = $thermoIC.density*$speciesR[0]*$thermoIC.temperature - $Pambient;
+    $icTemperature = $thermoIC.temperature;
+    break;
+  case THERMO_SPEC_DP:
+    $icGagePressure = $thermoIC.pressure - $Pambient;
+    $icTemperature = $thermoIC.pressure/($thermoIC.density*$speciesR[0]);
+    break;
+  }
+}
+
+$rule singleton(
+  icVelocity
+  <-
+  icGagePressure, icTemperature, velocityIC,
+  speciesConstantCp, speciesR
+), constraint(singleSpecies, idealGas, caloricallyPerfectGas) {
+  switch($velocityIC.type) {
+  case VEL_SPEC_VELOCITY:
+    $icVelocity = $velocityIC.scale*$velocityIC.direction;
+    break;
+  case VEL_SPEC_MACH:
+    {
+      double const Cp = $speciesConstantCp[0];
+      double const Cv = $speciesConstantCp[0] - $speciesR[0];
+      double const gamma = Cp/Cv;
+      double const a = sqrt(gamma*$speciesR[0]*$icTemperature);
+      $icVelocity = (a*$velocityIC.scale)*$velocityIC.direction;
     }
+    break;
   }
+}
+
+// -----------------------------------------------------------------------------
+
+$rule singleton(
+  icSpeciesY, icMixtureW, icMixtureR
+  <-
+  speciesIC, speciesW, Runiv, Ns
+), constraint(multiSpecies) {
+  $icSpeciesY.resize($Ns);
   
-  if(!pSet || !tSet || !vSet || !ySet) {
-    errmsg << "[Need p, T, v/u, and Y in initialConditions]";
-    ++error;
+  switch($speciesIC.type) {
+  case SPECIES_SPEC_X:
+    {
+      $icMixtureW = 0.0;
+      for(int i = 0; i < $Ns; ++i) {
+        $icMixtureW += $speciesIC.fractions.data[i]*$speciesW[i];
+      }
+      for(int i = 0; i < $Ns; ++i) {
+        $icSpeciesY[i] = $speciesIC.fractions.data[i]*$speciesW[i]/$icMixtureW;
+      }
+      $icMixtureR = $Runiv/$icMixtureW;
+    }
+    break;
+  case SPECIES_SPEC_Y:
+    {
+      double rW = 0.0;
+      for(int i = 0; i < $Ns; ++i) {
+        $icSpeciesY[i] = $speciesIC.fractions.data[i];
+        rW += $speciesIC.fractions.data[i]/$speciesW[i];
+      }
+      $icMixtureR = $Runiv*rW;
+      $icMixtureW = 1.0/rW;
+    }
+    break;
   }
-  
-  if(error) {
-    LOG(ERROR) << "Error/s parsing initialConditions: " << errmsg.str();
-    Loci::Abort();
+}
+
+$rule singleton(
+  icGagePressure, icTemperature
+  <-
+  thermoIC, icMixtureR, Pambient
+), constraint(multiSpecies, idealGas) {
+  switch($thermoIC.type) {
+  case THERMO_SPEC_PT:
+    $icGagePressure = $thermoIC.pressure - $Pambient;
+    $icTemperature = $thermoIC.temperature;
+    break;
+  case THERMO_SPEC_DT:
+    $icGagePressure = $thermoIC.density*$icMixtureR*$thermoIC.temperature - $Pambient;
+    $icTemperature = $thermoIC.temperature;
+    break;
+  case THERMO_SPEC_DP:
+    $icGagePressure = $thermoIC.pressure - $Pambient;
+    $icTemperature = $thermoIC.pressure/($thermoIC.density*$icMixtureR);
+    break;
   }
-  
-  $icGagePressure = gagePressure;
-  $icTemperature = temperature;
-  $icVelocity = velocity;
-  $icSpeciesY = speciesY;
+}
+
+$rule singleton(
+  icVelocity
+  <-
+  icGagePressure, icTemperature, velocityIC,
+  speciesConstantCp, icMixtureR, icSpeciesY, Ns
+), constraint(multiSpecies, idealGas, caloricallyPerfectGas) {
+  switch($velocityIC.type) {
+  case VEL_SPEC_VELOCITY:
+    $icVelocity = $velocityIC.scale*$velocityIC.direction;
+    break;
+  case VEL_SPEC_MACH:
+    {
+      double Cp = 0.0;
+      for(int i = 0; i < $Ns; ++i) {
+        Cp += $speciesConstantCp[0]*$icSpeciesY[i];
+      }
+      double const Cv = Cp - $icMixtureR;
+      double const gamma = Cp/Cv;
+      double const a = sqrt(gamma*$icMixtureR*$icTemperature);
+      $icVelocity = (a*$velocityIC.scale)*$velocityIC.direction;
+    }
+    break;
+  }
 }
 
 // -----------------------------------------------------------------------------

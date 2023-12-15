@@ -1,0 +1,236 @@
+#include <flame.hh>
+#include <utils.hh>
+
+$include "flame.lh"
+$include "FVM.lh"
+
+#include <glog/logging.h>
+
+namespace flame {
+
+// =============================================================================
+
+// Parse pressure from boundary specification.
+$rule pointwise(pressure_BC <- BC_options), constraint(pressure_BCoption) {
+  double value;
+  std::ostringstream errmsg;
+  
+  int error = getOptionValue($BC_options, "pressure", "Pa", value, errmsg);
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  $pressure_BC = value;
+}
+
+// =============================================================================
+
+// Parse temperature from boundary specification.
+$rule pointwise(temperature_BC <- BC_options), constraint(temperature_BCoption) {
+  double value;
+  std::ostringstream errmsg;
+  
+  int error = getOptionValue($BC_options, "temperature", "K", value, errmsg);
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  $temperature_BC = value;
+}
+
+// =============================================================================
+
+// Parse density from boundary specification.
+$rule pointwise(density_BC <- BC_options), constraint(density_BCoption) {
+  double value;
+  std::ostringstream errmsg;
+  
+  int error = getOptionValue($BC_options, "density", "kg/m/m/m", value, errmsg);
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  $density_BC = value;
+}
+
+// =============================================================================
+
+// Parse mass fractions from boundary specification.
+$rule pointwise(massFractions_BC <- BC_options, Ns),
+constraint(massFractions_BCoption), prelude {
+  $massFractions_BC.setVecSize(*$Ns);
+} {
+  std::vector<double> values;
+  std::vector<std::string> units;
+  std::ostringstream errmsg;
+  
+  int error = getOptionValues(
+    $BC_options, "massFractions", units, $Ns-1, $Ns, values, errmsg
+  );
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  int const sz = values.size();
+  double sum = 0.0;
+  for(int i = 0; i < $Ns-1; ++i) {
+    $massFractions_BC[i] = values[i];
+    sum += values[i];
+  }
+  
+  if(sz == $Ns) {
+    $massFractions_BC[$Ns-1] = values[$Ns-1];
+    sum += values[$Ns-1];
+    if(sum != 1.0) {
+      LOG(ERROR) << "sum of all mass fractions must equal 1.0";
+      Loci::Abort();
+    }
+  } else {
+    $massFractions_BC[$Ns-1] = 1.0-sum;
+    if($massFractions_BC[$Ns-1] < 0.0) {
+      LOG(ERROR) << "sum of all mass fractions must equal 1.0";
+      Loci::Abort();
+    }
+  }
+}
+
+// =============================================================================
+
+// Parse molar fractions from boundary specification.
+$rule pointwise(molarFractions_BC <- BC_options, Ns),
+constraint(molarFractions_BCoption), prelude {
+  $molarFractions_BC.setVecSize(*$Ns);
+} {
+  std::vector<double> values;
+  std::vector<std::string> units;
+  std::ostringstream errmsg;
+  
+  int error = getOptionValues(
+    $BC_options, "molarFractions", units, $Ns-1, $Ns, values, errmsg
+  );
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  int const sz = values.size();
+  double sum = 0.0;
+  for(int i = 0; i < $Ns-1; ++i) {
+    $molarFractions_BC[i] = values[i];
+    sum += values[i];
+  }
+  
+  if(sz == $Ns) {
+    $molarFractions_BC[$Ns-1] = values[$Ns-1];
+    sum += values[$Ns-1];
+    if(sum != 1.0) {
+      LOG(ERROR) << "sum of all molar fractions must be equal to 1.0";
+      Loci::Abort();
+    }
+  } else {
+    $molarFractions_BC[$Ns-1] = 1.0-sum;
+    if($molarFractions_BC[$Ns-1] < 0.0) {
+      LOG(ERROR) << "sum of all molar fractions must be equal to 1.0";
+      Loci::Abort();
+    }
+  }
+}
+
+// =============================================================================
+
+// Parse velocity from boundary specification.
+$rule pointwise(velocity_BC <- BC_options), constraint(velocity_BCoption) {
+  std::vector<double> values;
+  std::ostringstream errmsg;
+  
+  int error = getOptionValues(
+    $BC_options, "velocity", {"m/s", "m/s", "m/s"}, 1, 3, values, errmsg
+  );
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  int const sz = values.size();
+  switch(sz) {
+  case 1:
+    $velocity_BC.x = values[0];
+    $velocity_BC.y = 0.0;
+    $velocity_BC.z = 0.0;
+    break;
+  case 2:
+    $velocity_BC.x = values[0];
+    $velocity_BC.y = values[1];
+    $velocity_BC.z = 0.0;
+    break;
+  case 3:
+    $velocity_BC.x = values[0];
+    $velocity_BC.y = values[1];
+    $velocity_BC.z = values[2];
+    break;
+  }
+}
+
+// =============================================================================
+
+// Parse Mach number from boundary specification.
+$rule pointwise(Mach_BC <- BC_options), constraint(Mach_BCoption) {
+  std::vector<double> values;
+  std::vector<std::string> units;
+  std::ostringstream errmsg;
+  
+  int error = getOptionValues($BC_options, "Mach", units, 1, 3, values, errmsg);
+  
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  int const sz = values.size();
+  switch(sz) {
+  case 1:
+    $Mach_BC.x = values[0];
+    $Mach_BC.y = 0.0;
+    $Mach_BC.z = 0.0;
+    break;
+  case 2:
+    $Mach_BC.x = values[0];
+    $Mach_BC.y = values[1];
+    $Mach_BC.z = 0.0;
+    break;
+  case 3:
+    $Mach_BC.x = values[0];
+    $Mach_BC.y = values[1];
+    $Mach_BC.z = values[2];
+    break;
+  }
+}
+
+// =============================================================================
+
+// Parse heat flux from boundary specification.
+$rule pointwise(heatFlux_BC <- BC_options), constraint(heatFlux_BCoption) {
+  double value;
+  std::ostringstream errmsg;
+  
+  int error = getOptionValue($BC_options, "heatFlux", "W/m/m", value, errmsg);
+  if(error) {
+    LOG(ERROR) << errmsg.str();
+    Loci::Abort();
+  }
+  
+  $heatFlux_BC = value;
+}
+
+// =============================================================================
+
+} // end: namespace flame

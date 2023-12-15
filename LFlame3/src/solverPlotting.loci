@@ -14,23 +14,7 @@ namespace flame {
 // printOptions processing
 // =============================================================================
 
-$rule default(printOptions) {
-  $printOptions = options_list("parameters:frequency:file");
-}
-
-$rule singleton(printSettings <- printOptions), constraint(UNIVERSE),
-option(disable_threading) {
-  std::string err;
-  if($printSettings.fromOptionsList($printOptions, err)) {
-    $[Once] {
-      LOG(ERROR) << err;
-    }
-    Loci::Abort();
-  } else {
-    $[Once] {
-      LOG(INFO) << "Print Settings: " << $printSettings;
-    }
-  }
+$rule optional(printOptions) {
 }
 
 $rule singleton(doPrint{n,rk} <- printSettings, timeStep{n}, $rk{n,rk}) {
@@ -101,22 +85,7 @@ option(disable_threading), prelude {
 // plotOptions processing
 // =============================================================================
 
-$rule default(plotOptions) {
-  $plotOptions = options_list("nodalVariables:boundaryVariables:frequencies:counts");
-}
-
-$rule singleton(plotSettings <- plotOptions), option(disable_threading) {
-  std::string err;
-  if($plotSettings.fromOptionsList($plotOptions, err)) {
-    $[Once] {
-      LOG(ERROR) << err;
-    }
-    Loci::Abort();
-  } else {
-    $[Once] {
-      LOG(INFO) << "Plot Settings: " << $plotSettings;
-    }
-  }
+$rule optional(plotOptions) {
 }
 
 // =============================================================================

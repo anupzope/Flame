@@ -23,12 +23,13 @@ $rule unit(totalKineticEnergy), constraint(UNIVERSE) {
 }
 
 $rule apply(totalKineticEnergy <- vol, velocity, density)[Loci::Summation] {
-  double const cellKE = 0.5*$density*dot($velocity,$velocity)*$vol;
-  join($totalKineticEnergy, cellKE);
+  double const tmp = 0.5*$density*dot($velocity,$velocity)*$vol;
+  join($totalKineticEnergy, tmp);
 }
 
 $rule apply(printParameterDBIdx <- totalKineticEnergy)[Loci::Maximum],
-conditional(doPrint), option(disable_threading), prelude {
+conditional(doPrint), constraint(printParam_totalKineticEnergy),
+option(disable_threading), prelude {
   if(Loci::GLOBAL_AND(seq == EMPTY)) {
     return;
   }
@@ -43,18 +44,64 @@ $rule unit(totalEnstrophy), constraint(UNIVERSE) {
   $totalEnstrophy = 0.0;
 }
 
-$rule apply(totalEnstrophy <- vol, vorticityMagnitude)[Loci::Summation] {
-  double const cellEnstropy = $vorticityMagnitude*$vorticityMagnitude*$vol;
-  join($totalEnstrophy, cellEnstropy);
+$rule apply(totalEnstrophy <- vol, vorticityMagnitude, density)[Loci::Summation] {
+  double const tmp = 0.5*$density*$vorticityMagnitude*$vorticityMagnitude*$vol;
+  join($totalEnstrophy, tmp);
 }
 
 $rule apply(printParameterDBIdx <- totalEnstrophy)[Loci::Maximum],
-conditional(doPrint), option(disable_threading), prelude {
+conditional(doPrint), constraint(printParam_totalEnstrophy),
+option(disable_threading), prelude {
   if(Loci::GLOBAL_AND(seq == EMPTY)) {
     return;
   }
   
   printParameterDB.add("totalEnstrophy", *$totalEnstrophy);
+  *$printParameterDBIdx += 1;
+};
+
+// =============================================================================
+
+$rule unit(totalEnstrophy1), constraint(UNIVERSE) {
+  $totalEnstrophy1 = 0.0;
+}
+
+$rule apply(totalEnstrophy1 <- vol, strainRateMagnitude, viscosity)[Loci::Summation] {
+  double const tmp = $viscosity*$strainRateMagnitude*$strainRateMagnitude*$vol;
+  join($totalEnstrophy1, tmp);
+}
+
+$rule apply(printParameterDBIdx <- totalEnstrophy1)[Loci::Maximum],
+conditional(doPrint), constraint(printParam_totalEnstrophy1),
+option(disable_threading), prelude {
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+  
+  printParameterDB.add("totalEnstrophy1", *$totalEnstrophy1);
+  *$printParameterDBIdx += 1;
+};
+
+// =============================================================================
+
+$rule unit(totalEnstrophy3), constraint(UNIVERSE) {
+  $totalEnstrophy3 = 0.0;
+}
+
+$rule apply(totalEnstrophy3 <- vol, gradv3d(velocity), gagePressure, Pambient)[Loci::Summation] {
+  double const vdiv = $gradv3d(velocity).x.x + $gradv3d(velocity).y.y + $gradv3d(velocity).z.z;
+  double const tmp = -($gagePressure+$Pambient)*vdiv*$vol;
+  join($totalEnstrophy3, tmp);
+}
+
+$rule apply(printParameterDBIdx <- totalEnstrophy3)[Loci::Maximum],
+conditional(doPrint), constraint(printParam_totalEnstrophy3),
+option(disable_threading), prelude {
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+  
+  printParameterDB.add("totalEnstrophy3", *$totalEnstrophy3);
   *$printParameterDBIdx += 1;
 };
 
