@@ -200,7 +200,8 @@ $type totalEnstrophy1 param<double>;
 $type totalEnstrophy3 param<double>;
 
 // =============================================================================
-// Boundary condition constraints.
+// Boundary condition constraints, specified data, reference data, and boundary
+// face data.
 // =============================================================================
 
 $type supersonicInflow_BC Constraint;
@@ -233,6 +234,7 @@ $type gagePressureRef_BC store<double>;
 $type temperatureRef_BC store<double>;
 $type densityRef_BC store<double>;
 $type speciesYRef_BC storeVec<double>;
+$type speciesXRef_BC storeVec<double>;
 $type velocityRef_BC store<Loci::vector3d<double> >;
 $type mixtureWRef_BC store<double>;
 $type mixtureRRef_BC store<double>;
@@ -243,6 +245,7 @@ $type gagePressureRef store<double>;
 $type temperatureRef store<double>;
 $type densityRef store<double>;
 $type speciesYRef storeVec<double>;
+$type speciesXRef storeVec<double>;
 $type velocityRef store<Loci::vector3d<double> >;
 $type mixtureWRef store<double>;
 $type mixtureRRef store<double>;

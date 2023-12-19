@@ -85,6 +85,26 @@ constraint(multiSpecies, molarFractions_BCoption), prelude {
 
 // =============================================================================
 
+// Direct specification of molar fractions.
+$rule pointwise(speciesXRef_BC <- molarFractions_BC, Ns),
+  constraint(multiSpecies, molarFractions_BCoption), prelude {
+  $speciesXRef_BC.setVecSize(*$Ns);
+} {
+  $speciesXRef_BC = $molarFractions_BC;
+}
+
+// Molar fractions from mass fractions.
+$rule pointwise(speciesXRef_BC <- massFractions_BC, speciesW, mixtureWRef_BC, Ns),
+  constraint(multiSpecies, massFractions_BCoption), prelude {
+  $speciesXRef_BC.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesXRef_BC[i] = $massFractions_BC[i]*$mixtureWRef_BC/$speciesW[i];
+  }
+}
+
+// =============================================================================
+
 // Mixture molecular weight and gas constant from mass fractions.
 $rule pointwise(
   mixtureWRef_BC, mixtureRRef_BC <- massFractions_BC, speciesW, Runiv, Ns

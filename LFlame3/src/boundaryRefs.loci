@@ -49,6 +49,16 @@ constraint(multiSpecies, caloricallyPerfectGas, speciesYRef) {
 
 // =============================================================================
 
+$rule pointwise(speciesXRef <- speciesYRef, mixtureWRef, speciesW, Ns), prelude {
+  $speciesXRef.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesXRef[i] = $speciesYRef[i]*$mixtureWRef/$speciesW[i];
+  }
+}
+
+// =============================================================================
+
 $rule pointwise(soundSpeedRef <- temperatureRef, speciesConstantCp, speciesR),
 constraint(singleSpecies, idealGas, caloricallyPerfectGas, temperatureRef) {
   double const & Cp = $speciesConstantCp[0];

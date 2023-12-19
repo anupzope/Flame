@@ -148,6 +148,39 @@ constraint(viscousWall_BC) {
   $temperature_f = $viscousWallTemperature_f;
 }
 
+$rule pointwise(speciesY_f <- ci->speciesY, Ns),
+  constraint(viscousWall_BC), prelude {
+  $speciesY_f.setVecSize(*$Ns);
+} {
+  $speciesY_f = $ci->$speciesY;
+}
+
+$rule pointwise(speciesX_f <- ci->speciesX, Ns),
+  constraint(viscousWall_BC), prelude {
+  $speciesX_f.setVecSize(*$Ns);
+} {
+  $speciesX_f = $ci->$speciesX;
+}
+
+$rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
+  constraint(viscousWall_BC) {
+  double Winv = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Winv += $speciesY_f[i]/$speciesW[i];
+  }
+  $mixtureW_f = 1.0/Winv;
+  $mixtureR_f = $Runiv*Winv;
+}
+
+$rule pointwise(mixtureCp_f <- speciesY_f, speciesConstantCp, Ns),
+  constraint(caloricallyPerfectGas, viscousWall_BC) {
+  double Cp = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Cp += $speciesY_f[i]*$speciesConstantCp[i];
+  }
+  $mixtureCp_f = Cp;
+}
+
 // =============================================================================
 
 $rule pointwise(ssConvectiveFlux_f <- area, gagePressure_f),

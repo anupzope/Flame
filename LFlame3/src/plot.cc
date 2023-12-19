@@ -91,7 +91,6 @@ void PrintSettings::fromString(std::string const & str) {
 }
 
 int PrintSettings::fromOptionsList(options_list const & ol, std::string & err) {
-  std::cerr << "Parsing PrintSettings from options_list" << std::endl;
   int error = 0;
   
   std::ostringstream errmsg;
@@ -159,11 +158,6 @@ int PrintSettings::fromOptionsList(options_list const & ol, std::string & err) {
     }
   }
 
-  std::cerr << "parameters Error: " << error << std::endl;
-  std::cerr << "# params: " << params.size() << std::endl;
-  for(size_t i = 0; i < params.size(); ++i) {
-    std::cerr << "para: " << params[i] << std::endl;
-  }
   if(error) {
     err = errmsg.str();
   } else {

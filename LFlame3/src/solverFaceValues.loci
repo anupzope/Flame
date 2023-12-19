@@ -31,12 +31,22 @@ $rule pointwise(speciesY_f <- faceAvgFactor, (cl,cr)->(vol,speciesY), Ns), prelu
   }
 }
 
-$rule pointwise(mixtureW_f <- (cl,cr)->vol, speciesY_f, speciesW, Ns) {
+$rule pointwise(mixtureW_f, mixtureR_f <- (cl,cr)->vol, speciesY_f, speciesW, Runiv, Ns) {
   double rW = 0.0;
   for(int i = 0; i < $Ns; ++i) {
     rW += $speciesY_f[i]/$speciesW[i];
   }
   $mixtureW_f = 1.0/rW;
+  $mixtureR_f = $Runiv*rW;
+}
+
+$rule pointwise(mixtureCp_f <- (cl,cr)->vol, speciesY_f, speciesConstantCp, Ns),
+  constraint(caloricallyPerfectGas, (cl,cr)->vol) {
+  double Cp = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Cp += $speciesY_f[i]*$speciesConstantCp[i];
+  }
+  $mixtureCp_f = Cp;
 }
 
 $rule pointwise(
@@ -47,10 +57,6 @@ $rule pointwise(
   for(int i = 0; i < $Ns; ++i) {
     $speciesX_f[i] = $speciesY_f[i]*$mixtureW_f/$speciesW[i];
   }
-}
-
-$rule pointwise(mixtureR_f <- (cl,cr)->vol, Runiv, mixtureW_f) {
-  $mixtureR_f = $Runiv/$mixtureW_f;
 }
 
 } // end: namespace flame
