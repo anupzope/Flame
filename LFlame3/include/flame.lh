@@ -256,22 +256,69 @@ $type soundSpeedRef store<double>;
 // Variables related to model of transport properties.
 // =============================================================================
 
+// Constraints for species viscosity model.
 $type speciesViscosityModel param<std::string>;
 $type speciesViscosityModel_Constant Constraint;
 $type speciesViscosityModel_Sutherland Constraint;
 
+// Constraints for mixture viscosity model.
 $type mixtureViscosityModel param<std::string>;
 $type mixtureViscosityModel_Standard Constraint;
 $type mixtureViscosityModel_Wilke Constraint;
 
+// Constraints for species conductivity model.
 $type speciesConductivityModel param<std::string>;
 $type speciesConductivityModel_Constant Constraint;
 $type speciesConductivityModel_Sutherland Constraint;
 
+// Constraints for mixture conductivity model.
 $type mixtureConductivityModel param<std::string>;
 $type mixtureConductivityModel_Standard Constraint;
 $type mixtureConductivityModel_PrandtlNumber Constraint;
 $type mixtureConductivityModel_Wilke Constraint;
+
+// Species viscosity (multi-species, geom_cells).
+$type speciesViscosity storeVec<double>;
+
+// Species viscosity (multi-species, boundary faces).
+$type speciesViscosity_f storeVec<double>;
+
+// Species conductivity (multi-species, geom_cells).
+$type speciesConductivity storeVec<double>;
+
+// Species conductivity (multi-species, boundry faces).
+$type speciesConductivity_f storeVec<double>;
+
+// Constraint to identify if Wilke model is required for either mixture
+// viscosity or mixture conductivity.
+$type requireWilkeTransportWeight Constraint;
+
+// Wilke weighting function for calculation of mixture transport properties
+// (geom_cells).
+$type wilkeTransportPhi storeMat<double>;
+
+// Wilke weighting function for calculation of mixture transport properties
+// (boundary_faces).
+$type wilkeTransportPhi_f storeMat<double>;
+
+// Wilke weight for calculation of mixture transport properties (geom_cells).
+$type wilkeTransportWeightr storeVec<double>;
+
+// Wilke weight for calculation of mixture transport properties
+// (boundary_faces).
+$type wilkeTransportWeightr_f storeVec<double>;
+
+// Viscosity (geom_cells).
+$type viscosity store<double>;
+
+// Viscosity (faces).
+$type viscosity_f store<double>;
+
+// Conductivity (geom_cells).
+$type conductivity store<double>;
+
+// Conductivity (faces).
+$type conductivity_f store<double>;
 
 // =============================================================================
 // Variables related to model of thermodynamic properties.
@@ -307,18 +354,6 @@ $type density store<double>;
 
 // Density (at face).
 $type density_f store<double>;
-
-// Viscosity (at cell).
-$type viscosity store<double>;
-
-// Viscosity (at face).
-$type viscosity_f store<double>;
-
-// Conductivity (at cell).
-$type conductivity store<double>;
-
-// Conductivity (at face).
-$type conductivity_f store<double>;
 
 // Shear stress (at face).
 $type shearStress_f store<SymmetricTensor>;
@@ -486,6 +521,9 @@ $type speciesConductivity_SutherlandParameters param<std::vector<Loci::Array<dou
 
 // Specific gas constant of the species: [J/kg.K].
 $type speciesR param<std::vector<double> >;
+
+// Averaging factor used for interpolating cells values to face values.
+$type faceAvgFactor store<double>;
 
 // =============================================================================
 // Variables related to computing, plotting and printing CFL number.

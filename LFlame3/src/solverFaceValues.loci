@@ -5,8 +5,6 @@ $include "flame.lh"
 
 namespace flame {
 
-$type faceAvgFactor store<double>;
-
 $rule pointwise(faceAvgFactor <- (cl,cr)->vol) {
   $faceAvgFactor = 1.0/($cl->$vol + $cr->$vol);
 }

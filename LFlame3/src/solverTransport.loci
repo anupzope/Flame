@@ -1,12 +1,11 @@
+#include <flame.hh>
+
 $include "FVM.lh"
 $include "flame.lh"
 
 #include <Loci.h>
 
-
 #include <glog/logging.h>
-
-#include <string.h>
 
 namespace flame {
 
@@ -26,7 +25,7 @@ $rule constraint(
   
   if($speciesViscosityModel == "constant") {
     $speciesViscosityModel_Constant = ~EMPTY;
-  } else if($speciesViscosityModel == "sutherland") {
+  } else if($speciesViscosityModel == "Sutherland") {
     $speciesViscosityModel_Sutherland = ~EMPTY;
   } else {
     LOG(ERROR) << "invalid value of speciesViscosityModel: "
@@ -112,248 +111,330 @@ $rule constraint(
 
 // =============================================================================
 
-$rule pointwise(viscosity <- speciesViscosity_Constant), constraint(
-  singleSpecies, speciesViscosityModel_Constant, geom_cells
-) {
+$rule pointwise(viscosity <- speciesViscosity_Constant),
+  constraint(singleSpecies, speciesViscosityModel_Constant, geom_cells) {
   $viscosity = $speciesViscosity_Constant[0];
 }
 
-$rule pointwise(viscosity_f <- speciesViscosity_Constant), constraint(
-  singleSpecies, speciesViscosityModel_Constant, boundary_faces
-) {
+$rule pointwise(viscosity_f <- speciesViscosity_Constant),
+  constraint(singleSpecies, speciesViscosityModel_Constant, boundary_faces) {
   $viscosity_f = $speciesViscosity_Constant[0];
 }
 
 // -----------------------------------------------------------------------------
 
-$rule pointwise(viscosity <- speciesViscosity_Constant, speciesX, Ns), constraint(
-  multiSpecies, speciesViscosityModel_Constant, mixtureViscosityModel_Standard,
-  geom_cells
-) {
-  double sum1 = 0.0, sum2 = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    sum1 += $speciesX[i]*$speciesViscosity_Constant[i];
-    sum2 += $speciesX[i]/$speciesViscosity_Constant[i];
-  }
-  $viscosity = 0.5*(sum1+1.0/sum2);
-}
-
-$rule pointwise(viscosity_f <- speciesViscosity_Constant, speciesX_f, Ns), constraint(
-  multiSpecies, speciesViscosityModel_Constant, mixtureViscosityModel_Standard,
-  boundary_faces
-) {
-  double sum1 = 0.0, sum2 = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    sum1 += $speciesX_f[i]*$speciesViscosity_Constant[i];
-    sum2 += $speciesX_f[i]/$speciesViscosity_Constant[i];
-  }
-  $viscosity_f = 0.5*(sum1+1.0/sum2);
-}
-
-// -----------------------------------------------------------------------------
-
-$rule pointwise(viscosity <- speciesViscosity_SutherlandParameters, temperature),
-constraint(
-  singleSpecies, speciesViscosityModel_Sutherland, geom_cells
-) {
-  double const mu0 = $speciesViscosity_SutherlandParameters[0][0];
-  double const T0 = $speciesViscosity_SutherlandParameters[0][1];
-  double const Smu = $speciesViscosity_SutherlandParameters[0][2];
-  
-  $viscosity = mu0*std::pow($temperature/T0, 1.5)*(T0+Smu)/($temperature+Smu);
-}
-
-$rule pointwise(viscosity_f <- speciesViscosity_SutherlandParameters, temperature_f),
-constraint(
-  singleSpecies, speciesViscosityModel_Sutherland, boundary_faces
-) {
-  double const mu0 = $speciesViscosity_SutherlandParameters[0][0];
-  double const T0 = $speciesViscosity_SutherlandParameters[0][1];
-  double const Smu = $speciesViscosity_SutherlandParameters[0][2];
-  
-  $viscosity_f = mu0*std::pow($temperature_f/T0, 1.5)*(T0+Smu)/($temperature_f+Smu);
-}
-
-// -----------------------------------------------------------------------------
-
-$rule pointwise(
-  viscosity
-  <-
-  speciesViscosity_SutherlandParameters, temperature, speciesX, Ns
-), constraint(
-  multiSpecies, speciesViscosityModel_Sutherland, mixtureViscosityModel_Standard,
-  geom_cells
-) {
-  double sum1 = 0.0, sum2 = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    double const mu0 = $speciesViscosity_SutherlandParameters[i][0];
-    double const T0 = $speciesViscosity_SutherlandParameters[i][1];
-    double const Smu = $speciesViscosity_SutherlandParameters[i][2];
-    double const mu = mu0*std::pow($temperature/T0, 1.5)*(T0+Smu)/($temperature+Smu);
-    
-    sum1 += $speciesX[i]*mu;
-    sum2 += $speciesX[i]/mu;
-  }
-  
-  $viscosity = 0.5*(sum1+1.0/sum2);
-}
-
-$rule pointwise(
-  viscosity_f
-  <-
-  speciesViscosity_SutherlandParameters, temperature_f, speciesX_f, Ns
-), constraint(
-  multiSpecies, speciesViscosityModel_Sutherland, mixtureViscosityModel_Standard,
-  boundary_faces
-) {
-  double sum1 = 0.0, sum2 = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    double const mu0 = $speciesViscosity_SutherlandParameters[i][0];
-    double const T0 = $speciesViscosity_SutherlandParameters[i][1];
-    double const Smu = $speciesViscosity_SutherlandParameters[i][2];
-    double const mu = mu0*std::pow($temperature_f/T0, 1.5)*(T0+Smu)/($temperature_f+Smu);
-    
-    sum1 += $speciesX_f[i]*mu;
-    sum2 += $speciesX_f[i]/mu;
-  }
-  
-  $viscosity_f = 0.5*(sum1+1.0/sum2);
-}
-
-// -----------------------------------------------------------------------------
-
-$rule pointwise(viscosity_f <- (cl,cr)->(viscosity,vol)) {
-  $viscosity_f = ($cl->$vol*$cr->$viscosity + $cr->$vol*$cl->$viscosity)/($cl->$vol + $cr->$vol);
-}
-
-// =============================================================================
-
-$rule pointwise(conductivity  <- speciesConductivity_Constant), constraint(
-  singleSpecies, speciesConductivityModel_Constant, geom_cells
-) {
+$rule pointwise(conductivity  <- speciesConductivity_Constant),
+  constraint(singleSpecies, speciesConductivityModel_Constant, geom_cells) {
   $conductivity = $speciesConductivity_Constant[0];
 }
 
-$rule pointwise(conductivity_f  <- speciesConductivity_Constant), constraint(
-  singleSpecies, speciesConductivityModel_Constant, boundary_faces
-) {
+$rule pointwise(conductivity_f  <- speciesConductivity_Constant),
+  constraint(singleSpecies, speciesConductivityModel_Constant, boundary_faces) {
   $conductivity_f = $speciesConductivity_Constant[0];
 }
 
 // -----------------------------------------------------------------------------
 
-$rule pointwise(
-  conductivity
-  <-
-  speciesConductivity_Constant, speciesX, Ns
-), constraint(
-  multiSpecies, speciesConductivityModel_Constant, mixtureConductivityModel_Standard,
-  geom_cells
-) {
-  double sum1 = 0.0, sum2 = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    sum1 += $speciesX[i]*$speciesConductivity_Constant[i];
-    sum2 += $speciesX[i]/$speciesConductivity_Constant[i];
-  }
-  $conductivity = 0.5*(sum1+1.0/sum2);
+$rule pointwise(viscosity <- speciesViscosity_SutherlandParameters, temperature),
+  constraint(singleSpecies, speciesViscosityModel_Sutherland, geom_cells) {
+  double const mu0 = $speciesViscosity_SutherlandParameters[0][0];
+  double const T0 = $speciesViscosity_SutherlandParameters[0][1];
+  double const Smu = $speciesViscosity_SutherlandParameters[0][2];
+  $viscosity = mu0*std::pow($temperature/T0, 1.5)*(T0+Smu)/($temperature+Smu);
 }
 
-$rule pointwise(
-  conductivity_f
-  <-
-  speciesConductivity_Constant, speciesX_f, Ns
-), constraint(
-  multiSpecies, speciesConductivityModel_Constant, mixtureConductivityModel_Standard,
-  boundary_faces
-) {
-  double sum1 = 0.0, sum2 = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    sum1 += $speciesX_f[i]*$speciesConductivity_Constant[i];
-    sum2 += $speciesX_f[i]/$speciesConductivity_Constant[i];
-  }
-  $conductivity_f = 0.5*(sum1+1.0/sum2);
+$rule pointwise(viscosity_f <- speciesViscosity_SutherlandParameters, temperature_f),
+  constraint(singleSpecies, speciesViscosityModel_Sutherland, boundary_faces) {
+  double const mu0 = $speciesViscosity_SutherlandParameters[0][0];
+  double const T0 = $speciesViscosity_SutherlandParameters[0][1];
+  double const Smu = $speciesViscosity_SutherlandParameters[0][2];
+  $viscosity_f = mu0*std::pow($temperature_f/T0, 1.5)*(T0+Smu)/($temperature_f+Smu);
 }
 
 // -----------------------------------------------------------------------------
 
-$rule pointwise(
-  conductivity
-  <-
-  speciesConductivity_SutherlandParameters, temperature
-), constraint(
-  singleSpecies, speciesConductivityModel_Sutherland, geom_cells
-) {
+$rule pointwise(conductivity <-  speciesConductivity_SutherlandParameters, temperature),
+  constraint(singleSpecies, speciesConductivityModel_Sutherland, geom_cells) {
   double const k0 = $speciesConductivity_SutherlandParameters[0][0];
   double const T0 = $speciesConductivity_SutherlandParameters[0][1];
   double const Sk = $speciesConductivity_SutherlandParameters[0][2];
-  
   $conductivity = k0*std::pow($temperature/T0, 1.5)*(T0+Sk)/($temperature+Sk);
 }
 
-$rule pointwise(
-  conductivity_f
-  <-
-  speciesConductivity_SutherlandParameters, temperature_f
-), constraint(
-  singleSpecies, speciesConductivityModel_Sutherland, boundary_faces
-) {
+$rule pointwise(conductivity_f <- speciesConductivity_SutherlandParameters, temperature_f),
+  constraint(singleSpecies, speciesConductivityModel_Sutherland, boundary_faces) {
   double const k0 = $speciesConductivity_SutherlandParameters[0][0];
   double const T0 = $speciesConductivity_SutherlandParameters[0][1];
   double const Sk = $speciesConductivity_SutherlandParameters[0][2];
-  
   $conductivity_f = k0*std::pow($temperature_f/T0, 1.5)*(T0+Sk)/($temperature_f+Sk);
+}
+
+// =============================================================================
+
+$rule pointwise(speciesViscosity <- speciesViscosity_Constant, Ns),
+  constraint(multiSpecies, speciesViscosityModel_Constant, geom_cells), prelude {
+  $speciesViscosity.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesViscosity[i] = $speciesViscosity_Constant[i];
+  }
+}
+
+$rule pointwise(speciesViscosity_f <- speciesViscosity_Constant, Ns),
+  constraint(multiSpecies, speciesViscosityModel_Constant, boundary_faces), prelude {
+  $speciesViscosity_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesViscosity_f[i] = $speciesViscosity_Constant[i];
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(speciesConductivity <- speciesConductivity_Constant, Ns),
+  constraint(multiSpecies, speciesConductivityModel_Constant, geom_cells), prelude {
+  $speciesConductivity.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesConductivity[i] = $speciesConductivity_Constant[i];
+  }
+}
+
+$rule pointwise(speciesConductivity_f <- speciesConductivity_Constant, Ns),
+  constraint(multiSpecies, speciesConductivityModel_Constant, boundary_faces), prelude {
+  $speciesConductivity_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesConductivity_f[i] = $speciesConductivity_Constant[i];
+  }
 }
 
 // -----------------------------------------------------------------------------
 
 $rule pointwise(
-  conductivity <- speciesConductivity_SutherlandParameters, temperature, speciesX, Ns
-), constraint(
-  multiSpecies, speciesConductivityModel_Sutherland, mixtureConductivityModel_Standard,
-  geom_cells
-) {
-  double sum1 = 0.0, sum2 = 0.0;
-  
+  speciesViscosity <- speciesViscosity_SutherlandParameters, temperature, Ns
+), constraint(multiSpecies, speciesViscosityModel_Sutherland, geom_cells), prelude {
+  $speciesViscosity.setVecSize(*$Ns);
+} {
   for(int i = 0; i < $Ns; ++i) {
-    double const k0 = $speciesConductivity_SutherlandParameters[0][0];
-    double const T0 = $speciesConductivity_SutherlandParameters[0][1];
-    double const Sk = $speciesConductivity_SutherlandParameters[0][2];
-    double const k = k0*std::pow($temperature/T0, 1.5)*(T0+Sk)/($temperature+Sk);
-    
-    sum1 += $speciesX[i]*k;
-    sum2 += $speciesX[i]/k;
+    double const mu0 = $speciesViscosity_SutherlandParameters[i][0];
+    double const T0 = $speciesViscosity_SutherlandParameters[i][1];
+    double const Smu = $speciesViscosity_SutherlandParameters[i][2];
+    double const T = $temperature;
+    double const mu = mu0*std::pow(T/T0, 1.5)*(T0+Smu)/(T+Smu);
+    $speciesViscosity[i] = mu;
   }
-  
-  $conductivity = 0.5*(sum1+1.0/sum2);
 }
 
 $rule pointwise(
-  conductivity_f
-  <-
-  speciesConductivity_SutherlandParameters, temperature_f, speciesX_f, Ns
-), constraint(
-  multiSpecies, speciesConductivityModel_Sutherland, mixtureConductivityModel_Standard,
-  boundary_faces
-) {
-  double sum1 = 0.0, sum2 = 0.0;
-  
+  speciesViscosity_f <- speciesViscosity_SutherlandParameters, temperature_f, Ns
+), constraint(multiSpecies, speciesViscosityModel_Sutherland, boundary_faces), prelude {
+  $speciesViscosity_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    double const mu0 = $speciesViscosity_SutherlandParameters[i][0];
+    double const T0 = $speciesViscosity_SutherlandParameters[i][1];
+    double const Smu = $speciesViscosity_SutherlandParameters[i][2];
+    double const T = $temperature_f;
+    double const mu = mu0*std::pow(T/T0, 1.5)*(T0+Smu)/(T+Smu);
+    $speciesViscosity_f[i] = mu;
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(
+  speciesConductivity <- speciesConductivity_SutherlandParameters, temperature, Ns
+), constraint(multiSpecies, speciesConductivityModel_Sutherland, geom_cells), prelude {
+  $speciesConductivity.setVecSize(*$Ns);
+} {
   for(int i = 0; i < $Ns; ++i) {
     double const k0 = $speciesConductivity_SutherlandParameters[i][0];
     double const T0 = $speciesConductivity_SutherlandParameters[i][1];
     double const Sk = $speciesConductivity_SutherlandParameters[i][2];
-    double const k = k0*std::pow($temperature_f/T0, 1.5)*(T0+Sk)/($temperature_f+Sk);
-    
-    sum1 += $speciesX_f[i]*k;
-    sum2 += $speciesX_f[i]/k;
+    double const T = $temperature;
+    double const k = k0*std::pow(T/T0, 1.5)*(T0+Sk)/(T+Sk);
+    $speciesConductivity[i] = k;
   }
-  
+}
+
+$rule pointwise(
+  speciesConductivity_f <- speciesConductivity_SutherlandParameters, temperature_f, Ns
+), constraint(multiSpecies, speciesConductivityModel_Sutherland, boundary_faces), prelude {
+  $speciesConductivity_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    double const k0 = $speciesConductivity_SutherlandParameters[i][0];
+    double const T0 = $speciesConductivity_SutherlandParameters[i][1];
+    double const Sk = $speciesConductivity_SutherlandParameters[i][2];
+    double const T = $temperature_f;
+    double const k = k0*std::pow(T/T0, 1.5)*(T0+Sk)/(T+Sk);
+    $speciesConductivity_f[i] = k;
+  }
+}
+
+// =============================================================================
+
+inline void wilkeTransportPhi(
+  Mat<double> const & phi, const_Vect<double> const & w,
+  const_Vect<double> const & mu, int const N
+) {
+  for(int m = 0; m < N; ++m) {
+    for(int k = 0; k < N; ++k) {
+      double wratio = w[k]/w[m];
+      double muratio = mu[k]/mu[m];
+      phi[k][m] = pow(8.0*(1.0+wratio), -0.5) * pow(1.0+sqrt(muratio)*pow(1.0/wratio, 0.25), 2.0);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+$rule constraint(requireWilkeTransportWeight <- mixtureViscosityModel, mixtureConductivityModel) {
+  $requireWilkeTransportWeight = EMPTY;
+  if($mixtureViscosityModel == "Wilke" || $mixtureConductivityModel == "Wilke") {
+    $requireWilkeTransportWeight = ~EMPTY;
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(wilkeTransportPhi <- speciesViscosity, speciesW, Ns),
+  constraint(multiSpecies, geom_cells), prelude {
+  $wilkeTransportPhi.setVecSize(*$Ns);
+} {
+  Mat<double> phi = $wilkeTransportPhi;
+  const_Vect<double> w(&($speciesW[0]), $Ns);
+  const_Vect<double> mu = $speciesViscosity;
+  wilkeTransportPhi(phi, w, mu, $Ns);
+}
+
+$rule pointwise(wilkeTransportPhi_f <- speciesViscosity_f, speciesW, Ns),
+  constraint(multiSpecies, boundary_faces), prelude {
+  $wilkeTransportPhi_f.setVecSize(*$Ns);
+} {
+  Mat<double> phi = $wilkeTransportPhi_f;
+  const_Vect<double> w(&($speciesW[0]), $Ns);
+  const_Vect<double> mu = $speciesViscosity_f;
+  wilkeTransportPhi(phi, w, mu, $Ns);
+}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(wilkeTransportWeightr <- speciesX, wilkeTransportPhi, Ns),
+  constraint(requireWilkeTransportWeight, geom_cells), prelude {
+  $wilkeTransportWeightr.setVecSize(*$Ns);
+} {
+  $wilkeTransportWeightr = Scalar<double>(0.0);
+  $wilkeTransportPhi.dotprod_accum($speciesX, $wilkeTransportWeightr);
+  for(int i = 0; i < $Ns; ++i) {
+    $wilkeTransportWeightr[i] = 1.0/$wilkeTransportWeightr[i];
+  }
+}
+
+$rule pointwise(wilkeTransportWeightr_f <- speciesX_f, wilkeTransportPhi_f, Ns),
+  constraint(requireWilkeTransportWeight, boundary_faces), prelude {
+  $wilkeTransportWeightr_f.setVecSize(*$Ns);
+} {
+  $wilkeTransportWeightr_f = Scalar<double>(0.0);
+  $wilkeTransportPhi_f.dotprod_accum($speciesX_f, $wilkeTransportWeightr_f);
+  for(int i = 0; i < $Ns; ++i) {
+    $wilkeTransportWeightr_f[i] = 1.0/$wilkeTransportWeightr_f[i];
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(viscosity <- speciesViscosity, speciesX, Ns),
+  constraint(multiSpecies, mixtureViscosityModel_Standard, geom_cells) {
+  double sum1 = 0.0, sum2 = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    sum1 += $speciesX[i]*$speciesViscosity[i];
+    sum2 += $speciesX[i]/$speciesViscosity[i];
+  }
+  $viscosity = 0.5*(sum1+1.0/sum2);
+}
+
+$rule pointwise(viscosity_f <- speciesViscosity_f, speciesX_f, Ns),
+  constraint(multiSpecies, mixtureViscosityModel_Standard, boundary_faces) {
+  double sum1 = 0.0, sum2 = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    sum1 += $speciesX_f[i]*$speciesViscosity_f[i];
+    sum2 += $speciesX_f[i]/$speciesViscosity_f[i];
+  }
+  $viscosity_f = 0.5*(sum1+1.0/sum2);
+}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(conductivity <- speciesConductivity, speciesX, Ns),
+  constraint(multiSpecies, mixtureConductivityModel_Standard, geom_cells) {
+  double sum1 = 0.0, sum2 = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    sum1 += $speciesX[i]*$speciesConductivity[i];
+    sum2 += $speciesX[i]/$speciesConductivity[i];
+  }
+  $conductivity = 0.5*(sum1+1.0/sum2);
+}
+
+$rule pointwise(conductivity_f <- speciesConductivity_f, speciesX_f, Ns),
+  constraint(multiSpecies, mixtureConductivityModel_Standard, boundary_faces) {
+  double sum1 = 0.0, sum2 = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    sum1 += $speciesX_f[i]*$speciesConductivity_f[i];
+    sum2 += $speciesX_f[i]/$speciesConductivity_f[i];
+  }
   $conductivity_f = 0.5*(sum1+1.0/sum2);
 }
 
 // -----------------------------------------------------------------------------
 
-$rule pointwise(conductivity_f <- (cl,cr)->(conductivity,vol)) {
-  $conductivity_f = ($cl->$vol*$cr->$conductivity + $cr->$vol*$cl->$conductivity)/($cl->$vol + $cr->$vol);
+$rule pointwise(viscosity <- speciesViscosity, speciesX, wilkeTransportWeightr, Ns),
+  constraint(multiSpecies, mixtureViscosityModel_Wilke, geom_cells) {
+  double mu = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    mu += $speciesViscosity[i]*$speciesX[i]*$wilkeTransportWeightr[i];
+  }
+  $viscosity = mu;
+}
+
+$rule pointwise(viscosity_f <- speciesViscosity_f, speciesX_f, wilkeTransportWeightr_f, Ns),
+  constraint(multiSpecies, mixtureViscosityModel_Wilke, boundary_faces) {
+  double mu = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    mu += $speciesViscosity_f[i]*$speciesX_f[i]*$wilkeTransportWeightr_f[i];
+  }
+  $viscosity_f = mu;
+}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(conductivity <- speciesConductivity, speciesX, wilkeTransportWeightr, Ns),
+  constraint(multiSpecies, mixtureConductivityModel_Wilke, geom_cells) {
+  double k = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    k += $speciesConductivity[i]*$speciesX[i]*$wilkeTransportWeightr[i];
+  }
+  $conductivity = k;
+}
+
+$rule pointwise(conductivity_f <- speciesConductivity_f, speciesX_f, wilkeTransportWeightr_f, Ns),
+  constraint(multiSpecies, mixtureConductivityModel_Wilke, boundary_faces) {
+  double k = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    k += $speciesConductivity_f[i]*$speciesX_f[i]*$wilkeTransportWeightr_f[i];
+  }
+  $conductivity_f = k;
+}
+
+// =============================================================================
+
+$rule pointwise(viscosity_f <- (cl,cr)->(viscosity,vol), faceAvgFactor) {
+  $viscosity_f = $faceAvgFactor*($cl->$vol*$cr->$viscosity + $cr->$vol*$cl->$viscosity);
+}
+
+$rule pointwise(conductivity_f <- (cl,cr)->(conductivity,vol), faceAvgFactor) {
+  $conductivity_f = $faceAvgFactor*($cl->$vol*$cr->$conductivity + $cr->$vol*$cl->$conductivity);
 }
 
 // =============================================================================
