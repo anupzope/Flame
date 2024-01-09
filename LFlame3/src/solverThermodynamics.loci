@@ -16,4 +16,6 @@ $rule constraint(caloricallyPerfectGas <- thermodynamicModel) {
   }
 }
 
+//$rule pointwise(speciesCp
+
 } // end: namespace flame

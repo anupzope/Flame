@@ -321,11 +321,14 @@ $type conductivity store<double>;
 $type conductivity_f store<double>;
 
 // =============================================================================
-// Variables related to model of thermodynamic properties.
+// Variables related to thermodynamics and EoS.
 // =============================================================================
 
 $type thermodynamicModel param<std::string>;
 $type caloricallyPerfectGas Constraint;
+
+$type eosModel param<std::string>;
+$type thermallyPerfectGas Constraint;
 
 // =============================================================================
 // Variables common to both the single- and multi-species solver state.
@@ -466,12 +469,6 @@ $type dtRK param<double>;
 $type rkOrder param<int>;
 $type rkOrderWeights param<std::vector<Loci::Array<double, 3> > >;
 $type lastRK param<bool>;
-
-// =============================================================================
-// Variables related to EoS
-// =============================================================================
-$type eosType param<std::string>;
-$type idealGas Constraint;
 
 // =============================================================================
 // Variables related to milti-species management.

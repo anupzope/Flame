@@ -7,16 +7,16 @@ namespace flame {
 
 // =============================================================================
 
-$rule default(eosType) {
-  $eosType = "idealGas";
+$rule default(eosModel) {
+  $eosModel = "thermallyPerfectGas";
 }
 
-$rule constraint(idealGas <- eosType) {
-  $idealGas = EMPTY;
-  if($eosType == "idealGas") {
-    $idealGas = ~EMPTY;
+$rule constraint(thermallyPerfectGas <- eosModel) {
+  $thermallyPerfectGas = EMPTY;
+  if($eosModel == "thermallyPerfectGas") {
+    $thermallyPerfectGas = ~EMPTY;
   } else {
-    std::cerr << "Invalid value of eosType: " << $eosType << std::endl;
+    std::cerr << "Invalid value of eosModel: " << $eosModel << std::endl;
     Loci::Abort();
   }
 }
@@ -24,49 +24,79 @@ $rule constraint(idealGas <- eosType) {
 // =============================================================================
 
 $rule pointwise(density <- temperature, gagePressure, speciesR, Pambient),
-constraint(singleSpecies, idealGas, geom_cells) {
+constraint(singleSpecies, thermallyPerfectGas, geom_cells) {
   $density = ($gagePressure+$Pambient)/($speciesR[0]*$temperature);
 }
 
 $rule pointwise(density_f <- temperature_f, gagePressure_f, speciesR, Pambient),
-constraint(singleSpecies, idealGas, area) {
+constraint(singleSpecies, thermallyPerfectGas, area) {
   $density_f = ($gagePressure_f+$Pambient)/($speciesR[0]*$temperature_f);
 }
 
 $rule pointwise(density <- temperature, gagePressure, mixtureR, Pambient),
-constraint(multiSpecies, idealGas, geom_cells) {
+constraint(multiSpecies, thermallyPerfectGas, geom_cells) {
   $density = ($gagePressure+$Pambient)/($mixtureR*$temperature);
 }
 
 $rule pointwise(density_f <- temperature_f, gagePressure_f, mixtureR_f, Pambient),
-constraint(multiSpecies, idealGas, area) {
+constraint(multiSpecies, thermallyPerfectGas, area) {
   $density_f = ($gagePressure_f+$Pambient)/($mixtureR_f*$temperature_f);
 }
 
 // =============================================================================
 
 //$rule singleton(speciesConstantGamma <- speciesConstantCp, speciesR, Ns),
-//  constraint(idealGas, caloricallyPerfectGas) {
+//  constraint(thermallyPerfectGas, caloricallyPerfectGas) {
 //  for(int i = 0; i < $Ns; ++i) {
 //    $speciesConstantGamma[i] = $speciesConstantCp[i]/($speciesConstantCp[i]-$speciesR[i]);
 //  }
 //}
 //
 //$rule pointwise(mixtureGamma <- mixtureCp, mixtureR),
-//  constraint(idealGas, caloricallyPerfectGas) {
+//  constraint(thermallyPerfectGas, caloricallyPerfectGas) {
 //  $mixtureGamma = $mixtureCp/($mixtureCp-$mixtureR);
 //}
 //
 //// =============================================================================
 //
-//$rule pointwise(soundSpeed <- temperature, speciesConstantGamma, speciesR),
-//  constraint(singleSpecies, idealGas, caloricallyPerfectGas, geom_cells) {
-//  $soundSpeed = sqrt($speciesConstantGamma[0]*$speciesR[0]*$temperature);
+
+//$rule singleton(constantGamma <- speciesConstantCp, speciesR),
+//  constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas) {
+//  $constantGamma = $speciesConstantCp[0]/($speciesConstantCp[0]-$speciesR[0]);
 //}
 //
-//$rule pointwise(soundSpeed_f <- temperature_f, speciesConstantGamma, speciesR),
-//  constraint(singleSpecies, idealGas, caloricallyPerfectGas, area) {
-//  $soundSpeed_f = sqrt($speciesConstantGamma[0]*$speciesR[0]*$temperature_f);
+//$rule pointwise(soundSpeed <- temperature, constantGamma, speciesR),
+//  constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells) {
+//  $soundSpeed = sqrt($constantGamma*$speciesR[0]*$temperature);
 //}
+//
+//$rule pointwise(soundSpeed_f <- temperature_f, constantGamma, speciesR),
+//  constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, area) {
+//  $soundSpeed_f = sqrt($constantGamma*$speciesR[0]*$temperature_f);
+//}
+
+// =============================================================================
+
+//$rule pointwise(mixtureGamma <- mixtureCp, mixtureR),
+//  constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells) {
+//  $mixtureGamma = $mixtureCp/($mixtureCp-$mixtureR);
+//}
+//
+//$rule pointwise(mixtureGamma_f <- mixtureCp_f, mixtureR_f),
+//  constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, area) {
+//  $mixtureGamma_f = $mixtureCp_f/($mixtureCp_f-$mixtureR_f);
+//}
+//
+//$rule pointwise(soundSpeed <- temperature, mixtureGamma, mixtureR),
+//  constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells) {
+//  $soundSpeed = sqrt($mixtureGamma*$mixtureR*$temperature);
+//}
+//
+//$rule pointwise(soundSpeed_f <- temperature_f, mixtureGamma_f, mixtureR_f),
+//  constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, area) {
+//  $soundSpeed_f = sqrt($mixtureGamma_f*$mixtureR_f*$temperature_f);
+//}
+
+// =============================================================================
 
 } // end: namespace flame

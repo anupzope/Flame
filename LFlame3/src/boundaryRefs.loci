@@ -60,7 +60,7 @@ $rule pointwise(speciesXRef <- speciesYRef, mixtureWRef, speciesW, Ns), prelude 
 // =============================================================================
 
 $rule pointwise(soundSpeedRef <- temperatureRef, speciesConstantCp, speciesR),
-constraint(singleSpecies, idealGas, caloricallyPerfectGas, temperatureRef) {
+constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, temperatureRef) {
   double const & Cp = $speciesConstantCp[0];
   double const & R = $speciesR[0];
   double const & T = $temperatureRef;
@@ -68,7 +68,7 @@ constraint(singleSpecies, idealGas, caloricallyPerfectGas, temperatureRef) {
 }
 
 $rule pointwise(soundSpeedRef <- temperatureRef, mixtureCpRef, mixtureRRef),
-constraint(multiSpecies, idealGas, caloricallyPerfectGas, temperatureRef) {
+constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, temperatureRef) {
   double const & Cp = $mixtureCpRef;
   double const & R = $mixtureRRef;
   double const & T = $temperatureRef;
@@ -79,13 +79,13 @@ constraint(multiSpecies, idealGas, caloricallyPerfectGas, temperatureRef) {
 
 // Calculate density of single species ideal gas.
 $rule pointwise(densityRef <- gagePressureRef, temperatureRef, speciesR, Pambient),
-constraint(singleSpecies, idealGas, temperatureRef) {
+constraint(singleSpecies, thermallyPerfectGas, temperatureRef) {
   $densityRef = ($gagePressureRef+$Pambient)/($speciesR[0]*$temperatureRef);
 }
 
 // Calculate density of multi-species ideal gas.
 $rule pointwise(densityRef <- gagePressureRef, temperatureRef, mixtureRRef, Pambient),
-constraint(multiSpecies, idealGas, temperatureRef) {
+constraint(multiSpecies, thermallyPerfectGas, temperatureRef) {
   $densityRef = ($gagePressureRef+$Pambient)/($mixtureRRef*$temperatureRef);
 }
 

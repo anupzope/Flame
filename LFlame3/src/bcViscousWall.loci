@@ -184,7 +184,7 @@ $rule pointwise(mixtureCp_f <- speciesY_f, speciesConstantCp, Ns),
 // =============================================================================
 
 $rule pointwise(ssConvectiveFlux_f <- area, gagePressure_f),
-constraint(singleSpecies, idealGas, caloricallyPerfectGas, viscousWall_BC) {
+constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, viscousWall_BC) {
   double const pg = $gagePressure_f;
   Loci::vector3d<double> const n = $area.n*$area.sada;
   
@@ -196,7 +196,7 @@ constraint(singleSpecies, idealGas, caloricallyPerfectGas, viscousWall_BC) {
 }
 
 $rule pointwise(msConvectiveFlux_f <- area, gagePressure_f, Ns),
-constraint(multiSpecies, idealGas, caloricallyPerfectGas, viscousWall_BC), prelude{
+constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, viscousWall_BC), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {
   double const pg = $gagePressure_f;

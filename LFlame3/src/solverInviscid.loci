@@ -15,7 +15,7 @@ $rule pointwise(
   leftv3d(velocity), leftsP(gagePressure,minPg), leftsP(temperature,Zero),
   rightv3d(velocity), rightsP(gagePressure,minPg), rightsP(temperature,Zero),
   area, Pambient, speciesConstantCp, speciesR
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas, (cl,cr)->(vol)) {
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, (cl,cr)->(vol)) {
   AUSMPlusUpFluxIdealGas(
     $ssConvectiveFlux_f,
     $leftv3d(velocity), $leftsP(gagePressure,minPg), $leftsP(temperature,Zero),
@@ -34,7 +34,7 @@ $rule pointwise(
   rightsP(gagePressure,minPg), rightv3d(velocity), rightsP(temperature,Zero),
   rightvM(speciesY),
   (cl,cr)->(mixtureCp, mixtureR), area, Pambient, Ns
-), constraint(multiSpecies, idealGas, caloricallyPerfectGas,
+), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas,
 (cl,cr)->(gagePressure,velocity,temperature,speciesY)), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {

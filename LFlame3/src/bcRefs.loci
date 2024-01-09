@@ -15,7 +15,7 @@ constraint(temperature_BCoption) {
 
 // Temperature from pressure and density for single species ideal gas.
 $rule pointwise(temperatureRef_BC <- pressure_BC, density_BC, speciesR),
-constraint(singleSpecies, idealGas, caloricallyPerfectGas,
+constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas,
 pressure_BCoption, density_BCoption) {
   double const & rho = $density_BC;
   double const & p = $pressure_BC;
@@ -25,7 +25,7 @@ pressure_BCoption, density_BCoption) {
 
 // Temperature from pressure and density for multi-species ideal gas.
 $rule pointwise(temperatureRef_BC <- pressure_BC, density_BC, mixtureRRef_BC),
-constraint(multiSpecies, idealGas, caloricallyPerfectGas,
+constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas,
 pressure_BCoption, density_BCoption) {
   double const & rho = $density_BC;
   double const & p = $pressure_BC;
@@ -44,7 +44,7 @@ constraint(pressure_BCoption) {
 // Pressure from density and temperature for single species ideal gas.
 $rule pointwise(
   gagePressureRef_BC <- density_BC, temperature_BC, speciesR, Pambient
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas,
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas,
 density_BCoption, temperature_BCoption) {
   double const & rho = $density_BC;
   double const & T = $temperature_BC;
@@ -55,7 +55,7 @@ density_BCoption, temperature_BCoption) {
 // Pressure from density and temperatue for multi-species ideal gas.
 $rule pointwise(
   gagePressureRef_BC <- density_BC, temperature_BC, mixtureRRef_BC, Pambient
-), constraint(multiSpecies, idealGas, caloricallyPerfectGas,
+), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas,
 density_BCoption, temperature_BCoption) {
   double const & rho = $density_BC;
   double const & T = $temperature_BC;
@@ -159,7 +159,7 @@ $rule pointwise(
 
 // Speed of sound for single species gas ideal gas.
 $rule pointwise(soundSpeedRef_BC <- speciesConstantCp, speciesR, temperatureRef_BC),
-constraint(singleSpecies, idealGas, caloricallyPerfectGas, temperatureRef_BC) {
+constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, temperatureRef_BC) {
   double const & Cp = $speciesConstantCp[0];
   double const & R = $speciesR[0];
   double const & T = $temperatureRef_BC;
@@ -168,7 +168,7 @@ constraint(singleSpecies, idealGas, caloricallyPerfectGas, temperatureRef_BC) {
 
 // Speed of sound for multi-species ideal gas.
 $rule pointwise(soundSpeedRef_BC <- mixtureCpRef_BC, mixtureRRef_BC, temperatureRef_BC),
-constraint(multiSpecies, idealGas, temperatureRef_BC) {
+constraint(multiSpecies, thermallyPerfectGas, temperatureRef_BC) {
   double const & Cp = $mixtureCpRef_BC;
   double const & R = $mixtureRRef_BC;
   double const & T = $temperatureRef_BC;
@@ -180,14 +180,14 @@ constraint(multiSpecies, idealGas, temperatureRef_BC) {
 // Calculate density of single species ideal gas.
 $rule pointwise(
   densityRef_BC <- gagePressureRef_BC, temperatureRef_BC, speciesR, Pambient
-), constraint(singleSpecies, idealGas, temperatureRef_BC) {
+), constraint(singleSpecies, thermallyPerfectGas, temperatureRef_BC) {
   $densityRef_BC = ($gagePressureRef_BC+$Pambient)/($speciesR[0]*$temperatureRef_BC);
 }
 
 // Calculate density of multi-species ideal gas.
 $rule pointwise(
   densityRef_BC <- gagePressureRef_BC, temperatureRef_BC, mixtureRRef_BC, Pambient
-), constraint(multiSpecies, idealGas, temperatureRef_BC) {
+), constraint(multiSpecies, thermallyPerfectGas, temperatureRef_BC) {
   $densityRef_BC = ($gagePressureRef_BC+$Pambient)/($mixtureRRef_BC*$temperatureRef_BC);
 }
 

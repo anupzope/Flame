@@ -175,7 +175,7 @@ $rule pointwise(
   <-
   gagePressure{n}, velocity{n}, temperature{n}, speciesY{n},
   mixtureW{n}, mixtureR{n}, mixtureCp{n}, vol{n}, Pambient, Ns
-), constraint(multiSpecies, idealGas, caloricallyPerfectGas, geom_cells), prelude {
+), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells), prelude {
   $msQ{n}.setVecSize(*$Ns+4);
 } {
   Vect<double> Q = $msQ{n};
@@ -207,7 +207,7 @@ $rule pointwise(
   <-
   gagePressure{n}, velocity{n}, temperature{n}, vol{n},
   speciesW, speciesConstantCp, speciesR, Pambient
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas, geom_cells) {
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells) {
   Loci::Array<double, 5> & Q = $ssQ{n};
   
   double const P = $gagePressure{n}+$Pambient;
@@ -298,7 +298,7 @@ $rule pointwise(
 //  vol{n,rk}, gagePressure{n,rk}, velocity{n,rk}, temperature{n,rk},
 //  ssResidual{n,rk},
 //  speciesConstantCp, speciesR, Pambient
-//), constraint(singleSpecies, idealGas, caloricallyPerfectGas, geom_cells) {
+//), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells) {
 //  
 //  //double const gm1 = $speciesGamma[0] - 1.0;
 //  //double const rgm1 = 1.0/gm1;
@@ -361,7 +361,7 @@ $rule pointwise(
 //  speciesY{n,rk}, speciesX{n,rk}, mixtureW{n,rk}, mixtureR{n,rk}, mixtureCp{n,rk},
 //  msResidual{n,rk},
 //  speciesW, speciesConstantCp, speciesR, Pambient, Runiv, Ns
-//), constraint(multiSpecies, idealGas, caloricallyPerfectGas, geom_cells), prelude {
+//), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells), prelude {
 //  $speciesY_i{n,rk+1}.setVecSize(*$Ns);
 //  $speciesX_i{n,rk+1}.setVecSize(*$Ns);
 //} {
@@ -465,7 +465,7 @@ $rule pointwise(
   <-
   ssQ_i{n,rk+1}, vol{n,rk},
   speciesConstantCp, speciesR, Pambient
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas, geom_cells) {
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells) {
   double & pg = $gagePressure_i{n,rk+1};
   Loci::vector3d<double> & u = $velocity_i{n,rk+1};
   double & T = $temperature_i{n,rk+1};
@@ -490,7 +490,7 @@ $rule pointwise(
   mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1}, speciesX_i{n,rk+1}, mixtureCp_i{n,rk+1}
   <-
   msQ_i{n,rk+1}, vol{n,rk}, speciesW, speciesConstantCp, Runiv, Pambient, Ns
-), constraint(multiSpecies, idealGas, caloricallyPerfectGas, geom_cells), prelude {
+), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, geom_cells), prelude {
   $speciesY_i{n,rk+1}.setVecSize(*$Ns);
   $speciesX_i{n,rk+1}.setVecSize(*$Ns);
 } {

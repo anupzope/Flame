@@ -300,7 +300,7 @@ constraint(geom_cells, multiSpecies, caloricallyPerfectGas) {
 //  <-
 //  mixtureR{n=0}, mixtureGamma{n=0}, temperature{n=0},
 //  speciesY_ic, speciesW, speciesGamma, Ns
-//), constraint(multiSpecies, idealGas) {
+//), constraint(multiSpecies, thermallyPerfectGas) {
 //  double const cp = $mixtureGamma{n=0}*$mixtureR{n=0}/($mixtureGamma{n=0}-1.0);
 //  double const h = cp*$temperature{n=0};
 //  

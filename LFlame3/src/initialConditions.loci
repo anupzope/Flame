@@ -111,7 +111,7 @@ $rule singleton(
   icGagePressure, icTemperature
   <-
   thermoIC, speciesR, Pambient
-), constraint(singleSpecies, idealGas) {
+), constraint(singleSpecies, thermallyPerfectGas) {
   switch($thermoIC.type) {
   case THERMO_SPEC_PT:
     $icGagePressure = $thermoIC.pressure - $Pambient;
@@ -133,7 +133,7 @@ $rule singleton(
   <-
   icGagePressure, icTemperature, velocityIC,
   speciesConstantCp, speciesR
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas) {
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas) {
   switch($velocityIC.type) {
   case VEL_SPEC_VELOCITY:
     $icVelocity = $velocityIC.scale*$velocityIC.direction;
@@ -190,7 +190,7 @@ $rule singleton(
   icGagePressure, icTemperature
   <-
   thermoIC, icMixtureR, Pambient
-), constraint(multiSpecies, idealGas) {
+), constraint(multiSpecies, thermallyPerfectGas) {
   switch($thermoIC.type) {
   case THERMO_SPEC_PT:
     $icGagePressure = $thermoIC.pressure - $Pambient;
@@ -212,7 +212,7 @@ $rule singleton(
   <-
   icGagePressure, icTemperature, velocityIC,
   speciesConstantCp, icMixtureR, icSpeciesY, Ns
-), constraint(multiSpecies, idealGas, caloricallyPerfectGas) {
+), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas) {
   switch($velocityIC.type) {
   case VEL_SPEC_VELOCITY:
     $icVelocity = $velocityIC.scale*$velocityIC.direction;
@@ -472,7 +472,7 @@ $rule pointwise(
   gagePressure_TGV_ic, velocity_TGV_ic, temperature_TGV_ic
   <-
   speciesR, Pambient, cellcenter, tgvICParameters
-), constraint(geom_cells, idealGas, singleSpecies) {
+), constraint(geom_cells, thermallyPerfectGas, singleSpecies) {
   double const x = $cellcenter.x;
   double const y = $cellcenter.y;
   double const z = $cellcenter.z;
@@ -515,7 +515,7 @@ $rule pointwise(
   gagePressure_TGV_ic, velocity_TGV_ic, temperature_TGV_ic, speciesY_TGV_ic
   <-
   speciesR, Pambient, cellcenter, tgvICParameters, Ns
-), constraint(geom_cells, idealGas, multiSpecies), prelude {
+), constraint(geom_cells, thermallyPerfectGas, multiSpecies), prelude {
   $speciesY_TGV_ic.setVecSize(*$Ns);
 } {
   double const x = $cellcenter.x;
@@ -621,7 +621,7 @@ constraint(geom_cells, withoutICDirectory) {
 //}
 
 //$rule pointwise(mixtureGamma_ic <- speciesY_ic, speciesGamma, Ns),
-//constraint(geom_cells, multiSpecies, idealGas) {
+//constraint(geom_cells, multiSpecies, thermallyPerfectGas) {
 //  double sum = 0.0;
 //  for(int i = 0; i < $Ns; ++i) {
 //    sum += $speciesY_ic[i]/($speciesGamma[i]-1.0);
@@ -630,12 +630,12 @@ constraint(geom_cells, withoutICDirectory) {
 //}
 
 //$rule pointwise(mixtureCp_ic <- mixtureR_ic, mixtureGamma_ic),
-//constraint(geom_cells, multiSpecies, idealGas) {
+//constraint(geom_cells, multiSpecies, thermallyPerfectGas) {
 //  $mixtureCp_ic = $mixtureGamma_ic*$mixtureR_ic/($mixtureGamma_ic-1.0);
 //}
 
 //$rule pointwise(mixtureEnthalpy_ic <- mixtureCp_ic, temperature_ic),
-//constraint(geom_cells, multiSpecies, idealGas) {
+//constraint(geom_cells, multiSpecies, thermallyPerfectGas) {
 //  $mixtureEnthalpy_ic = $mixtureCp_ic*$temperature_ic;
 //}
 

@@ -163,7 +163,7 @@ $rule pointwise(
   leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
   gagePressure_f, temperature_f, velocity_f,
   area, Pambient, speciesConstantCp, speciesR
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas, supersonicInflow_BC) {
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, supersonicInflow_BC) {
   AUSMPlusUpFluxIdealGas(
     $ssConvectiveFlux_f,
     $leftv3d(velocity), $leftsP(gagePressure,minPg), $leftsP(temperature,Zero),
@@ -181,7 +181,7 @@ $rule pointwise(
   gagePressure_f, temperature_f, velocity_f, speciesY_f,
   mixtureCp_f, mixtureR_f,
   area, Pambient, Ns
-), constraint(multiSpecies, idealGas, caloricallyPerfectGas, supersonicInflow_BC), prelude {
+), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, supersonicInflow_BC), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {
   double * flux = &($msConvectiveFlux_f[0]);
@@ -266,7 +266,7 @@ $rule pointwise(
   leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
   gagePressure_f, temperature_f, velocity_f,
   area, Pambient, speciesConstantCp, speciesR
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas, supersonicOutflow_BC) {
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, supersonicOutflow_BC) {
   AUSMPlusUpFluxIdealGas(
     $ssConvectiveFlux_f,
     $leftv3d(velocity), $leftsP(gagePressure,minPg), $leftsP(temperature,Zero),
@@ -284,7 +284,7 @@ $rule pointwise(
   gagePressure_f, temperature_f, velocity_f, speciesY_f,
   mixtureCp_f, mixtureR_f,
   area, Pambient, Ns
-), constraint(multiSpecies, idealGas, caloricallyPerfectGas, supersonicOutflow_BC), prelude {
+), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, supersonicOutflow_BC), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {
   double * flux = &($msConvectiveFlux_f[0]);
@@ -320,7 +320,7 @@ $rule pointwise(
   <-
   gagePressureRef, temperatureRef, velocityRef, densityRef, soundSpeedRef, area,
   ci->(gagePressure,temperature,velocity,density), Pambient, speciesR
-), constraint(singleSpecies, idealGas, farfield_BC) {
+), constraint(singleSpecies, thermallyPerfectGas, farfield_BC) {
   Loci::vector3d<double> const & ui = $ci->$velocity;
   double const & ri = $ci->$density;
   double const & pgi = $ci->$gagePressure;
@@ -377,7 +377,7 @@ $rule pointwise(
   gagePressureRef, temperatureRef, velocityRef, densityRef, speciesYRef, speciesXRef, area,
   ci->(gagePressure,temperature,velocity,density,speciesY,speciesX),
   Pambient, mixtureRRef, soundSpeedRef, Ns
-), constraint(multiSpecies, idealGas, farfield_BC), prelude {
+), constraint(multiSpecies, thermallyPerfectGas, farfield_BC), prelude {
   $speciesY_f.setVecSize(*$Ns);
   $speciesX_f.setVecSize(*$Ns);
 } {
@@ -468,7 +468,7 @@ $rule pointwise(
   leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
   gagePressure_f, temperature_f, velocity_f,
   area, Pambient, speciesConstantCp, speciesR
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas, farfield_BC) {
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, farfield_BC) {
   AUSMPlusUpFluxIdealGas(
     $ssConvectiveFlux_f,
     $leftv3d(velocity), $leftsP(gagePressure,minPg), $leftsP(temperature,Zero),
@@ -486,7 +486,7 @@ $rule pointwise(
   gagePressure_f, temperature_f, velocity_f, speciesY_f,
   mixtureCp_f, mixtureR_f,
   area, Pambient, Ns
-), constraint(multiSpecies, idealGas, caloricallyPerfectGas, farfield_BC), prelude {
+), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, farfield_BC), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {
   double * flux = &($msConvectiveFlux_f[0]);

@@ -5,6 +5,8 @@ $include "flame.lh"
 
 namespace flame {
 
+// =============================================================================
+
 $rule pointwise(faceAvgFactor <- (cl,cr)->vol) {
   $faceAvgFactor = 1.0/($cl->$vol + $cr->$vol);
 }
@@ -28,6 +30,8 @@ $rule pointwise(speciesY_f <- faceAvgFactor, (cl,cr)->(vol,speciesY), Ns), prelu
     $speciesY_f[i] = $faceAvgFactor*($cl->$vol*$cr->$speciesY[i] + $cr->$vol*$cl->$speciesY[i]);
   }
 }
+
+// =============================================================================
 
 $rule pointwise(mixtureW_f, mixtureR_f <- (cl,cr)->vol, speciesY_f, speciesW, Runiv, Ns) {
   double rW = 0.0;
@@ -56,5 +60,7 @@ $rule pointwise(
     $speciesX_f[i] = $speciesY_f[i]*$mixtureW_f/$speciesW[i];
   }
 }
+
+// =============================================================================
 
 } // end: namespace flame
