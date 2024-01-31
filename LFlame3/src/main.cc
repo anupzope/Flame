@@ -1,4 +1,5 @@
 #include <flame.hh>
+#include <mixture.hh>
 #include <plot.hh>
 #include <boundary_checker.hh>
 
@@ -386,7 +387,42 @@ int main(int argc, char * argv[]) {
       }
     }
   }
-  
+
+  {
+    Loci::storeRepP mixtureFileP = facts.get_variable("mixtureFile");
+    if(mixtureFileP != 0 && mixtureFileP->RepType() == Loci::PARAMETER) {
+      param<std::string> filename;
+      filename.setRep(mixtureFileP);
+
+      if(Loci::MPI_rank == 0) {
+        LOG(INFO) << "Parsing mixture file: '" << *filename << "'";
+      }
+
+      flame::Mixture mix;
+      std::ostringstream ss;
+      int error = parseFromXML(*filename, mix, ss);
+      if(error) {
+        LOG(ERROR) << "Unable to parse mixture file: '" << *filename << "'";
+        LOG(ERROR) << ss.str();
+        Loci::Abort();
+      } else {
+        if(Loci::MPI_rank == 0) {
+          LOG(INFO) << "Done parsing mixture specification";
+          LOG(INFO) << mix;
+        }
+      }
+
+      // Create fact for mixture.
+      param<flame::Mixture> mixture;
+      *mixture = mix;
+      facts.create_fact("mixture", mixture);
+    } else {
+      if(Loci::MPI_rank == 0) {
+        LOG(ERROR) << "mixtureFile not specified";
+      }
+    }
+  }
+
   // Dump parameters from the fact database.
   if(Loci::MPI_rank == 0) {
     std::stringstream ss;

@@ -14,7 +14,7 @@ LFlame3_SOURCES=src/main.cc \
   src/bcViscousWall.cc \
   src/plot.cc \
   src/totalVolume.cc \
-  src/species.cc \
+  src/mixture.cc \
   src/initialConditions.cc \
   src/solverTimestepping.cc \
   src/solverRungeKutta.cc \
@@ -41,10 +41,12 @@ LFlame3_SOURCES=src/main.cc \
   src/bcInputs.cc \
   src/bcRefs.cc \
   src/boundaryRefs.cc
-LFlame3_LDFLAGS = 
+LFlame3_LDFLAGS = $(LDFLAGS)
 LFlame3_LDADD = 
-LFlame3_CXXFLAGS = -I$(srcdir)/include
-LFlame3_CPPFLAGS = 
+LFlame3_CXXFLAGS = $(CXXFLAGS) -I$(srcdir)/include
+LFlame3_CPPFLAGS = $(CPPFLAGS) -DFLAME_DATA_DIR=\"$(pkgdatadir)\" \
+  -DFLAME_NAME_MAX_LENGTH=256 \
+  -DFLAME_MAX_NSPECIES=256
 if HAVE_MPI
   LFlame3_LDFLAGS += $(MPI_LDFLAGS)
   LFlame3_LDADD += $(MPI_LIBS)
@@ -63,3 +65,6 @@ if HAVE_GLOG
   LFlame3_CXXFLAGS += $(GLOG_CFLAGS)
   LFlame3_CPPFLAGS += -DFLAME_HAVE_GLOG
 endif
+
+
+pkgdata_DATA = data/flame-mixture.xsd

@@ -52,7 +52,9 @@ $type velocityIC param<VelSpec>;
 $type speciesIC param<SpeciesSpec>;
 
 $rule singleton(thermoIC <- initialConditions), constraint(UNIVERSE) {
-  LOG(INFO) << "Parsing thermodynamic variables from initialConditions";
+  $[Once] {
+    LOG(INFO) << "Parsing thermodynamic variables from initialConditions";
+  }
   
   int error = 0;
   std::ostringstream errmsg;
@@ -64,13 +66,17 @@ $rule singleton(thermoIC <- initialConditions), constraint(UNIVERSE) {
   );
   
   if(error) {
-    LOG(ERROR) << errmsg.str();
+    $[Once] {
+      LOG(ERROR) << errmsg.str();
+    }
     Loci::Abort();
   }
 }
 
 $rule singleton(velocityIC <- initialConditions), constraint(UNIVERSE) {
-  LOG(INFO) << "Parsing velocity variables from initialConditions";
+  $[Once] {
+    LOG(INFO) << "Parsing velocity variables from initialConditions";
+  }
   
   int error = 0;
   std::ostringstream errmsg;
@@ -82,13 +88,17 @@ $rule singleton(velocityIC <- initialConditions), constraint(UNIVERSE) {
   );
   
   if(error) {
-    LOG(ERROR) << errmsg.str();
+    $[Once] {
+      LOG(ERROR) << errmsg.str();
+    }
     Loci::Abort();
   }
 }
 
 $rule singleton(speciesIC <- initialConditions, Ns), constraint(UNIVERSE) {
-  LOG(INFO) << "Parsing species fractions from initialConditions";
+  $[Once] {
+    LOG(INFO) << "Parsing species fractions from initialConditions";
+  }
   
   int error = 0;
   std::ostringstream errmsg;
@@ -100,7 +110,9 @@ $rule singleton(speciesIC <- initialConditions, Ns), constraint(UNIVERSE) {
   );
   
   if(error) {
-    LOG(ERROR) << errmsg.str();
+    $[Once] {
+      LOG(ERROR) << errmsg.str();
+    }
     Loci::Abort();
   }
 }
@@ -264,7 +276,9 @@ $type temperature_TGV_ic store<double>;
 $type speciesY_TGV_ic storeVec<double>;
 
 $rule singleton(tgvICParameters <- initialConditionsTGV) {
-  LOG(INFO) << "Parsing initialConditionsTGV";
+  $[Once] {
+    LOG(INFO) << "Parsing initialConditionsTGV";
+  }
   
   bool XrefSet = false;
   Loci::vector3d<double> Xref;
@@ -456,7 +470,9 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
   }
   
   if(error) {
-    LOG(ERROR) << errmsg.str();
+    $[Once] {
+      LOG(ERROR) << errmsg.str();
+    }
     Loci::Abort();
   } else {
     $tgvICParameters.Xref = Xref;

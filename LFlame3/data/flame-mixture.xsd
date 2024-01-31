@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	   targetNamespace="http://flame-mixture"
+	   xmlns="http://flame-mixture"
+	   elementFormDefault="qualified">
+  <xs:element name="mixture">
+    <xs:complexType>
+      <xs:sequence>
+	<xs:element name="species" minOccurs="1" maxOccurs="unbounded">
+	  <xs:complexType>
+	    <xs:sequence>
+	      <xs:element name="name" type="name_t" />
+	      <xs:element name="molecularWeight" type="molecularWeight_t" />
+	      <xs:choice>
+	        <xs:element name="constantViscosity" type="viscosity_t" />
+	        <xs:element name="sutherlandViscosity" type="sutherlandViscosity_t" />
+	      </xs:choice>
+	      <xs:choice>
+		<xs:element name="constantConductivity" type="conductivity_t" />
+		<xs:element name="sutherlandConductivity" type="sutherlandConductivity_t" />
+	      </xs:choice>
+	      <xs:choice>
+	        <xs:element name="caloricallyPerfectGas">
+		  <xs:complexType>
+		    <xs:sequence>
+		      <xs:element name="specificHeat" type="specificEnergy_t" />
+		    </xs:sequence>
+		  </xs:complexType>
+	        </xs:element>
+	      </xs:choice>
+	    </xs:sequence>
+	  </xs:complexType>
+	</xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:simpleType name="name_t">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[a-z,A-Z,0-9,+,-]*" />
+      <xs:maxLength value="255" />
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="pressure_t">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+        <xs:attribute name="unit">
+	  <xs:simpleType>
+	    <xs:restriction base="xs:string">
+	      <xs:enumeration value="Pa" />
+	      <xs:enumeration value="Pascal" />
+	      <xs:enumeration value="N/m.m" />
+	    </xs:restriction>
+	  </xs:simpleType>
+	</xs:attribute>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  
+  <xs:complexType name="temperature_t">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+        <xs:attribute name="unit">
+	  <xs:simpleType>
+	    <xs:restriction base="xs:string">
+	      <xs:enumeration value="K" />
+     	      <xs:enumeration value="kelvin" />
+	    </xs:restriction>
+	  </xs:simpleType>
+	</xs:attribute>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  
+  <xs:complexType name="speed_t">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+        <xs:attribute name="unit">
+	  <xs:simpleType>
+            <xs:restriction base="xs:string">
+  	      <xs:enumeration value="m/s" />
+	      <xs:enumeration value="meter/second" />
+	    </xs:restriction>
+	  </xs:simpleType>
+        </xs:attribute>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  
+  <xs:complexType name="velocity_t">
+    <xs:all>
+      <xs:element name="x" type="speed_t" minOccurs="0" />
+      <xs:element name="y" type="speed_t" minOccurs="0" />
+      <xs:element name="z" type="speed_t" minOccurs="0" />
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="viscosity_t">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+	<xs:attribute name="unit">
+	  <xs:simpleType>
+            <xs:restriction base="xs:string">
+	      <xs:enumeration value="Pa.s" />
+	    </xs:restriction>
+	  </xs:simpleType>
+	</xs:attribute>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="conductivity_t">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+       <xs:attribute name="unit" type="xs:string" />
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  
+  <xs:complexType name="molecularWeight_t">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+        <xs:attribute name="unit">
+	  <xs:simpleType>
+	    <xs:restriction base="xs:string">
+	      <xs:enumeration value="kg/kmol" />
+	    </xs:restriction>
+	  </xs:simpleType>
+	</xs:attribute>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="sutherlandViscosity_t">
+    <xs:all>
+      <xs:element name="refTemperature" type="temperature_t" />
+      <xs:element name="refViscosity" type="viscosity_t" />
+      <xs:element name="refConstant" type="temperature_t" />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="sutherlandConductivity_t">
+    <xs:all>
+      <xs:element name="refTemperature" type="temperature_t" />
+      <xs:element name="refConductivity" type="conductivity_t" />
+      <xs:element name="refConstant" type="temperature_t" />
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="specificEnergy_t">
+    <xs:simpleContent>
+      <xs:extension base="xs:double">
+	<xs:attribute name="unit">
+	  <xs:simpleType>
+	    <xs:restriction base="xs:string">
+	      <xs:enumeration value="J/kg.K" />
+	    </xs:restriction>
+	  </xs:simpleType>
+	</xs:attribute>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+</xs:schema>

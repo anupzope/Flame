@@ -1,6 +1,7 @@
 #include <Loci.h>
 
-#include <species.hh>
+//#include <species.hh>
+#include <mixture.hh>
 
 // =============================================================================
 // General variables.
@@ -257,7 +258,7 @@ $type soundSpeedRef store<double>;
 // =============================================================================
 
 // Constraints for species viscosity model.
-$type speciesViscosityModel param<std::string>;
+//$type speciesViscosityModel param<std::string>;
 $type speciesViscosityModel_Constant Constraint;
 $type speciesViscosityModel_Sutherland Constraint;
 
@@ -267,7 +268,7 @@ $type mixtureViscosityModel_Standard Constraint;
 $type mixtureViscosityModel_Wilke Constraint;
 
 // Constraints for species conductivity model.
-$type speciesConductivityModel param<std::string>;
+//$type speciesConductivityModel param<std::string>;
 $type speciesConductivityModel_Constant Constraint;
 $type speciesConductivityModel_Sutherland Constraint;
 
@@ -324,7 +325,7 @@ $type conductivity_f store<double>;
 // Variables related to thermodynamics and EoS.
 // =============================================================================
 
-$type thermodynamicModel param<std::string>;
+//$type thermodynamicModel param<std::string>;
 $type caloricallyPerfectGas Constraint;
 
 $type eosModel param<std::string>;
@@ -474,6 +475,12 @@ $type lastRK param<bool>;
 // Variables related to milti-species management.
 // =============================================================================
 
+// User supplied parameter for species involved in the analysis.
+//$type species param<options_list>;
+$type mixtureFile param<std::string>;
+
+$type mixture param<flame::Mixture>;
+
 // Constraints to distinguish between single-species vs multi-species mode.
 $type multiSpecies Constraint;
 $type singleSpecies Constraint;
@@ -489,35 +496,54 @@ $type Runiv param<double>;
 // Number of species.
 $type Ns param<int>;
 
-// User supplied parameter for species involved in the analysis.
-$type species param<options_list>;
+// Name of the species: [-].
+//$type speciesNames param<std::vector<std::string> >;
+
+// Central database of species properties.
+//$type speciesProperties param<std::vector<flame::SpeciesProperties> >;
+
+// Molecular weight of the species: [kg/kmol].
+//$type speciesW param<std::vector<double> >;
+
+// Specific heat at constant pressure: [J/kg.K].
+//$type speciesConstantCp param<std::vector<double> >;
+
+// Constant viscosity of the species: [Pa.s].
+//$type speciesViscosity_Constant param<std::vector<double> >;
+
+// Parameters for Sutherland's viscosity of the species.
+//$type speciesViscosity_SutherlandParameters param<std::vector<Loci::Array<double, 3> > >;
+
+// Constant conductivity of the species: [W/m.K].
+//$type speciesConductivity_Constant param<std::vector<double> >;
+
+// Parameters for Sutherland's conductivity of the species.
+//$type speciesConductivity_SutherlandParameters param<std::vector<Loci::Array<double, 3> > >;
 
 // Name of the species: [-].
 $type speciesNames param<std::vector<std::string> >;
 
-// Central database of species properties.
-$type speciesProperties param<std::vector<flame::SpeciesProperties> >;
-
 // Molecular weight of the species: [kg/kmol].
-$type speciesW param<std::vector<double> >;
-
-// Specific heat at constant pressure: [J/kg.K].
-$type speciesConstantCp param<std::vector<double> >;
-
-// Constant viscosity of the species: [Pa.s].
-$type speciesViscosity_Constant param<std::vector<double> >;
-
-// Parameters for Sutherland's viscosity of the species.
-$type speciesViscosity_SutherlandParameters param<std::vector<Loci::Array<double, 3> > >;
-
-// Constant conductivity of the species: [W/m.K].
-$type speciesConductivity_Constant param<std::vector<double> >;
-
-// Parameters for Sutherland's conductivity of the species.
-$type speciesConductivity_SutherlandParameters param<std::vector<Loci::Array<double, 3> > >;
+$type speciesW param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
 
 // Specific gas constant of the species: [J/kg.K].
-$type speciesR param<std::vector<double> >;
+$type speciesR param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
+
+// Constant pressure specific heat of the species when all species are
+// calorically perfect: [J/kg.K].
+$type speciesConstantCp param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
+
+// Constant viscosity of the species: [Pa.s].
+$type speciesViscosity_Constant param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
+
+// Parameters for Sutherland's viscosity of the species.
+$type speciesViscosity_SutherlandParameters param<Loci::Array<Loci::Array<double, 3>, FLAME_MAX_NSPECIES> >;
+
+// Constant conductivity of the species: [W/m.K].
+$type speciesConductivity_Constant param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
+
+// Parameters for Sutherland's conductivity of the species.
+$type speciesConductivity_SutherlandParameters param<Loci::Array<Loci::Array<double, 3>, FLAME_MAX_NSPECIES> >;
 
 // Averaging factor used for interpolating cells values to face values.
 $type faceAvgFactor store<double>;

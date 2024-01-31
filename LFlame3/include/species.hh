@@ -10,12 +10,13 @@ namespace flame {
 
 struct SpeciesProperties {
   double molecularWeight;
-  double constantSpecificHeat;
-  double constantGamma;
-  double constantViscosity;
-  double sutherlandViscosityParameters[3];
-  double constantConductivity;
-  double sutherlandConductivityParameters[3];
+  double specificHeat_Constant;
+  std::vector<std::array<double, 7> > specificHeat_NASA7;
+  std::vector<std::pair<double, double> > specificHeat_NASA7TRange;
+  double viscosity_Constant;
+  std::array<double, 3> viscosity_SutherlandParameters;
+  double conductivity_Constant;
+  std::array<double, 3> conductivity_SutherlandParameters;
 };
 
 std::ostream & operator<<(std::ostream & s, SpeciesProperties const & obj);
@@ -36,8 +37,8 @@ struct data_schema_traits<flame::SpeciesProperties> {
     CompoundDatatypeP cmpd = CompoundFactory(flame::SpeciesProperties());
     
     LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, molecularWeight);
-    LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, constantSpecificHeat);
-    LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, constantGamma);
+    LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, specificHeat_Constant);
+    LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, specificHeat_NASA7);
     LOCI_INSERT_TYPE(cmpd, flame::SpeciesProperties, constantViscosity);
     
     {

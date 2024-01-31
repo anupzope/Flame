@@ -5,17 +5,4 @@ $include "flame.lh"
 
 namespace flame {
 
-$rule default(thermodynamicModel) {
-  $thermodynamicModel = "caloricallyPerfectGas";
-}
-
-$rule constraint(caloricallyPerfectGas <- thermodynamicModel) {
-  $caloricallyPerfectGas = EMPTY;
-  if($thermodynamicModel == "caloricallyPerfectGas") {
-    $caloricallyPerfectGas = ~EMPTY;
-  }
-}
-
-//$rule pointwise(speciesCp
-
 } // end: namespace flame

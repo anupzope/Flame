@@ -181,7 +181,7 @@ $rule pointwise(
   <-
   leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
   area, Pambient, speciesR, speciesConstantCp
-), constraint(singleSpecies, idealGas, caloricallyPerfectGas, reflecting_BC) {
+), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, reflecting_BC) {
   double const Pgl = $leftsP(gagePressure,minPg);
   Loci::vector3d<double> const ul = $leftv3d(velocity);
   double const Tl = $leftsP(temperature,Zero);
@@ -212,7 +212,7 @@ $rule pointwise(
   <-
   leftsP(gagePressure,minPg), leftv3d(velocity), leftsP(temperature,Zero),
   leftvM(speciesY), ci->(mixtureCp, mixtureR), area, Pambient, Ns
-), constraint(multiSpecies, idealGas, reflecting_BC), prelude {
+), constraint(multiSpecies, thermallyPerfectGas, reflecting_BC), prelude {
   $msConvectiveFlux_f.setVecSize(*$Ns+4);
 } {
   double * flux = &($msConvectiveFlux_f[0]);

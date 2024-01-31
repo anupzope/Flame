@@ -11,31 +11,6 @@ namespace flame {
 
 // =============================================================================
 
-$rule default(speciesViscosityModel) {
-  $speciesViscosityModel = "constant";
-}
-
-$rule constraint(
-  speciesViscosityModel_Constant, speciesViscosityModel_Sutherland
-  <-
-  speciesViscosityModel
-) {
-  $speciesViscosityModel_Constant = EMPTY;
-  $speciesViscosityModel_Sutherland = EMPTY;
-  
-  if($speciesViscosityModel == "constant") {
-    $speciesViscosityModel_Constant = ~EMPTY;
-  } else if($speciesViscosityModel == "Sutherland") {
-    $speciesViscosityModel_Sutherland = ~EMPTY;
-  } else {
-    LOG(ERROR) << "invalid value of speciesViscosityModel: "
-      << $speciesViscosityModel;
-    Loci::Abort();
-  }
-}
-
-// =============================================================================
-
 $rule default(mixtureViscosityModel) {
   $mixtureViscosityModel = "standard";
 }
@@ -55,31 +30,6 @@ $rule constraint(
   } else {
     LOG(ERROR) << "invalid value of mixtureViscosityModel: "
       << $mixtureViscosityModel;
-    Loci::Abort();
-  }
-}
-
-// =============================================================================
-
-$rule default(speciesConductivityModel) {
-  $speciesConductivityModel = "constant";
-}
-
-$rule constraint(
-  speciesConductivityModel_Constant, speciesConductivityModel_Sutherland
-  <-
-  speciesConductivityModel
-) {
-  $speciesConductivityModel_Constant = EMPTY;
-  $speciesConductivityModel_Sutherland = EMPTY;
-  
-  if($speciesConductivityModel == "constant") {
-    $speciesConductivityModel_Constant = ~EMPTY;
-  } else if($speciesConductivityModel == "Sutherland") {
-    $speciesConductivityModel_Sutherland = ~EMPTY;
-  } else {
-    LOG(ERROR) << "invalid value of speciesConductivityModel: "
-      << $speciesConductivityModel;
     Loci::Abort();
   }
 }
