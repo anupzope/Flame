@@ -517,6 +517,7 @@ $rule pointwise(
     Y[i] = Yi;
     sumY += Yi;
   }
+  if(sumY > 1.0) sumY = 1.0;
   Y[$Ns-1] = 1.0 - sumY;
   
   // calculate new mixture molecular weight
