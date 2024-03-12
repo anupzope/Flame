@@ -44,6 +44,9 @@ char const * getThermochemistryModelName(ThermochemistryModel m) {
   case THERMOCHEMISTRY_CALORICALLY_PERFECT:
     return "caloricallyPerfect";
     break;
+  case THERMOCHEMISTRY_NASA9:
+    return "caloricallyNASA9";
+    break;
   case THERMOCHEMISTRY_NONE:
     return "none";
     break;
@@ -57,13 +60,12 @@ void Mixture::clear() {
 
 std::ostream & operator<<(std::ostream & s, Mixture const & mix) {
   s << "mixture: {" << std::endl;
-  s << "  species: {" << std::endl;
   for(int i = 0; i < mix.nSpecies; ++i) {
-    s << "    component: {" << std::endl;
-    s << "      name: '" << mix.speciesName[i] << "'" << std::endl;
-    s << "      molecularWeight: " << mix.molecularWeight[i] << std::endl;
+    s << "  species: {" << std::endl;
+    s << "    name: '" << mix.speciesName[i] << "'" << std::endl;
+    s << "    molecularWeight: " << mix.molecularWeight[i] << std::endl;
 
-    s << "      viscosity: ";
+    s << "    viscosity: ";
     switch(mix.viscosityModel[i]) {
     case VISCOSITY_CONSTANT:
       s << getViscosityModelName(mix.viscosityModel[i])
@@ -83,7 +85,7 @@ std::ostream & operator<<(std::ostream & s, Mixture const & mix) {
     }
     s << std::endl;
 
-    s << "      conductivity: ";
+    s << "    conductivity: ";
     switch(mix.conductivityModel[i]) {
     case CONDUCTIVITY_CONSTANT:
       s << getConductivityModelName(mix.conductivityModel[i])
@@ -103,7 +105,7 @@ std::ostream & operator<<(std::ostream & s, Mixture const & mix) {
     }
     s << std::endl;
 
-    s << "      thermochemistry: ";
+    s << "    thermochemistry: ";
     switch(mix.thermochemistryModel[i]) {
     case THERMOCHEMISTRY_CALORICALLY_PERFECT:
       s << getThermochemistryModelName(mix.thermochemistryModel[i])
@@ -112,15 +114,39 @@ std::ostream & operator<<(std::ostream & s, Mixture const & mix) {
         << mix.caloricallyPerfectThermochemistry[i].specificHeat
         << ")";
       break;
+    case THERMOCHEMISTRY_NASA9:
+      s << getThermochemistryModelName(mix.thermochemistryModel[i])
+        << "(";
+      s << "tRange=[";
+      for(int j = 0; j < 3; ++j) {
+        s << mix.nasa9Thermochemistry[i].tRange[j] << " ";
+      }
+      s << "], ";
+      s << "cpCoeff=[";
+      for(int j = 0; j < 18; ++j) {
+        s << mix.nasa9Thermochemistry[i].cpCoeff[j] << " ";
+      }
+      s << "], ";
+      s << "hCoeff=[";
+      for(int j = 0; j < 18; ++j) {
+        s << mix.nasa9Thermochemistry[i].hCoeff[j] << " ";
+      }
+      s << "], ";
+      s << "sCoeff=[";
+      for(int j = 0; j < 18; ++j) {
+        s << mix.nasa9Thermochemistry[i].sCoeff[j] << " ";
+      }
+      s << "]";
+      s  << ")";
+      break;
     case THERMOCHEMISTRY_NONE:
       s << getThermochemistryModelName(mix.thermochemistryModel[i]);
       break;
     }
     s << std::endl;
 
-    s << "    }" << std::endl;
+    s << "  }" << std::endl;
   }
-  s << "  }" << std::endl;
   s << "}" << std::endl;
 
   return s;
@@ -155,6 +181,9 @@ enum ParserFSM {
   MIXTURE_SPECIES_SUTHERLANDCONDUCTIVITY_REFCONSTANT,
   MIXTURE_SPECIES_CALORICALLYPERFECTGAS,
   MIXTURE_SPECIES_CALORICALLYPERFECTGAS_SPECIFICHEAT,
+  MIXTURE_SPECIES_CALORICALLYNASA9GAS,
+  MIXTURE_SPECIES_CALORICALLYNASA9GAS_TEMPERATURERANGE,
+  MIXTURE_SPECIES_CALORICALLYNASA9GAS_COEFFICIENTS,
   ParserFSM_NONE
 };
 
@@ -173,8 +202,9 @@ class MixtureParserData {
   ConstantViscosityModel constantViscosity;
   SutherlandViscosityModel sutherlandViscosity;
   ConstantConductivityModel constantConductivity;
-  SutherlandConductivityModel sutherlandConductivity;
-  CaloricallyPerfectThermochemistryModel caloricallyPerfectThermochemistryModel;
+  //SutherlandConductivityModel sutherlandConductivity;
+  //CaloricallyPerfectThermochemistryModel caloricallyPerfectThermochemistryModel;
+  //NASA9ThermochemistryModel nasa9ThermochemistryModel;
 
 public:
   MixtureParserData() {
@@ -245,6 +275,14 @@ public:
       fsm.push(MIXTURE_SPECIES_CALORICALLYPERFECTGAS);
     } else if(path == "/mixture/species/caloricallyPerfectGas/specificHeat") {
       fsm.push(MIXTURE_SPECIES_CALORICALLYPERFECTGAS_SPECIFICHEAT);
+      charData.clear();
+    } else if(path == "/mixture/species/caloricallyNASA9Gas") {
+      fsm.push(MIXTURE_SPECIES_CALORICALLYNASA9GAS);
+    } else if(path == "/mixture/species/caloricallyNASA9Gas/temperatureRanges") {
+      fsm.push(MIXTURE_SPECIES_CALORICALLYNASA9GAS_TEMPERATURERANGE);
+      charData.clear();
+    } else if(path == "/mixture/species/caloricallyNASA9Gas/coefficients") {
+      fsm.push(MIXTURE_SPECIES_CALORICALLYNASA9GAS_COEFFICIENTS);
       charData.clear();
     } else {
       std::cerr << "Unprocessed path: " << path << std::endl;
@@ -333,6 +371,47 @@ public:
       ss >> mixture.caloricallyPerfectThermochemistry[speciesIndex].specificHeat;
     }
       break;
+    case MIXTURE_SPECIES_CALORICALLYNASA9GAS:
+      break;
+    case MIXTURE_SPECIES_CALORICALLYNASA9GAS_TEMPERATURERANGE:
+    {
+      std::stringstream ss(charData);
+      for(int i = 0; i < 3; ++i) {
+        ss >> mixture.nasa9Thermochemistry[speciesIndex].tRange[i];
+      }
+    }
+      break;
+    case MIXTURE_SPECIES_CALORICALLYNASA9GAS_COEFFICIENTS:
+    {
+      std::stringstream ss;
+      for(int i = 0; i < 18; ++i) {
+        ss >> mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[i];
+      }
+      for(int i = 0; i < 2; ++i) {
+        int j = i*9;
+        
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j] = -mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j];
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j+1] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+1];
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j+2] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+2];
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j+3] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+3]/2.0;
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j+4] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+4]/3.0;
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j+5] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+5]/4.0;
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j+6] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+6]/5.0;
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j+7] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+7];
+        mixture.nasa9Thermochemistry[speciesIndex].hCoeff[j+8] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+8];
+
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j] = -mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j]/2.0;
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+1] = -mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+1];
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+2] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+2];
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+3] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+3];
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+4] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+4]/2.0;
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+5] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+5]/3.0;
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+6] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+6]/4.0;
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+7] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+7];
+        mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+8] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+8];
+      }
+    }
+      break;
     }
 
     elementStack.pop_back();
@@ -382,6 +461,14 @@ public:
     case MIXTURE_SPECIES_CALORICALLYPERFECTGAS:
       break;
     case MIXTURE_SPECIES_CALORICALLYPERFECTGAS_SPECIFICHEAT:
+      charData += value;
+      break;
+    case MIXTURE_SPECIES_CALORICALLYNASA9GAS:
+      break;
+    case MIXTURE_SPECIES_CALORICALLYNASA9GAS_TEMPERATURERANGE:
+      charData += value;
+      break;
+    case MIXTURE_SPECIES_CALORICALLYNASA9GAS_COEFFICIENTS:
       charData += value;
       break;
     }

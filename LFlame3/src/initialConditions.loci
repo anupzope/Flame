@@ -144,16 +144,16 @@ $rule singleton(
   icVelocity
   <-
   icGagePressure, icTemperature, velocityIC,
-  speciesConstantCp, speciesR
-), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas) {
+  speciesCp_Constant, speciesR
+), constraint(singleSpecies, thermallyPerfectGas) {
   switch($velocityIC.type) {
   case VEL_SPEC_VELOCITY:
     $icVelocity = $velocityIC.scale*$velocityIC.direction;
     break;
   case VEL_SPEC_MACH:
     {
-      double const Cp = $speciesConstantCp[0];
-      double const Cv = $speciesConstantCp[0] - $speciesR[0];
+      double const Cp = $speciesCp_Constant[0];
+      double const Cv = $speciesCp_Constant[0] - $speciesR[0];
       double const gamma = Cp/Cv;
       double const a = sqrt(gamma*$speciesR[0]*$icTemperature);
       $icVelocity = (a*$velocityIC.scale)*$velocityIC.direction;
@@ -223,8 +223,8 @@ $rule singleton(
   icVelocity
   <-
   icGagePressure, icTemperature, velocityIC,
-  speciesConstantCp, icMixtureR, icSpeciesY, Ns
-), constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas) {
+  speciesCp_Constant, icMixtureR, icSpeciesY, Ns
+), constraint(multiSpecies, thermallyPerfectGas) {
   switch($velocityIC.type) {
   case VEL_SPEC_VELOCITY:
     $icVelocity = $velocityIC.scale*$velocityIC.direction;
@@ -233,7 +233,7 @@ $rule singleton(
     {
       double Cp = 0.0;
       for(int i = 0; i < $Ns; ++i) {
-        Cp += $speciesConstantCp[0]*$icSpeciesY[i];
+        Cp += $speciesCp_Constant[0]*$icSpeciesY[i];
       }
       double const Cv = Cp - $icMixtureR;
       double const gamma = Cp/Cv;
@@ -601,59 +601,6 @@ $rule apply(speciesY_ic <- speciesY_TGV_ic)[Loci::Summation],
 constraint(geom_cells, withoutICDirectory) {
   join($speciesY_ic, $speciesY_TGV_ic);
 }
-
-//$rule pointwise(
-//  mixtureW_ic, mixtureR_ic, mixtureCp_ic
-//  <-
-//  speciesY_ic, speciesW, speciesConstantCp, Runiv, Ns
-//), constraint(geom_cells, multiSpecies, caloricallyPerfectGas) {
-//  double W = 0.0;
-//  double R = 0.0;
-//  double Cp = 0.0;
-//  for(int i = 0; i < $Ns; ++i) {
-//    W += $speciesY_ic[i]/$speciesW[i];
-//    Cp += $speciesY_ic[i]*$speciesConstantCp[i];
-//  }
-//  R = $Runiv*W;
-//  W = 1.0/W;
-//  
-//  $mixtureW_ic = W;
-//  $mixtureR_ic = R;
-//  $mixtureCp_ic = Cp;
-//}
-
-//$rule pointwise(mixtureW_ic <- speciesY_ic, speciesW, Ns),
-//constraint(geom_cells, multiSpecies) {
-//  double sum = 0.0;
-//  for(int i = 0; i < $Ns; ++i) {
-//    sum += $speciesY_ic[i]/$speciesW[i];
-//  }
-//  $mixtureW_ic = 1.0/sum;
-//}
-
-//$rule pointwise(mixtureR_ic <- Runiv, mixtureW_ic),
-//constraint(geom_cells, multiSpecies) {
-//  $mixtureR_ic = $Runiv/$mixtureW_ic;
-//}
-
-//$rule pointwise(mixtureGamma_ic <- speciesY_ic, speciesGamma, Ns),
-//constraint(geom_cells, multiSpecies, thermallyPerfectGas) {
-//  double sum = 0.0;
-//  for(int i = 0; i < $Ns; ++i) {
-//    sum += $speciesY_ic[i]/($speciesGamma[i]-1.0);
-//  }
-//  $mixtureGamma_ic = 1.0/sum + 1.0;
-//}
-
-//$rule pointwise(mixtureCp_ic <- mixtureR_ic, mixtureGamma_ic),
-//constraint(geom_cells, multiSpecies, thermallyPerfectGas) {
-//  $mixtureCp_ic = $mixtureGamma_ic*$mixtureR_ic/($mixtureGamma_ic-1.0);
-//}
-
-//$rule pointwise(mixtureEnthalpy_ic <- mixtureCp_ic, temperature_ic),
-//constraint(geom_cells, multiSpecies, thermallyPerfectGas) {
-//  $mixtureEnthalpy_ic = $mixtureCp_ic*$temperature_ic;
-//}
 
 $rule unit(timeStep_ic), constraint(UNIVERSE) {
   $timeStep_ic = 0;

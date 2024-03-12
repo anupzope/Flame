@@ -2,6 +2,7 @@
 #include <mixture.hh>
 #include <plot.hh>
 #include <boundary_checker.hh>
+#include <signal_handler.hh>
 
 #include <iostream>
 #include <iomanip>
@@ -127,7 +128,8 @@ int main(int argc, char * argv[]) {
       close(fid);
     }
   }
-  
+
+  Loci::register_closing_function(flame::posixPrintStackTrace);
   if(arg.fpe) {
     if(Loci::MPI_rank == 0) {
       LOG(INFO) << "Enabling floating point exception trapping";

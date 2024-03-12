@@ -75,11 +75,17 @@ $rule singleton(speciesW <- mixture) {
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesW[i] = $mixture.molecularWeight[i];
   }
+  for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
+    $speciesW[i] = 0.0;
+  }
 }
 
 $rule singleton(speciesR <- mixture, Runiv) {
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesR[i] = $Runiv/$mixture.molecularWeight[i];
+  }
+  for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
+    $speciesR[i] = 0.0;
   }
 }
 
@@ -183,10 +189,13 @@ $rule constraint(caloricallyPerfectGas <- mixture) {
   }
 }
 
-$rule singleton(speciesConstantCp <- mixture),
+$rule singleton(speciesCp_Constant <- mixture),
   constraint(caloricallyPerfectGas) {
   for(int i = 0; i < $mixture.nSpecies; ++i) {
-    $speciesConstantCp[i] = $mixture.caloricallyPerfectThermochemistry[i].specificHeat;
+    $speciesCp_Constant[i] = $mixture.caloricallyPerfectThermochemistry[i].specificHeat;
+  }
+  for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
+    $speciesCp_Constant[i] = 0.0;
   }
 }
 
@@ -194,6 +203,9 @@ $rule singleton(speciesViscosity_Constant <- mixture),
   constraint(speciesViscosityModel_Constant) {
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesViscosity_Constant[i] = $mixture.constantViscosity[i].viscosity;
+  }
+  for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
+    $speciesViscosity_Constant[i] = 0.0;
   }
 }
 
@@ -204,12 +216,20 @@ $rule singleton(speciesViscosity_SutherlandParameters <- mixture),
     $speciesViscosity_SutherlandParameters[i][1] = $mixture.sutherlandViscosity[i].refTemperature;
     $speciesViscosity_SutherlandParameters[i][2] = $mixture.sutherlandViscosity[i].refConstant;
   }
+  for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
+    $speciesViscosity_SutherlandParameters[i][0] = 0.0;
+    $speciesViscosity_SutherlandParameters[i][1] = 0.0;
+    $speciesViscosity_SutherlandParameters[i][2] = 0.0;
+  }
 }
 
 $rule singleton(speciesConductivity_Constant <- mixture),
   constraint(speciesConductivityModel_Constant) {
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesConductivity_Constant[i] = $mixture.constantConductivity[i].conductivity;
+  }
+  for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
+    $speciesConductivity_Constant[i] = 0.0;
   }
 }
 
@@ -219,6 +239,11 @@ $rule singleton(speciesConductivity_SutherlandParameters <- mixture),
     $speciesConductivity_SutherlandParameters[i][0] = $mixture.sutherlandConductivity[i].refConductivity;
     $speciesConductivity_SutherlandParameters[i][1] = $mixture.sutherlandConductivity[i].refTemperature;
     $speciesConductivity_SutherlandParameters[i][2] = $mixture.sutherlandConductivity[i].refConstant;
+  }
+  for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
+    $speciesConductivity_SutherlandParameters[i][0] = 0.0;
+    $speciesConductivity_SutherlandParameters[i][1] = 0.0;
+    $speciesConductivity_SutherlandParameters[i][2] = 0.0;
   }
 }
 
@@ -502,11 +527,11 @@ $rule singleton(speciesConductivity_SutherlandParameters <- mixture),
 //  }
 //}
 //
-//$rule singleton(speciesConstantCp <- Ns, speciesProperties),
+//$rule singleton(speciesCp_Constant <- Ns, speciesProperties),
 //constraint(UNIVERSE) {
-//  $speciesConstantCp.resize($Ns);
+//  $speciesCp_Constant.resize($Ns);
 //  for(int i = 0; i < $Ns; ++i) {
-//    $speciesConstantCp[i] = $speciesProperties[i].constantSpecificHeat;
+//    $speciesCp_Constant[i] = $speciesProperties[i].constantSpecificHeat;
 //  }
 //}
 //

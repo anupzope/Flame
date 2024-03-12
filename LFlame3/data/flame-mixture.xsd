@@ -28,6 +28,26 @@
 		    </xs:sequence>
 		  </xs:complexType>
 	        </xs:element>
+		<xs:element name="caloricallyNASA9Gas">
+		  <xs:complexType>
+		    <xs:sequence>
+		      <xs:element name="temperatureRanges">
+			<xs:simpleType>
+			  <xs:restriction base="xs:string">
+			    <xs:pattern value="(\s*[-+]?\d+([.]\d*)?([EeDd][+-]?\d+)?|[.]\d+([EedD][+-]?\d+)?\s*){3}" />
+			  </xs:restriction>
+			</xs:simpleType>
+		      </xs:element>
+		      <xs:element name="coefficients">
+			<xs:simpleType>
+			    <xs:restriction base="xs:string">
+      			      <xs:pattern value="(\s*[-+]?\d+([.]\d*)?([EeDd][+-]?\d+)?|[.]\d+([EedD][+-]?\d+)?\s*){18}" />
+			    </xs:restriction>
+			</xs:simpleType>
+		      </xs:element>
+		    </xs:sequence>
+		  </xs:complexType>
+		</xs:element>
 	      </xs:choice>
 	    </xs:sequence>
 	  </xs:complexType>
@@ -42,7 +62,7 @@
       <xs:maxLength value="255" />
     </xs:restriction>
   </xs:simpleType>
-  
+
   <xs:complexType name="pressure_t">
     <xs:simpleContent>
       <xs:extension base="xs:double">

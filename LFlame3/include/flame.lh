@@ -11,6 +11,14 @@
 $type caseName param<std::string>;
 
 // =============================================================================
+// Grid metrics.
+// =============================================================================
+
+$type faceArea store<double>;
+
+$type faceNormal store<Loci::vector3d<double> >;
+
+// =============================================================================
 // Variables related to periodic boundaries
 // =============================================================================
 
@@ -222,6 +230,8 @@ $type Mach_BCoption Constraint;
 $type adiabatic_BCoption Constraint;
 $type heatFlux_BCoption Constraint;
 
+$type AllViscousBCs store<bool>;
+
 $type pressure_BC store<double>;
 $type temperature_BC store<double>;
 $type density_BC store<double>;
@@ -362,6 +372,9 @@ $type density_f store<double>;
 // Shear stress (at face).
 $type shearStress_f store<SymmetricTensor>;
 
+// Shear stress force (at face).
+$type shearForce_f store<Loci::vector3d<double> >;
+
 // Strain rate tensor (at cell).
 $type strainRate store<SymmetricTensor>;
 
@@ -380,6 +393,9 @@ $type Qcriterion store<double>;
 
 // Heat source (at face).
 $type heat_f store<double>;
+
+// y+ (at viscous wall boundary faces).
+$type yplus_f store<double>;
 
 // Heat flux on viscousWall boundary (at face).
 $type viscousWallHeat_f store<double>;
@@ -497,30 +513,6 @@ $type Runiv param<double>;
 $type Ns param<int>;
 
 // Name of the species: [-].
-//$type speciesNames param<std::vector<std::string> >;
-
-// Central database of species properties.
-//$type speciesProperties param<std::vector<flame::SpeciesProperties> >;
-
-// Molecular weight of the species: [kg/kmol].
-//$type speciesW param<std::vector<double> >;
-
-// Specific heat at constant pressure: [J/kg.K].
-//$type speciesConstantCp param<std::vector<double> >;
-
-// Constant viscosity of the species: [Pa.s].
-//$type speciesViscosity_Constant param<std::vector<double> >;
-
-// Parameters for Sutherland's viscosity of the species.
-//$type speciesViscosity_SutherlandParameters param<std::vector<Loci::Array<double, 3> > >;
-
-// Constant conductivity of the species: [W/m.K].
-//$type speciesConductivity_Constant param<std::vector<double> >;
-
-// Parameters for Sutherland's conductivity of the species.
-//$type speciesConductivity_SutherlandParameters param<std::vector<Loci::Array<double, 3> > >;
-
-// Name of the species: [-].
 $type speciesNames param<std::vector<std::string> >;
 
 // Molecular weight of the species: [kg/kmol].
@@ -531,7 +523,7 @@ $type speciesR param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
 
 // Constant pressure specific heat of the species when all species are
 // calorically perfect: [J/kg.K].
-$type speciesConstantCp param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
+$type speciesCp_Constant param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
 
 // Constant viscosity of the species: [Pa.s].
 $type speciesViscosity_Constant param<Loci::Array<double, FLAME_MAX_NSPECIES> >;

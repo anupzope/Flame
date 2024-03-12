@@ -6,7 +6,7 @@ $include "flame.lh"
 namespace flame {
 
 // =============================================================================
-// Calculation of shear stress.
+// Calculation of shear stress tensor and vector.
 // =============================================================================
 
 $rule pointwise(shearStress_f <- gradv3d_f(velocity), viscosity_f),
@@ -33,6 +33,18 @@ constraint(viscousFlow, area) {
   $shearStress_f.yz = mu*(dvdz+dwdy);
 }
 
+$rule pointwise(shearForce_f <- shearStress_f, area),
+  constraint(viscousFlow, area) {
+  Loci::vector3d<double> const & an = $area.n;
+  double const sada = $area.sada;
+  SymmetricTensor const & tau = $shearStress_f;
+  $shearForce_f = Loci::vector3d<double>(
+    (tau.xx*an.x + tau.xy*an.y + tau.xz*an.z),
+    (tau.xy*an.x + tau.yy*an.y + tau.yz*an.z),
+    (tau.xz*an.x + tau.yz*an.y + tau.zz*an.z)
+  )*sada;
+}
+
 // =============================================================================
 // Calculation of viscous flux.
 // =============================================================================
@@ -43,22 +55,13 @@ constraint(viscousFlow, area) {
   $heat_f = dot(q, $area.n);
 }
 
-$rule pointwise(
-  viscousFlux_f
-  <-
-  area, shearStress_f, velocity_f, heat_f
-), constraint(viscousFlow, area) {
+$rule pointwise(viscousFlux_f <- shearForce_f, velocity_f, heat_f),
+  constraint(viscousFlow, area) {
   Loci::Array<double, 4> & Fv = $viscousFlux_f;
-  
-  Loci::vector3d<double> const & an = $area.n;
-  double const sada = $area.sada;
-  SymmetricTensor const & tau = $shearStress_f;
-  Loci::vector3d<double> const & u = $velocity_f;
-  
-  Fv[0] = (tau.xx*an.x + tau.xy*an.y + tau.xz*an.z)*sada;
-  Fv[1] = (tau.xy*an.x + tau.yy*an.y + tau.yz*an.z)*sada;
-  Fv[2] = (tau.xz*an.x + tau.yz*an.y + tau.zz*an.z)*sada;
-  Fv[3] = (u.x*Fv[0] + u.y*Fv[1] + u.z*Fv[2]) - $heat_f;
+  Fv[0] = $shearForce_f.x;
+  Fv[1] = $shearForce_f.y;
+  Fv[2] = $shearForce_f.z;
+  Fv[3] = dot($velocity_f, $shearForce_f) - $heat_f;
 }
 
 } // end: namespace flame

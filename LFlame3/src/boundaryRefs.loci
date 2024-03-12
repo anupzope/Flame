@@ -38,11 +38,11 @@ $rule pointwise(
   $mixtureRRef = $Runiv*Winv;
 }
 
-$rule pointwise(mixtureCpRef <- speciesYRef, speciesConstantCp, Ns),
-constraint(multiSpecies, caloricallyPerfectGas, speciesYRef) {
+$rule pointwise(mixtureCpRef <- speciesYRef, speciesCp_Constant, Ns),
+constraint(multiSpecies, speciesYRef) {
   double Cp = 0.0;
   for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesYRef[i]*$speciesConstantCp[i];
+    Cp += $speciesYRef[i]*$speciesCp_Constant[i];
   }
   $mixtureCpRef = Cp;
 }
@@ -59,16 +59,16 @@ $rule pointwise(speciesXRef <- speciesYRef, mixtureWRef, speciesW, Ns), prelude 
 
 // =============================================================================
 
-$rule pointwise(soundSpeedRef <- temperatureRef, speciesConstantCp, speciesR),
-constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, temperatureRef) {
-  double const & Cp = $speciesConstantCp[0];
+$rule pointwise(soundSpeedRef <- temperatureRef, speciesCp_Constant, speciesR),
+constraint(singleSpecies, thermallyPerfectGas, temperatureRef) {
+  double const & Cp = $speciesCp_Constant[0];
   double const & R = $speciesR[0];
   double const & T = $temperatureRef;
   $soundSpeedRef = sqrt((Cp*R*T)/(Cp-R));
 }
 
 $rule pointwise(soundSpeedRef <- temperatureRef, mixtureCpRef, mixtureRRef),
-constraint(multiSpecies, thermallyPerfectGas, caloricallyPerfectGas, temperatureRef) {
+constraint(multiSpecies, thermallyPerfectGas, temperatureRef) {
   double const & Cp = $mixtureCpRef;
   double const & R = $mixtureRRef;
   double const & T = $temperatureRef;

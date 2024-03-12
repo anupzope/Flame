@@ -235,6 +235,11 @@ OUTPUT_SCALAR("cell2node(cfl)", cfl);
 OUTPUT_BOUNDARY_SCALAR("gagePressure_f", bpg, "ci");
 OUTPUT_BOUNDARY_SCALAR("temperature_f", bt, "ci");
 OUTPUT_BOUNDARY_VECTOR("velocity_f", bv, "ci");
+OUTPUT_BOUNDARY_SCALAR("yplus_f", yplus, "AllViscousBCs");
+OUTPUT_BOUNDARY_SCALAR("heat_f", heat, "AllViscousBCs");
+OUTPUT_BOUNDARY_VECTOR("shearForce_f", shearForce, "AllViscousBCs");
+OUTPUT_BOUNDARY_SCALAR("faceArea", faceArea, "boundary_faces");
+OUTPUT_BOUNDARY_VECTOR("faceNormal", faceNormal, "boundary_faces");
 
 OUTPUT_VEC_COMPONENTS("cell2node_v(speciesY)", Y, "speciesNames", "multiSpecies");
 

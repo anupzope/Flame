@@ -1,0 +1,16 @@
+$include "flame.lh"
+$include "FVM.lh"
+
+#include <Loci.h>
+
+namespace flame {
+
+$rule pointwise(faceArea <- area) {
+  $faceArea = $area.sada;
+}
+
+$rule pointwise(faceNormal <- area) {
+  $faceNormal = $area.n;
+}
+
+} // end: namespace flame

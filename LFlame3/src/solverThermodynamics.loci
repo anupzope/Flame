@@ -5,4 +5,63 @@ $include "flame.lh"
 
 namespace flame {
 
+/*$rule pointwise(mixtureCp <- speciesCp_Constant),
+  constraint(geom_cells, singleSpecies) {
+  $mixtureCp = $speciesCp_Constant[0];
+}
+
+$rule pointwise(mixtureCp <- speciesY, speciesCp_Constant, Ns),
+constraint(geom_cells, multiSpecies) {
+  double Cp = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Cp += $speciesY[i]*$speciesCp_Constant[i];
+  }
+  $mixtureCp = Cp;
+}
+
+$rule pointwise(mixtureH <- mixtureCp, speciesCp_Constant, temperature),
+  constraint(geom_cells) {
+  $mixtureH = $mixtureCp*$temperature;
+}*/
+
+/*inline double calculateCp_NASA9(double const * c, double T, double R) {
+  double tmp[3] = {1.0/Tinv, T, T*T};
+  double Q1 = c[1] + c[0]*tmp[0];
+  double Q2 = (c[3] + c[5]*tmp[2])*tmp[1];
+  double Q3 = (c[4] + c[6]*tmp[2])*tmp[1];
+  return = (c[2] + Q1*tmp[0] + Q2 + Q3*tmp[1])*R;
+}
+
+inline double calculateH_NASA9(double const * c, double T, double R) {
+  double T2 = T*T;
+  double Tinv = 1.0/T;
+  double lnT = ln(T);
+  double Q1 = c[7] + T2*(c[3] + c[5]*T2);
+  double Q2 = c[2] + T2*(c[4] + c[6]*T2);
+  return R*((c[0]*Tinv+c[1]*lnT) + Q1 + T*Q2);
+}
+
+$rule pointwise(mixtureCp <- speciesCp_NASA7Coeff, temperature),
+  constraint(geom_cells, singleSpecies) {
+  $mixtureCp = calculateCp_NASA7(speciesCp_NASA7Coeff[0], $temperature);
+}
+
+$rule pointwise(speciesCp <- speciesCp_NASA7Coeff, temperature, Ns),
+  constraint(geom_cells, miltiSpecies), prelude {
+  $speciesCp.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesCp[0] = calculateCp_NASA7(speciesCp_NASA7Coeff[i], $temperature);
+  }
+}
+
+$rule pointwise(mixtureCp <- speciesCp, temperature, Ns),
+  constraint(geom_cells, multiSpecies) {
+  double Cp = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Cp += $speciesY[i]*$speciesCp[i]
+  }
+  $mixtureCp = Cp;
+  }*/
+
 } // end: namespace flame

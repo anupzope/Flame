@@ -40,7 +40,9 @@ LFlame3_SOURCES=src/main.cc \
   src/bcInflowOutflow.cc \
   src/bcInputs.cc \
   src/bcRefs.cc \
-  src/boundaryRefs.cc
+  src/boundaryRefs.cc \
+  src/signal_handler.cc \
+  src/gridMetrics.cc
 LFlame3_LDFLAGS = $(LDFLAGS)
 LFlame3_LDADD = 
 LFlame3_CXXFLAGS = $(CXXFLAGS) -I$(srcdir)/include

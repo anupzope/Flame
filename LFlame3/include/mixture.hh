@@ -30,6 +30,13 @@ struct CaloricallyPerfectThermochemistryModel {
   double specificHeat;
 };
 
+struct NASA9ThermochemistryModel {
+  double tRange[3];
+  double cpCoeff[18];
+  double hCoeff[18];
+  double sCoeff[18];
+};
+
 enum ViscosityModel {
   VISCOSITY_CONSTANT,
   VISCOSITY_SUTHERLAND,
@@ -44,6 +51,7 @@ enum ConductivityModel {
 
 enum ThermochemistryModel {
   THERMOCHEMISTRY_CALORICALLY_PERFECT,
+  THERMOCHEMISTRY_NASA9,
   THERMOCHEMISTRY_NONE
 };
 
@@ -59,6 +67,7 @@ struct Mixture {
   ConstantConductivityModel constantConductivity[FLAME_MAX_NSPECIES];
   SutherlandConductivityModel sutherlandConductivity[FLAME_MAX_NSPECIES];
   CaloricallyPerfectThermochemistryModel caloricallyPerfectThermochemistry[FLAME_MAX_NSPECIES];
+  NASA9ThermochemistryModel nasa9Thermochemistry[FLAME_MAX_NSPECIES];
 
   void clear();
 };
@@ -135,6 +144,70 @@ struct data_schema_traits<flame::CaloricallyPerfectThermochemistryModel> {
   static DatatypeP get_type() {
     CompoundDatatypeP cmpd = CompoundFactory(flame::CaloricallyPerfectThermochemistryModel());
     LOCI_INSERT_TYPE(cmpd, flame::CaloricallyPerfectThermochemistryModel, specificHeat);
+    return DatatypeP(cmpd);
+  }
+};
+
+template<>
+struct data_schema_traits<flame::NASA9ThermochemistryModel> {
+  typedef IDENTITY_CONVERTER Schema_Converter;
+  static DatatypeP get_type() {
+    flame::NASA9ThermochemistryModel m;
+
+    CompoundDatatypeP cmpd = CompoundFactory(flame::NASA9ThermochemistryModel());
+
+    {
+      int rank = 1;
+      int dim[] = {3};
+      int size = sizeof(double)*3;
+      DatatypeP atom = getLociType(m.tRange[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "tRange",
+        offsetof(flame::NASA9ThermochemistryModel, tRange),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {18};
+      int size = sizeof(double)*18;
+      DatatypeP atom = getLociType(m.cpCoeff[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "cpCoeff",
+        offsetof(flame::NASA9ThermochemistryModel, cpCoeff),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {18};
+      int size = sizeof(double)*18;
+      DatatypeP atom = getLociType(m.hCoeff[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hCoeff",
+        offsetof(flame::NASA9ThermochemistryModel, hCoeff),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {18};
+      int size = sizeof(double)*18;
+      DatatypeP atom = getLociType(m.sCoeff[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "sCoeff",
+        offsetof(flame::NASA9ThermochemistryModel, sCoeff),
+        DatatypeP(array_t)
+      );
+    }
+
     return DatatypeP(cmpd);
   }
 };
@@ -301,6 +374,19 @@ struct data_schema_traits<flame::Mixture> {
       cmpd->insert(
         "caloricallyPerfectThermochemistryModel",
         offsetof(flame::Mixture, caloricallyPerfectThermochemistry),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(flame::NASA9ThermochemistryModel)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.nasa9Thermochemistry[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "nasa9ThermochemistryModel",
+        offsetof(flame::Mixture, nasa9Thermochemistry),
         DatatypeP(array_t)
       );
     }

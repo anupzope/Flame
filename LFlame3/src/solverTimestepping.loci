@@ -193,120 +193,14 @@ constraint(geom_cells), prelude {
   }
 }
 
-$rule pointwise(mixtureCp{n} <- speciesY{n}, speciesConstantCp, Ns),
-constraint(geom_cells, multiSpecies, caloricallyPerfectGas) {
+$rule pointwise(mixtureCp{n} <- speciesY{n}, speciesCp_Constant, Ns),
+constraint(geom_cells, multiSpecies) {
   double Cp = 0.0;
   for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY{n}[i]*$speciesConstantCp[i];
+    Cp += $speciesY{n}[i]*$speciesCp_Constant[i];
   }
   $mixtureCp{n} = Cp;
 }
-
-//$rule pointwise(speciesX{n=0} <- speciesY_ic, speciesW, mixtureW{n=0}, Ns),
-//constraint(geom_cells), prelude {
-//  $speciesX{n=0}.setVecSize(*$Ns);
-//} {
-//  for(int i = 0; i < $Ns; ++i) {
-//    $speciesX{n=0}[i] = $speciesY_ic[i]*$mixtureW{n=0}/$speciesW[i];
-//  }
-//}
-//
-//$rule pointwise(mixtureW{n=0} <- speciesY_ic, speciesW, Ns), constraint(geom_cells) {
-//  double rW = 0.0;
-//  for(int i = 0; i < $Ns; ++i) {
-//    rW += $speciesY_ic[i]/$speciesW[i];
-//  }
-//  $mixtureW{n=0} = 1.0/rW;
-//}
-//
-//$rule pointwise(mixtureR{n=0} <- Runiv, mixtureW{n=0}), constraint(geom_cells) {
-//  $mixtureR{n=0} = $Runiv/$mixtureW{n=0};
-//}
-//
-//$rule pointwise(mixtureCp{n=0} <- speciesY_ic, speciesConstantCp, Ns),
-//constraint(geom_cells, multiSpecies, caloricallyPerfectGas) {
-//  double Cp = 0.0;
-//  for(int i = 0; i < $Ns; ++i) {
-//    Cp += $speciesY_ic[i]*$speciesConstantCp[i];
-//  }
-//  $mixtureCp{n=0} = Cp;
-//}
-
-//$rule pointwise(
-//  speciesX{n=0}, mixtureW{n=0}, mixtureR{n=0}, mixtureCp{n=0}
-//  <-
-//  speciesY_ic, speciesW, speciesConstantCp, Runiv, Ns
-//), constraint(multiSpecies, caloricallyPerfectGas, geom_cells), prelude {
-//  $speciesX{n=0}.setVecSize(*$Ns);
-//} {
-//  double rW = 0.0;
-//  double R = 0.0;
-//  double Cp = 0.0;
-//  for(int i = 0; i < $Ns; ++i) {
-//    rW += $speciesY_ic[i]/$speciesW[i];
-//    Cp += $speciesY_ic[i]*$speciesConstantCp[i];
-//  }
-//  R = $Runiv*rW;
-//  double W = 1.0/rW;
-//  
-//  for(int i = 0; i < $Ns; ++i) {
-//    $speciesX{n=0}[i] = $speciesY_ic[i]*W/$speciesW[i];
-//  }
-//  $mixtureW{n=0} = W;
-//  $mixtureR{n=0} = R;
-//  $mixtureCp{n=0} = Cp;
-//}
-
-//$rule pointwise(mixtureW{n=0} <- mixtureY_ic, Ns), prelude {
-//  $mixtureW{n=0}.setVecSize(*$Ns);
-//} {
-//  $mixtureW{n=0} = $mixtureW_ic;
-//}
-//
-//$rule pointwise(mixtureR{n=0} <- mixtureR_ic) {
-//  $mixtureR{n=0} = $mixtureR_ic;
-//}
-//
-//$rule pointwise(mixtureCp{n=0} <- mixtureCp_ic) {
-//  $mixtureCp{n=0} = $mixtureCp_ic;
-//}
-
-//$rule pointwise(
-//  speciesY{n=0}, mixtureW{n=0}, mixtureR{n=0}, mixtureGamma{n=0}
-//  <-
-//  speciesY_ic, speciesW, speciesGamma, Runiv, Ns
-//), constraint(multiSpecies), prelude {
-//  $speciesY{n=0}.setVecSize(*$Ns);
-//} {
-//  double W = 0.0;
-//  double R = 0.0;
-//  double gamma = 0.0;
-//  for(int i = 0; i < $Ns; ++i) {
-//    W += $speciesY_ic[i]/$speciesW[i];
-//    gamma += $speciesY_ic[i]/($speciesGamma[i]-1.0);
-//  }
-//  R = $Runiv*W;
-//  W = 1.0/W;
-//  gamma = 1.0/gamma + 1.0;
-//  
-//  $speciesY{n=0} = $speciesY_ic;
-//  $mixtureW{n=0} = W;
-//  $mixtureR{n=0} = R;
-//  $mixtureGamma{n=0} = gamma;
-//}
-
-//$rule pointwise(
-//  mixtureCp{n=0}, mixtureEnthalpy{n=0}
-//  <-
-//  mixtureR{n=0}, mixtureGamma{n=0}, temperature{n=0},
-//  speciesY_ic, speciesW, speciesGamma, Ns
-//), constraint(multiSpecies, thermallyPerfectGas) {
-//  double const cp = $mixtureGamma{n=0}*$mixtureR{n=0}/($mixtureGamma{n=0}-1.0);
-//  double const h = cp*$temperature{n=0};
-//  
-//  $mixtureCp{n=0} = cp;
-//  $mixtureEnthalpy{n=0} = h;
-//}
 
 // =============================================================================
 // Time loop advance: These are specific to the time integration scheme. Hence,

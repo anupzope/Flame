@@ -70,11 +70,11 @@ $rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
   $mixtureR_f = $Runiv*Winv;
 }
 
-$rule pointwise(mixtureCp_f <- speciesY_f, speciesConstantCp, Ns),
-  constraint(caloricallyPerfectGas, symmetry_BC) {
+$rule pointwise(mixtureCp_f <- speciesY_f, speciesCp_Constant, Ns),
+  constraint(symmetry_BC) {
   double Cp = 0.0;
   for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY_f[i]*$speciesConstantCp[i];
+    Cp += $speciesY_f[i]*$speciesCp_Constant[i];
   }
   $mixtureCp_f = Cp;
 }
@@ -167,11 +167,11 @@ $rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
   $mixtureR_f = $Runiv*Winv;
 }
 
-$rule pointwise(mixtureCp_f <- speciesY_f, speciesConstantCp, Ns),
-  constraint(caloricallyPerfectGas, reflecting_BC) {
+$rule pointwise(mixtureCp_f <- speciesY_f, speciesCp_Constant, Ns),
+  constraint(reflecting_BC) {
   double Cp = 0.0;
   for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY_f[i]*$speciesConstantCp[i];
+    Cp += $speciesY_f[i]*$speciesCp_Constant[i];
   }
   $mixtureCp_f = Cp;
 }
@@ -180,8 +180,8 @@ $rule pointwise(
   ssConvectiveFlux_f
   <-
   leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
-  area, Pambient, speciesR, speciesConstantCp
-), constraint(singleSpecies, thermallyPerfectGas, caloricallyPerfectGas, reflecting_BC) {
+  area, Pambient, speciesR, speciesCp_Constant
+), constraint(singleSpecies, thermallyPerfectGas, reflecting_BC) {
   double const Pgl = $leftsP(gagePressure,minPg);
   Loci::vector3d<double> const ul = $leftv3d(velocity);
   double const Tl = $leftsP(temperature,Zero);
@@ -197,7 +197,7 @@ $rule pointwise(
     ul, Pgl, Tl,
     ur, Pgr, Tr,
     $area.sada, $area.n, $Pambient,
-    $speciesR[0], $speciesConstantCp[0], 1.0
+    $speciesR[0], $speciesCp_Constant[0], 1.0
   );
   
   $ssConvectiveFlux_f[0] = flux[0];
