@@ -226,6 +226,7 @@ OUTPUT_SCALAR("cell2node(gagePressure)", pg);
 OUTPUT_SCALAR("cell2node(temperature)", t);
 OUTPUT_SCALAR("cell2node(density)", r);
 OUTPUT_VECTOR("cell2node_v3d(velocity)", v);
+OUTPUT_SCALAR("cell2node(soundSpeed)", soundSpeed);
 
 OUTPUT_SCALAR("cell2node(viscosity)", mu);
 OUTPUT_SCALAR("cell2node(conductivity)", k);
@@ -238,8 +239,8 @@ OUTPUT_BOUNDARY_VECTOR("velocity_f", bv, "ci");
 OUTPUT_BOUNDARY_SCALAR("yplus_f", yplus, "AllViscousBCs");
 OUTPUT_BOUNDARY_SCALAR("heat_f", heat, "AllViscousBCs");
 OUTPUT_BOUNDARY_VECTOR("shearForce_f", shearForce, "AllViscousBCs");
-OUTPUT_BOUNDARY_SCALAR("faceArea", faceArea, "boundary_faces");
-OUTPUT_BOUNDARY_VECTOR("faceNormal", faceNormal, "boundary_faces");
+OUTPUT_BOUNDARY_SCALAR("faceArea", faceArea, "ci");
+OUTPUT_BOUNDARY_VECTOR("faceNormal", faceNormal, "ci");
 
 OUTPUT_VEC_COMPONENTS("cell2node_v(speciesY)", Y, "speciesNames", "multiSpecies");
 

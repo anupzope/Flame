@@ -479,3 +479,21 @@ $rule pointwise(cfl <- cflpdt, dtRK) {
 }
 
 //==============================================================================
+
+$rule pointwise(soundSpeed <- speciesCp_Constant, speciesR, temperature),
+constraint(singleSpecies, thermallyPerfectGas, temperature) {
+  double const & Cp = $speciesCp_Constant[0];
+  double const & R = $speciesR[0];
+  double const & T = $temperature;
+  $soundSpeed = sqrt(Cp*R*T/(Cp-R));
+}
+
+$rule pointwise(soundSpeed <- mixtureCp, mixtureR, temperature),
+constraint(multiSpecies, thermallyPerfectGas, temperature) {
+  double const & Cp = $mixtureCp;
+  double const & R = $mixtureR;
+  double const & T = $temperature;
+  $soundSpeed = sqrt((Cp*R*T)/(Cp-R));
+}
+
+//==============================================================================

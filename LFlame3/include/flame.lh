@@ -331,6 +331,9 @@ $type conductivity store<double>;
 // Conductivity (faces).
 $type conductivity_f store<double>;
 
+// Speed of sound (at geom_cells)
+$type soundSpeed store<double>;
+
 // =============================================================================
 // Variables related to thermodynamics and EoS.
 // =============================================================================
