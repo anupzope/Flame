@@ -73,5 +73,5 @@ CONFIGURE_PETSC
 dnl Detect and configure Loci
 CONFIGURE_LOCI
 
-AC_CONFIG_FILES([Makefile LFlame3/Makefile])
+AC_CONFIG_FILES([Makefile LFlame3/Makefile LFlame3-Tests/Makefile LFlame3-Tests/2D-Shock-Tube/Makefile])
 AC_OUTPUT

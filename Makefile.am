@@ -1,3 +1,3 @@
 ACLOCAL_AMFLAGS=-I acm4
 
-SUBDIRS = LFlame3
+SUBDIRS = LFlame3 LFlame3-Tests

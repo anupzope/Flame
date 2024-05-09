@@ -1,6 +1,7 @@
 #include <flame.hh>
 #include <plot.hh>
 #include <initialConditions.hh>
+#include <eos.hh>
 
 $include "FVM.lh"
 $include "flame.lh"
@@ -22,6 +23,9 @@ $rule optional(initialConditions) {
 }
 
 $rule optional(initialConditionsTGV) {
+}
+
+$rule optional(initialConditionRegions) {
 }
 
 // =============================================================================
@@ -46,10 +50,6 @@ constraint(geom_cells, multiSpecies), prelude {
 }
 
 // =============================================================================
-
-$type thermoIC param<ThermoSpec>;
-$type velocityIC param<VelSpec>;
-$type speciesIC param<SpeciesSpec>;
 
 $rule singleton(thermoIC <- initialConditions), constraint(UNIVERSE) {
   $[Once] {
@@ -114,6 +114,285 @@ $rule singleton(speciesIC <- initialConditions, Ns), constraint(UNIVERSE) {
       LOG(ERROR) << errmsg.str();
     }
     Loci::Abort();
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+$rule singleton(
+  thermoICRegion, velocityICRegion, speciesICRegion, geomICRegion, stateICRegion
+  <- initialConditionRegions, Ns
+), option(disable_threading) {
+  std::string olName = "initialConditionRegions";
+  Loci::options_list const & ol = $initialConditionRegions;
+  std::map<std::string, int> stateMap;
+  std::map<std::string, int> regionMap;
+  std::map<int, int> regionStateMap;
+  int stateIdx = 0, regionIdx = 0;
+
+  if(ol.optionExists("defaultState")) {
+    std::stringstream errmsg;
+    ThermoSpec thermoSpec;
+    VelSpec velSpec;
+    SpeciesSpec speciesSpec;
+    if(getStateSpec(
+      ol, "defaultState", "state",
+      "pressure", "temperature", "density",
+      "velocity", "Mach",
+      "molarFractions", "massFractions",
+      $Ns,
+      thermoSpec, velSpec, speciesSpec,
+      errmsg
+    )) {
+      LOG(ERROR) << olName << " : " << errmsg.str();
+      Loci::Abort();
+    }
+
+    $thermoICRegion.push_back(thermoSpec);
+    $velocityICRegion.push_back(velSpec);
+    $speciesICRegion.push_back(speciesSpec);
+
+    stateMap.insert(std::pair<std::string, int>("default", stateIdx++));
+  } else {
+    LOG(ERROR) << "defaultState required in " << olName;
+    Loci::Abort();
+  }
+
+  options_list::option_namelist nl = ol.getOptionNameList();
+  options_list::option_namelist::const_iterator nliter = nl.begin();  
+  while(nliter != nl.end()) {
+    if(nliter->compare(0, 5, "state") == 0) {
+      std::string stateName = nliter->substr(5, std::string::npos);
+      std::stringstream errmsg;
+      ThermoSpec thermoSpec;
+      VelSpec velSpec;
+      SpeciesSpec speciesSpec;
+      if(getStateSpec(
+        ol, *nliter, "state",
+        "pressure", "temperature", "density",
+        "velocity", "Mach",
+        "molarFractions", "massFractions",
+        $Ns,
+        thermoSpec, velSpec, speciesSpec,
+        errmsg
+      )) {
+        LOG(ERROR) << olName << " : " << errmsg.str();
+        Loci::Abort();
+      }
+
+      $thermoICRegion.push_back(thermoSpec);
+      $velocityICRegion.push_back(velSpec);
+      $speciesICRegion.push_back(speciesSpec);
+
+      stateMap.insert(std::pair<std::string, int>(stateName, stateIdx++));
+    }
+    ++nliter;
+  }
+
+  nliter = nl.begin();
+  while(nliter != nl.end()) {
+    if(nliter->compare(0, 6, "region") == 0) {
+      std::string regionName = nliter->substr(6, std::string::npos);
+      std::ostringstream errmsg;
+      ICRegionGeom * geom;
+      if(getRegionGeom(ol, *nliter, &geom, errmsg)) {
+        LOG(ERROR) << olName << " : " << *nliter << " : " << errmsg.str();
+        Loci::Abort();
+      } else {
+        $geomICRegion.push_back(Loci::CPTR<flame::ICRegionGeom>(geom));
+        regionMap.insert(std::pair<std::string, int>(regionName, regionIdx++));
+      }
+    }
+    ++nliter;
+  }
+
+  $stateICRegion.resize(regionIdx);
+  nliter = nl.begin();
+  while(nliter != nl.end()) {
+    if(nliter->compare(0, 17, "setStateForRegion") == 0) {
+      std::string regionName = nliter->substr(17, std::string::npos);
+      if(regionMap.find(regionName) == regionMap.end()) {
+        LOG(ERROR) << olName << " : " << *nliter << " region with name "
+                   << regionName << " not defined";
+        Loci::Abort();
+      }
+
+      Loci::option_value_type type = ol.getOptionValueType(*nliter);
+      if(type == Loci::STRING || type == Loci::NAME) {
+        std::string stateName;
+        ol.getOption(*nliter, stateName);
+        if(stateMap.find(stateName) == stateMap.end()) {
+          LOG(ERROR) << olName << " : " << *nliter << " state with name "
+                     << stateName << " not defined";
+          Loci::Abort();
+        }
+
+        $stateICRegion[regionMap[regionName]] = stateMap[stateName];
+      } else {
+        LOG(ERROR) << olName << " : " << *nliter << " must be a STRING or NAME";
+        Loci::Abort();
+      }
+    }
+    ++nliter;
+  }
+}
+
+$rule singleton(
+  icRegionMixtureW, icRegionMixtureR
+  <- speciesICRegion, speciesW, speciesR, Ns
+), constraint(singleSpecies) {
+  int const nRegions = $speciesICRegion.size();
+
+  $icRegionMixtureW.resize(nRegions);
+  $icRegionMixtureR.resize(nRegions);
+
+  for(int i = 0; i < nRegions; ++i) {
+    $icRegionMixtureW[i] = $speciesW[0];
+    $icRegionMixtureR[i] = $speciesR[0];
+  }
+}
+
+$rule singleton(
+  icRegionMixtureW, icRegionMixtureR
+  <- speciesICRegion, speciesW, Runiv, Ns
+), constraint(multiSpecies) {
+  int const nRegions = $speciesICRegion.size();
+
+  $icRegionMixtureW.resize(nRegions);
+  $icRegionMixtureR.resize(nRegions);
+
+  double const * sW = &$speciesW[0];
+
+  for(int i = 0; i < nRegions; ++i) {
+    double const * F = &$speciesICRegion[i].fractions.data[0];
+
+    switch($speciesICRegion[i].type) {
+    case SPECIES_SPEC_X:
+      $icRegionMixtureW[i] = mixture_mW_from_X_sW($Ns, F, sW);
+      $icRegionMixtureR[i] = $Runiv/$icRegionMixtureW[i];
+      break;
+    case SPECIES_SPEC_Y:
+      $icRegionMixtureW[i] = mixture_mW_from_Y_sW($Ns, F, sW);
+      $icRegionMixtureR[i] = $Runiv/$icRegionMixtureW[i];
+      break;
+    }
+  }
+}
+
+$rule singleton(
+  icRegionSpeciesY <- speciesICRegion, icRegionMixtureW, speciesW, Ns
+), constraint(multiSpecies) {
+  int const nRegions = $speciesICRegion.size();
+
+  $icRegionSpeciesY.resize(nRegions);
+
+  double const * sW = &$speciesW[0];
+
+  for(int i = 0; i < nRegions; ++i) {
+    $icRegionSpeciesY[i].resize($Ns);
+
+    double const mW = $icRegionMixtureW[i];
+    double * Y = &$icRegionSpeciesY[i][0];
+    double const * F = &$speciesICRegion[i].fractions.data[0];
+
+    switch($speciesICRegion[i].type) {
+    case SPECIES_SPEC_X:
+      mixture_Y_from_X_sW_mW($Ns, Y, F, sW, mW);
+      break;
+    case SPECIES_SPEC_Y:
+      for(int i = 0; i < $Ns; ++i) {
+        Y[i] = F[i];
+      }
+      break;
+    }
+  }
+}
+
+$rule singleton(
+  icRegionGagePressure, icRegionTemperature <- thermoICRegion, icRegionMixtureR, Pambient
+), constraint(singleSpecies, thermallyPerfectGas) {
+  int const nRegions = $thermoICRegion.size();
+  $icRegionTemperature.resize(nRegions);
+  $icRegionGagePressure.resize(nRegions);
+  for(int i = 0; i < nRegions; ++i) {
+    double const T = $thermoICRegion[i].temperature;
+    double const r = $thermoICRegion[i].density;
+    double const P = $thermoICRegion[i].pressure;
+    double const R = $icRegionMixtureR[i];
+
+    switch($thermoICRegion[i].type) {
+    case THERMO_SPEC_PT:
+      $icRegionGagePressure[i] = P - $Pambient;
+      $icRegionTemperature[i] = T;
+      break;
+    case THERMO_SPEC_DT:
+      $icRegionGagePressure[i] = eos_TP_P_from_r_T_R(r, T, R) - $Pambient;
+      $icRegionTemperature[i] = T;
+      break;
+    case THERMO_SPEC_DP:
+      $icRegionGagePressure[i] = P - $Pambient;
+      $icRegionTemperature[i] = eos_TP_T_from_r_P_R(r, P, R);
+      break;
+    }
+  }
+}
+
+$rule singleton(
+  icRegionVelocity <- velocityICRegion, icRegionTemperature,
+  speciesCp_Constant, icRegionMixtureR
+), constraint(thermallyPerfectGas, caloricallyPerfectGas) {
+  int const nRegions = $velocityICRegion.size();
+  $icRegionVelocity.resize(nRegions);
+
+  double const Cp = $speciesCp_Constant[0];
+
+  for(int i = 0; i < nRegions; ++i) {
+    double const T = $icRegionTemperature[i];
+    double const R = $icRegionMixtureR[i];
+
+    switch($velocityICRegion[i].type) {
+    case VEL_SPEC_VELOCITY:
+      $icRegionVelocity[i] = $velocityICRegion[i].scale*$velocityICRegion[i].direction;
+      break;
+    case VEL_SPEC_MACH:
+      $icRegionVelocity[i] = (
+        eos_TP_a_from_Cp_R_T(Cp, R, T)*$velocityICRegion[i].scale
+      )*$velocityICRegion[i].direction;
+      break;
+    }
+  }
+}
+
+$rule pointwise(cellICRegionIdx <- geomICRegion, stateICRegion, cellcenter) {
+  $cellICRegionIdx = 0;
+  const int sz = $geomICRegion.size();
+  for(int i = 0; i < sz; ++i) {
+    if((*$geomICRegion[i]).in($cellcenter.x, $cellcenter.y, $cellcenter.z)) {
+      $cellICRegionIdx = $stateICRegion[i];
+      break;
+    }
+  }
+}
+
+$rule apply(gagePressure_ic <- cellICRegionIdx, icRegionGagePressure)[Loci::Summation],
+  constraint(withoutICDirectory, geom_cells) {
+  join($gagePressure_ic, $icRegionGagePressure[$cellICRegionIdx]);
+}
+
+$rule apply(velocity_ic <- cellICRegionIdx, icRegionVelocity)[Loci::Summation],
+  constraint(withoutICDirectory, geom_cells) {
+  join($velocity_ic, $icRegionVelocity[$cellICRegionIdx]);
+}
+
+$rule apply(temperature_ic <- cellICRegionIdx, icRegionTemperature)[Loci::Summation],
+  constraint(withoutICDirectory, geom_cells) {
+  join($temperature_ic, $icRegionTemperature[$cellICRegionIdx]);
+}
+
+$rule apply(speciesY_ic <- cellICRegionIdx, icRegionSpeciesY, Ns)[Loci::Summation],
+  constraint(withoutICDirectory, geom_cells) {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesY_ic[i] += $icRegionSpeciesY[$cellICRegionIdx][i];
   }
 }
 
@@ -269,11 +548,6 @@ constraint(withoutICDirectory) {
 }
 
 // =============================================================================
-
-$type gagePressure_TGV_ic store<double>;
-$type velocity_TGV_ic store<Loci::vector3d<double> >;
-$type temperature_TGV_ic store<double>;
-$type speciesY_TGV_ic storeVec<double>;
 
 $rule singleton(tgvICParameters <- initialConditionsTGV) {
   $[Once] {
@@ -619,13 +893,6 @@ $rule apply(stime_ic <- timeStepSize)[Loci::Maximum], prelude {
 // =============================================================================
 // Load the initial conditions from file
 // =============================================================================
-
-$type timeStep_icf param<int>;
-$type stime_icf param<double>;
-$type gagePressure_icf store<double>;
-$type velocity_icf store<Loci::vector3d<double> >;
-$type temperature_icf store<double>;
-$type speciesY_icf storeVec<double>;
 
 class TimeStepFromFile : public singleton_rule {
   const_param<std::string> icDirectory, caseName;

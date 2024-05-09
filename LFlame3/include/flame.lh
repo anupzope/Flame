@@ -139,11 +139,17 @@ $type icDirectory param<std::string>;
 $type withICDirectory Constraint;
 $type withoutICDirectory Constraint;
 
+// -----------------------------------------------------------------------------
+
 // User supplied options list for specifying uniform initial conditions.
 $type initialConditions param<options_list>;
 
-// Params to store the initial conditions specified by initialConditions
-// options_list.
+// Initial condition specification extracted from initialConditions.
+$type thermoIC param<ThermoSpec>;
+$type velocityIC param<VelSpec>;
+$type speciesIC param<SpeciesSpec>;
+
+// Initial conditions computed from initialConditions specification.
 $type icGagePressure param<double>;
 $type icTemperature param<double>;
 $type icVelocity param<Loci::vector3d<double> >;
@@ -151,13 +157,58 @@ $type icSpeciesY param<std::vector<double> >;
 $type icMixtureW param<double>;
 $type icMixtureR param<double>;
 
+// -----------------------------------------------------------------------------
+
 // User supplied options list for specifying parameters for setting up TGV
 // initial conditions.
 $type initialConditionsTGV param<options_list>;
 
-// Param to store the TGV initial condition parameters specified by
-// initialConditionsTGV options_list.
+// Taylor-Green initial conditions specification extracted from
+// initialConditionsTGV.
 $type tgvICParameters param<TGVICParameters>;
+
+// Taylor-Green vortex initial conditions (geom_cells).
+$type gagePressure_TGV_ic store<double>;
+$type velocity_TGV_ic store<Loci::vector3d<double> >;
+$type temperature_TGV_ic store<double>;
+$type speciesY_TGV_ic storeVec<double>;
+
+// -----------------------------------------------------------------------------
+
+// User supplied options list for specifying initial conditions by regions.
+$type initialConditionRegions param<options_list>;
+
+// Initial condition region specification extracted from
+// initialConditionRegions.
+$type thermoICRegion blackbox<std::vector<ThermoSpec> >;
+$type velocityICRegion blackbox<std::vector<VelSpec> >;
+$type speciesICRegion blackbox<std::vector<SpeciesSpec> >;
+$type geomICRegion blackbox<std::vector<Loci::CPTR<ICRegionGeom> > >;
+$type stateICRegion blackbox<std::vector<int> >;
+
+// Initial condition region properties computed from initial condition region
+// specification.
+$type icRegionTemperature blackbox<std::vector<double> >;
+$type icRegionGagePressure blackbox<std::vector<double> >;
+$type icRegionVelocity blackbox<std::vector<Loci::vector3d<double> > >;
+$type icRegionSpeciesY blackbox<std::vector<std::vector<double> > >;
+$type icRegionMixtureW blackbox<std::vector<double> >;
+$type icRegionMixtureR blackbox<std::vector<double> >;
+
+// Initial condition region id (geom_cells)
+$type cellICRegionIdx store<int>;
+
+// -----------------------------------------------------------------------------
+
+// Initial conditions loaded from restart file.
+$type timeStep_icf param<int>;
+$type stime_icf param<double>;
+$type gagePressure_icf store<double>;
+$type velocity_icf store<Loci::vector3d<double> >;
+$type temperature_icf store<double>;
+$type speciesY_icf storeVec<double>;
+
+// -----------------------------------------------------------------------------
 
 // Initial value of cycle number.
 $type timeStep_ic param<int>;
