@@ -1,4 +1,4 @@
-bin_PROGRAMS = LFlame3
+bin_PROGRAMS = LFlame3 LFlame3UTests
 
 LPP = @LPP@
 
@@ -68,5 +68,36 @@ if HAVE_GLOG
   LFlame3_CPPFLAGS += -DFLAME_HAVE_GLOG
 endif
 
-
-pkgdata_DATA = data/flame-mixture.xsd
+LFlame3UTests_SOURCES=src/mixture.cc \
+  tests/unit_tests_main.cc \
+  tests/test_mixture_specification.cc
+LFlame3UTests_LDFLAGS = $(LDFLAGS)
+LFlame3UTests_LDADD = 
+LFlame3UTests_CXXFLAGS = $(CXXFLAGS) -I$(srcdir)/include
+LFlame3UTests_CPPFLAGS = $(CPPFLAGS) -DFLAME_DATA_DIR=\"$(pkgdatadir)\" \
+  -DFLAME_NAME_MAX_LENGTH=256 \
+  -DFLAME_MAX_NSPECIES=256
+if HAVE_MPI
+  LFlame3UTests_LDFLAGS += $(MPI_LDFLAGS)
+  LFlame3UTests_LDADD += $(MPI_LIBS)
+  LFlame3UTests_CXXFLAGS += $(MPI_CXXFLAGS)
+  LFlame3UTests_CPPFLAGS += $(MPI_CPPFLAGS)
+endif
+if HAVE_LOCI
+  LFlame3UTests_LDFLAGS += $(LOCI_LDFLAGS) $(LOCI_DEP_LDFLAGS)
+  LFlame3UTests_LDADD += $(LOCI_LIBS) $(LOCI_DEP_LIBS)
+  LFlame3UTests_CXXFLAGS += $(LOCI_CXXFLAGS) $(LOCI_DEP_CXXFLAGS)
+  LFlame3UTests_CPPFLAGS += $(LOCI_CPPFLAGS) $(LOCI_DEP_CPPFLAGS)
+endif
+if HAVE_GLOG
+  LFlame3UTests_LDFLAGS += $(GLOG_LDFLAGS)
+  LFlame3UTests_LDADD += $(GLOG_LIBS)
+  LFlame3UTests_CXXFLAGS += $(GLOG_CFLAGS)
+  LFlame3UTests_CPPFLAGS += -DFLAME_HAVE_GLOG
+endif
+if HAVE_GTEST
+  LFlame3UTests_LDFLAGS += $(GTEST_LDFLAGS)
+  LFlame3UTests_LDADD += $(GTEST_LIBS)
+  LFlame3UTests_CXXFLAGS += $(GTEST_CFLAGS)
+  LFlame3UTests_CPPFLAGS += -DFLAME_HAVE_GTEST
+endif

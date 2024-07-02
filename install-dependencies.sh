@@ -1,24 +1,24 @@
 #!/bin/bash
 
 # On Warhawk1
-#COMPILER_MODULE="gcc/10.2.0"
-#MPI_MODULE="openmpi/4.0.4"
-#ZLIB_MODULE="zlib/1.2.11"
-#BDIR="build-warhawk1"
-#IPATH=/apps/contrib/fsi/Flame-Stack/01
-#MPATH=/apps/contrib/fsi/Flame-Stack/01/modulefiles
-#module load ${COMPILER_MODULE} ${MPI_MODULE} ${ZLIB_MODULE}
-#module load cmake texlive python
-
-# On Rifle
-COMPILER_MODULE="gcc/12.2.0"
-MPI_MODULE="openmpi/4.1.4"
-ZLIB_MODULE="zlib/1.2.13"
-BDIR="build-rifle"
-IPATH=/var/tmp/anup/Flame-Stack/01
-MPATH=/var/tmp/anup/Flame-Stack/01/modulefiles
+COMPILER_MODULE="gcc/10.2.0"
+MPI_MODULE="openmpi/4.0.4"
+ZLIB_MODULE="zlib/1.2.11"
+BDIR="build-warhawk1"
+IPATH=/apps/contrib/fsi/Flame-Stack/01
+MPATH=/apps/contrib/fsi/Flame-Stack/01/modulefiles
 module load ${COMPILER_MODULE} ${MPI_MODULE} ${ZLIB_MODULE}
 module load cmake texlive python
+
+# On Rifle
+#COMPILER_MODULE="gcc/12.2.0"
+#MPI_MODULE="openmpi/4.1.4"
+#ZLIB_MODULE="zlib/1.2.13"
+#BDIR="build-rifle"
+#IPATH=/var/tmp/anup/Flame-Stack/01
+#MPATH=/var/tmp/anup/Flame-Stack/01/modulefiles
+#module load ${COMPILER_MODULE} ${MPI_MODULE} ${ZLIB_MODULE}
+#module load cmake texlive python
 
 # On Scout
 #COMPILER_MODULE="gcc/10.2.0"
@@ -62,14 +62,23 @@ module use "${MPATH}"
 
 mkdir -p "${BDIR}"
 
+function prompt_yn() {
+    read -p "$1" -n 1 response
+    if [[ "x${response}" == "xy" ]]; then
+	echo "1"
+    else
+	echo "0"
+    fi
+}
+
 ############################################
 ## Install Google Test and Google Logging ##
 ############################################
 
 # Obtain source from: https://github.com/google/glog.git
 
-INSTALL_GLOG="1"
 GLOG_VERSION="master"
+INSTALL_GLOG=$(prompt_yn "Install Glog/${GLOG_VERSION}?")
 GLOG_MODULENAME="FlameGlog"
 GLOG_IPATH="${IPATH}/Glog/${GLOG_VERSION}"
 GLOG_MPATH="${MPATH}/${GLOG_MODULENAME}"
@@ -107,6 +116,52 @@ whatis("Path: "..path)
 EOF
 fi
 
+GTEST_VERSION="1.14.0"
+INSTALL_GTEST=$(prompt_yn "Install Gtest/${GTEST_VERSION}?")
+GTEST_MODULENAME="FlameGtest"
+GTEST_IPATH="${IPATH}/Gtest/${GTEST_VERSION}"
+GTEST_MPATH="${MPATH}/${GTEST_MODULENAME}"
+if [[ "${INSTALL_GTEST}" -eq 1 ]]; then
+    if [ ! -f "googletest-${GTEST_VERSION}.tar.gz" ]; then
+	wget -O "googletest-${GTEST_VERSION}.tar.gz" "https://github.com/google/googletest/archive/refs/tags/v${GTEST_VERSION}.tar.gz"
+    fi
+
+    if [ ! -d "googletest-${GTEST_VERSION}" ]; then
+	tar -xf "googletest-${GTEST_VERSION}.tar.gz"
+    fi
+
+    cd "googletest-${GTEST_VERSION}"
+    cmake -S . -B build \
+	  -DCMAKE_INSTALL_PREFIX="${GTEST_IPATH}" \
+	  -DBUILD_SHARED_LIBS=ON
+    tmpval=$(prompt_yn "Is the configuration ok?")
+    cmake --build build
+    cmake --install build
+    cd ..
+
+    echo "Creating modulefile for Gtest..."
+    mkdir -p "${GTEST_MPATH}"
+    cat > "${GTEST_MPATH}/${GTEST_VERSION}.lua" <<EOF
+family("${GTEST_MODULENAME}")
+
+depends_on("${COMPILER_MODULE}")
+
+local package="Gtest"
+local version="${GTEST_VERSION}"
+local path="${GTEST_IPATH}"
+
+prepend_path("LD_LIBRARY_PATH", pathJoin(path, "lib64"))
+prepend_path("PKG_CONFIG_PATH", pathJoin(pathJoin(path, "lib64"), "pkgconfig"))
+setenv("GTEST_DIR", path)
+setenv("GTEST_ROOT", path)
+
+whatis("Package: "..package)
+whatis("Version: "..version)
+whatis("Path: "..path)
+EOF
+fi
+
+
 ########################################
 ## Install GKlib, METIS, and ParMETIS ##
 ########################################
@@ -126,8 +181,8 @@ fi
 # 
 # add_compile_definitions(_POSIX_C_SOURCE=199309L)
 
-INSTALL_METIS="1"
 METIS_VERSION="master"
+INSTALL_METIS=$(prompt_yn "Install metis/${METIS_VERSION}?")
 METIS_MODULENAME="FlameMETIS"
 METIS_IPATH="${IPATH}/METIS/${METIS_VERSION}"
 METIS_MPATH="${MPATH}/${METIS_MODULENAME}"
@@ -194,8 +249,8 @@ module load "${METIS_MODULENAME}/${METIS_VERSION}"
 ## Install HDF5 ##
 ##################
 
-INSTALL_HDF5="1"
 HDF5_VERSION="1.14.1"
+INSTALL_HDF5=$(prompt_yn "Install hdf5/${HDF5_VERSION}?")
 HDF5_MODULENAME="FlameHDF5"
 HDF5_IPATH="${IPATH}/HDF5/${HDF5_VERSION}"
 HDF5_MPATH="${MPATH}/${HDF5_MODULENAME}"
@@ -252,8 +307,8 @@ module load "${HDF5_MODULENAME}/${HDF5_VERSION}"
 # Obtain source from:
 # git clone -b master https://github.com/CGNS/CGNS.git
 
-INSTALL_CGNS="1"
 CGNS_VERSION="4.3.0"
+INSTALL_CGNS=$(prompt_yn "Install cgns/${CGNS_VERSION}?")
 CGNS_MODULENAME="FlameCGNS"
 CGNS_IPATH="${IPATH}/CGNS/${CGNS_VERSION}"
 CGNS_MPATH="${MPATH}/${CGNS_MODULENAME}"
@@ -309,8 +364,8 @@ module load "${CGNS_MODULENAME}/${CGNS_VERSION}"
 ## Install OpenBLAS ##
 ######################
 
-INSTALL_OpenBLAS="1"
 OpenBLAS_VERSION="0.3.23"
+INSTALL_OpenBLAS=$(prompt_yn "Install OpenBLAS/${OpenBLAS_VERSION}?")
 OpenBLAS_MODULENAME="FlameOpenBLAS"
 OpenBLAS_IPATH="${IPATH}/OpenBLAS/${OpenBLAS_VERSION}"
 OpenBLAS_MPATH="${MPATH}/${OpenBLAS_MODULENAME}"
@@ -358,8 +413,8 @@ module load "${OpenBLAS_MODULENAME}/${OpenBLAS_VERSION}"
 ## Install PETSc ##
 ###################
 
-INSTALL_PETSc="1"
 PETSc_VERSION="3.19.2"
+INSTALL_PETSc=$(prompt_yn "Install petsc/${PETSc_VERSION}?")
 PETSc_MODULENAME="FlamePETSc"
 PETSc_IPATH="${IPATH}/PETSc/${PETSc_VERSION}"
 PETSc_MPATH="${MPATH}/${PETSc_MODULENAME}"
@@ -430,8 +485,8 @@ module load "${PETSc_MODULENAME}/${PETSc_VERSION}"
 # configure FVMMod FVMtools lpp install.txt lpp Makefile ParMetis-4.0 README \
 # sprng src tmpcopy Tutorial
 
-INSTALL_LOCI="1"
 LOCI_VERSION="4.0"
+INSTALL_LOCI=$(prompt_yn "Install Loci/${LOCI_VERSION}?")
 LOCI_MODULENAME="FlameLoci"
 LOCI_IPATH="${IPATH}/Loci/${LOCI_VERSION}"
 LOCI_MPATH="${MPATH}/${LOCI_MODULENAME}"
@@ -462,6 +517,7 @@ depends_on("${COMPILER_MODULE}")
 depends_on("${MPI_MODULE}")
 depends_on("${ZLIB_MODULE}")
 depends_on("${GLOG_MODULENAME}/${GLOG_VERSION}")
+depends_on("${GTEST_MODULENAME}/${GTEST_VERSION}")
 depends_on("${METIS_MODULENAME}/${METIS_VERSION}")
 depends_on("${HDF5_MODULENAME}/${HDF5_VERSION}")
 depends_on("${CGNS_MODULENAME}/${CGNS_VERSION}")

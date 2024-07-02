@@ -246,6 +246,8 @@ $type viscousFlow Constraint;
 $type laminarFlow Constraint;
 $type turbulentFlow Constraint;
 
+$type hasSpeciesDiffusion Constraint;
+
 // Ambient pressure.
 $type Pambient param<double>;
 
@@ -338,6 +340,9 @@ $type mixtureConductivityModel param<std::string>;
 $type mixtureConductivityModel_Standard Constraint;
 $type mixtureConductivityModel_PrandtlNumber Constraint;
 $type mixtureConductivityModel_Wilke Constraint;
+
+// Constraints for species diffusivity model
+$type speciesDiffusivityModel_Schmidt Constraint;
 
 // Species viscosity (multi-species, geom_cells).
 $type speciesViscosity storeVec<double>;
@@ -590,6 +595,9 @@ $type speciesConductivity_Constant param<Loci::Array<double, FLAME_MAX_NSPECIES>
 
 // Parameters for Sutherland's conductivity of the species.
 $type speciesConductivity_SutherlandParameters param<Loci::Array<Loci::Array<double, 3>, FLAME_MAX_NSPECIES> >;
+
+// Parameters for Schmidt number of species
+$type speciesDiffusivity_SchmidtNumber param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
 
 // Averaging factor used for interpolating cells values to face values.
 $type faceAvgFactor store<double>;
