@@ -161,7 +161,9 @@ $rule constraint(
   }
 }
 
-$rule constraint(speciesDiffusivityModel_Schmidt <- mixture) {
+$rule constraint(speciesDiffusivityModel_Constant,
+speciesDiffusivityModel_Schmidt <- mixture) {
+  $speciesDiffusivityModel_Constant = EMPTY;
   $speciesDiffusivityModel_Schmidt = EMPTY;
 
   bool mixed = false;
@@ -179,10 +181,14 @@ $rule constraint(speciesDiffusivityModel_Schmidt <- mixture) {
   }
 
   switch(model) {
+  case DIFFUSIVITY_CONSTANT:
+    $speciesDiffusivityModel_Constant = ~EMPTY;
+    break;
   case DIFFUSIVITY_SCHMIDT:
     $speciesDiffusivityModel_Schmidt = ~EMPTY;
     break;
   default:
+    $speciesDiffusivityModel_Constant = EMPTY;
     $speciesDiffusivityModel_Schmidt = EMPTY;
     break;
   }
@@ -271,6 +277,16 @@ $rule singleton(speciesConductivity_SutherlandParameters <- mixture),
     $speciesConductivity_SutherlandParameters[i][0] = 0.0;
     $speciesConductivity_SutherlandParameters[i][1] = 0.0;
     $speciesConductivity_SutherlandParameters[i][2] = 0.0;
+  }
+}
+
+$rule singleton(speciesDiffusivity_Constant <- mixture),
+  constraint(speciesDiffusivityModel_Constant) {
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    $speciesDiffusivity_Constant[i] = $mixture.constantDiffusivity[i].value;
+  }
+  for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
+    $speciesDiffusivity_Constant[i] = 0.0;
   }
 }
 

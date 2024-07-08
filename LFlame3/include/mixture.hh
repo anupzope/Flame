@@ -26,6 +26,10 @@ struct SutherlandConductivity {
   double refTemperature, refConductivity, refConstant;
 };
 
+struct ConstantDiffusivity {
+  double value;
+};
+
 struct SchmidtNumber {
   double value;
 };
@@ -54,6 +58,7 @@ enum ConductivityModel {
 };
 
 enum DiffusivityModel {
+  DIFFUSIVITY_CONSTANT,
   DIFFUSIVITY_SCHMIDT,
   DIFFUSIVITY_NONE
 };
@@ -81,6 +86,7 @@ struct Mixture {
 
   // Species diffusivity parameters
   DiffusivityModel diffusivityModel[FLAME_MAX_NSPECIES];
+  ConstantDiffusivity constantDiffusivity[FLAME_MAX_NSPECIES];
   SchmidtNumber schmidtNumber[FLAME_MAX_NSPECIES];
 
   // Thermochemistry parameters
@@ -157,6 +163,16 @@ struct data_schema_traits<flame::SutherlandConductivity> {
     LOCI_INSERT_TYPE(cmpd, flame::SutherlandConductivity, refTemperature);
     LOCI_INSERT_TYPE(cmpd, flame::SutherlandConductivity, refConductivity);
     LOCI_INSERT_TYPE(cmpd, flame::SutherlandConductivity, refConstant);
+    return DatatypeP(cmpd);
+  }
+};
+
+template<>
+struct data_schema_traits<flame::ConstantDiffusivity> {
+  typedef IDENTITY_CONVERTER Schema_Converter;
+  static DatatypeP get_type() {
+    CompoundDatatypeP cmpd = CompoundFactory(flame::ConstantDiffusivity());
+    LOCI_INSERT_TYPE(cmpd, flame::ConstantDiffusivity, value);
     return DatatypeP(cmpd);
   }
 };
@@ -403,6 +419,19 @@ struct data_schema_traits<flame::Mixture> {
       cmpd->insert(
         "diffusivityModel",
         offsetof(flame::Mixture, diffusivityModel),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(flame::ConstantDiffusivity)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.constantDiffusivity[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "constantDiffusivity",
+        offsetof(flame::Mixture, constantDiffusivity),
         DatatypeP(array_t)
       );
     }

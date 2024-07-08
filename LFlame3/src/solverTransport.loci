@@ -161,6 +161,48 @@ $rule pointwise(speciesConductivity_f <- speciesConductivity_Constant, Ns),
 
 // -----------------------------------------------------------------------------
 
+$rule pointwise(speciesDiffusivity <- speciesDiffusivity_Constant, Ns),
+  constraint(multiSpecies, geom_cells), prelude {
+  $speciesDiffusivity.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesDiffusivity[i] = $speciesDiffusivity_Constant[i];
+  }
+}
+
+$rule pointwise(speciesDiffusivity_f <- speciesDiffusivity_Constant, Ns),
+  constraint(multiSpecies, boundary_faces), prelude {
+  $speciesDiffusivity_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesDiffusivity_f[i] = $speciesDiffusivity_Constant[i];
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(
+  speciesDiffusivity <- speciesDiffusivity_SchmidtNumber, Ns, viscosity, density
+), constraint(multiSpecies, geom_cells), prelude {
+  $speciesDiffusivity.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesDiffusivity[i] = $viscosity/($density * $speciesDiffusivity_SchmidtNumber[i]);
+  }
+}
+
+$rule pointwise(
+  speciesDiffusivity_f <- speciesDiffusivity_SchmidtNumber, Ns, viscosity_f, density_f
+), constraint(multiSpecies, boundary_faces), prelude {
+  $speciesDiffusivity_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesDiffusivity_f[i] = $viscosity_f/($density_f * $speciesDiffusivity_SchmidtNumber[i]);
+  }
+}
+
+// -----------------------------------------------------------------------------
+
 $rule pointwise(
   speciesViscosity <- speciesViscosity_SutherlandParameters, temperature, Ns
 ), constraint(multiSpecies, speciesViscosityModel_Sutherland, geom_cells), prelude {
@@ -385,6 +427,18 @@ $rule pointwise(viscosity_f <- (cl,cr)->(viscosity,vol), faceAvgFactor) {
 
 $rule pointwise(conductivity_f <- (cl,cr)->(conductivity,vol), faceAvgFactor) {
   $conductivity_f = $faceAvgFactor*($cl->$vol*$cr->$conductivity + $cr->$vol*$cl->$conductivity);
+}
+
+$rule pointwise(
+  speciesDiffusivity_f <- (cl,cr)->(speciesDiffusivity,vol), faceAvgFactor, Ns
+), prelude {
+  $speciesDiffusivity_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesDiffusivity_f[i] = $faceAvgFactor*(
+      $cl->$vol*$cr->$speciesDiffusivity[i] + $cr->$vol*$cl->$speciesDiffusivity[i]
+    );
+  }
 }
 
 // =============================================================================

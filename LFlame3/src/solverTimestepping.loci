@@ -140,6 +140,21 @@ constraint(boundary_faces, multiSpecies, viscousFlow) {
   }
 }
 
+$rule apply((cl,cr)->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
+  constraint((cl,cr)->geom_cells, multiSpecies, speciesMassDiffusionEnabled) {
+    for(int i = 5; i < $Ns+4; ++i) {
+      $cl->$msResidual[i] += $msDiffusiveFlux_f[i-5];
+      $cr->$msResidual[i] -= $msDiffusiveFlux_f[i-5];
+    }
+}
+
+$rule apply(cl->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
+  constraint(boundary_faces, multiSpecies, speciesMassDiffusionEnabled) {
+    for(int i = 5; i < $Ns+4; ++i) {
+      $cl->$msResidual[i] += $msDiffusiveFlux_f[i-5];
+    }
+}
+
 // =============================================================================
 // Time loop initialization.
 // =============================================================================

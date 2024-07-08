@@ -342,6 +342,7 @@ $type mixtureConductivityModel_PrandtlNumber Constraint;
 $type mixtureConductivityModel_Wilke Constraint;
 
 // Constraints for species diffusivity model
+$type speciesDiffusivityModel_Constant Constraint;
 $type speciesDiffusivityModel_Schmidt Constraint;
 
 // Species viscosity (multi-species, geom_cells).
@@ -355,6 +356,12 @@ $type speciesConductivity storeVec<double>;
 
 // Species conductivity (multi-species, boundry faces).
 $type speciesConductivity_f storeVec<double>;
+
+// Species diffusivity (single-species, multi-species, geom_cells).
+$type speciesDiffusivity storeVec<double>;
+
+// Species diffusivity (single-species, multi-species, boundary faces).
+$type speciesDiffusivity_f storeVec<double>;
 
 // Constraint to identify if Wilke model is required for either mixture
 // viscosity or mixture conductivity.
@@ -532,7 +539,7 @@ $type mixtureCp_f store<double>;
 $type msConvectiveFlux_f storeVec<double>;
 
 // Vector of multi-species diffusive flux (at face).
-//$type msDiffusiveFlux_f storeVec<double>;
+$type msDiffusiveFlux_f storeVec<double>;
 
 // Vector of multi-species residual (at cell).
 $type msResidual storeVec<double>;
@@ -597,7 +604,11 @@ $type speciesConductivity_Constant param<Loci::Array<double, FLAME_MAX_NSPECIES>
 $type speciesConductivity_SutherlandParameters param<Loci::Array<Loci::Array<double, 3>, FLAME_MAX_NSPECIES> >;
 
 // Parameters for Schmidt number of species
+$type speciesDiffusivity_Constant param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
 $type speciesDiffusivity_SchmidtNumber param<Loci::Array<double, FLAME_MAX_NSPECIES> >;
+
+$type enableSpeciesMassDiffusion param<bool>;
+$type speciesMassDiffusionEnabled Constraint;
 
 // Averaging factor used for interpolating cells values to face values.
 $type faceAvgFactor store<double>;

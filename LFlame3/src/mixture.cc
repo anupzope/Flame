@@ -41,6 +41,9 @@ char const * getConductivityModelName(ConductivityModel m) {
 
 char const * getDiffusivityModelName(DiffusivityModel m) {
   switch(m) {
+  case DIFFUSIVITY_CONSTANT:
+    return "constant";
+    break;
   case DIFFUSIVITY_SCHMIDT:
     return "schmidt";
     break;
@@ -97,6 +100,8 @@ void Mixture::clearSpecies(int idx) {
   sutherlandConductivity[idx].refConstant = 0.0;
 
   diffusivityModel[idx] = DIFFUSIVITY_NONE;
+
+  constantDiffusivity[idx].value = 0.0;
 
   schmidtNumber[idx].value = 0.0;
 
@@ -163,6 +168,10 @@ std::ostream & operator<<(std::ostream & s, Mixture const & mix) {
 
     s << "    diffusivity: ";
     switch(mix.diffusivityModel[i]) {
+    case DIFFUSIVITY_CONSTANT:
+      s << getDiffusivityModelName(mix.diffusivityModel[i])
+        << "(" << mix.constantDiffusivity[i].value << ")";
+      break;
     case DIFFUSIVITY_SCHMIDT:
       s << getDiffusivityModelName(mix.diffusivityModel[i])
         << "(" << mix.schmidtNumber[i].value << ")";
@@ -171,6 +180,7 @@ std::ostream & operator<<(std::ostream & s, Mixture const & mix) {
       s << getDiffusivityModelName(mix.diffusivityModel[i]);
       break;
     }
+    s << std::endl;
 
     s << "    thermochemistry: ";
     switch(mix.thermochemistryModel[i]) {
@@ -249,6 +259,7 @@ enum ParserFSM {
   MIXTURE_SPECIES_CONDUCTIVITY_SUTHERLAND_REF_CONDUCTIVITY,
   MIXTURE_SPECIES_CONDUCTIVITY_SUTHERLAND_REF_CONSTANT,
   MIXTURE_SPECIES_DIFFUSIVITY,
+  MIXTURE_SPECIES_DIFFUSIVITY_CONSTANT,
   MIXTURE_SPECIES_DIFFUSIVITY_SCHMIDT_NUMBER,
   MIXTURE_SPECIES_THERMOCHEMISTRY,
   MIXTURE_SPECIES_THERMOCHEMISTRY_SPECIFIC_HEAT,
@@ -339,6 +350,9 @@ public:
       charData.clear();
     } else if(path == "/mixture/species/diffusivity") {
       fsm.push(MIXTURE_SPECIES_DIFFUSIVITY);
+    } else if(path == "/mixture/species/diffusivity/constant") {
+      fsm.push(MIXTURE_SPECIES_DIFFUSIVITY_CONSTANT);
+      charData.clear();
     } else if(path == "/mixture/species/diffusivity/schmidtNumber") {
       fsm.push(MIXTURE_SPECIES_DIFFUSIVITY_SCHMIDT_NUMBER);
       charData.clear();
@@ -433,15 +447,22 @@ public:
       break;
     case MIXTURE_SPECIES_CONDUCTIVITY_SUTHERLAND_REF_CONSTANT:
     {
-      mixture.diffusivityModel[speciesIndex] = DIFFUSIVITY_SCHMIDT;
       std::stringstream ss(charData);
       ss >> mixture.sutherlandConductivity[speciesIndex].refConstant;
     }
       break;
     case MIXTURE_SPECIES_DIFFUSIVITY:
       break;
+    case MIXTURE_SPECIES_DIFFUSIVITY_CONSTANT:
+    {
+      mixture.diffusivityModel[speciesIndex] = DIFFUSIVITY_CONSTANT;
+      std::stringstream ss(charData);
+      ss >> mixture.constantDiffusivity[speciesIndex].value;
+    }
+      break;
     case MIXTURE_SPECIES_DIFFUSIVITY_SCHMIDT_NUMBER:
     {
+      mixture.diffusivityModel[speciesIndex] = DIFFUSIVITY_SCHMIDT;
       std::stringstream ss(charData);
       ss >> mixture.schmidtNumber[speciesIndex].value;
     }
@@ -548,6 +569,9 @@ public:
       charData += value;
       break;
     case MIXTURE_SPECIES_DIFFUSIVITY:
+      break;
+    case MIXTURE_SPECIES_DIFFUSIVITY_CONSTANT:
+      charData += value;
       break;
     case MIXTURE_SPECIES_DIFFUSIVITY_SCHMIDT_NUMBER:
       charData += value;
