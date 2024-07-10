@@ -1,5 +1,6 @@
 #include <boundary_checker.hh>
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 namespace flame {

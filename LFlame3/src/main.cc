@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 struct arguments {
@@ -59,14 +60,15 @@ static error_t parse_opt(int key, char * arg, argp_state * state) {
 
 static struct argp argp = { options, parse_opt, args_doc, doc };
 
-void logPrefix(std::ostream& s, const google::LogMessageInfo& l, void* data) {
-  s << l.severity;
+void logPrefix(std::ostream& s, const google::LogMessage & l, void* data) {
+  s << l.severity();
 }
 
 int main(int argc, char * argv[]) {
   Loci::Init(&argc, &argv);
   
-  google::InitGoogleLogging(argv[0], logPrefix);
+  //google::InitGoogleLogging(argv[0], logPrefix);
+  google::InstallPrefixFormatter(logPrefix);
   google::InstallFailureSignalHandler();
   FLAGS_logtostdout=1;
   //FLAGS_logtostderr = 1;
