@@ -2,6 +2,7 @@ $include "FVM.lh"
 $include "flame.lh"
 
 #include <flame.hh>
+#include <flux.hh>
 
 namespace flame {
 
@@ -17,21 +18,94 @@ $rule constraint(speciesMassDiffusionEnabled <- enableSpeciesMassDiffusion) {
   }
 }
 
+//$rule pointwise(
+//  msDiffusiveFlux_f <- density_f, speciesY_f, gradv_f(speciesY), speciesDiffusivity_f, area, Ns
+//), constraint(multiSpecies, (cl,cr)->(vol)), prelude {
+//  $msDiffusiveFlux_f.setVecSize(*$Ns);
+//} {
+//  double sum = 0.0;
+//  for(int i = 0; i < $Ns; ++i) {
+//    double temp = $density_f*$speciesDiffusivity_f[i]*dot($gradv_f(speciesY)[i], $area.n)*$area.sada;
+//    $msDiffusiveFlux_f[i] = temp;
+//    sum += temp;
+//  }
+//  for(int i = 0; i < $Ns; ++i) {
+//    $msDiffusiveFlux_f[i] -= $speciesY_f[i]*sum;
+//  }
+//}
+
+//$rule pointwise(
+//  speciesVelocityD <- gradv(speciesY), speciesY, speciesDiffusivity, Ns
+//), constraint(geom_cells), prelude {
+//  $speciesVelocityD.setVecSize(*$Ns);
+//} {
+//  computeDiffusionVelocityWithRamshawCorrection(
+//    &$speciesVelocityD[0], &$gradv(speciesY)[0],
+//    &$speciesY[0], &$speciesDiffusivity[0], $Ns
+//  );
+//  //double correction = 0.0;
+//  //for(int i = 0; i < $Ns; ++i) {
+//  //  double temp = -$speciesDiffusivity[i]*$gradv(speciesY);
+//  //  $speciesVelocityD[i] = temp/$speciesY;
+//  //  correction += temp;
+//  //}
+//  //for(int i = 0; i < $Ns; ++i) {
+//  //  $speciesVelocityD[i] -= correction;
+//  //}
+//}
+
 $rule pointwise(
-  msDiffusiveFlux_f <- speciesY_f, gradv_f(speciesY), speciesDiffusivity_f, area, Ns
-), prelude {
+  msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f,
+  density_f, area, Ns
+), constraint((cl,cr)->vol), prelude {
   $msDiffusiveFlux_f.setVecSize(*$Ns);
 } {
-  double sum = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    double temp = $speciesDiffusivity_f[i]*dot($gradv_f(speciesY)[i], $area.n)*$area.sada;
-    $msDiffusiveFlux_f[i] = temp;
-    sum += temp;
-  }
-  for(int i = 0; i < $Ns; ++i) {
-    $msDiffusiveFlux_f[i] -= $speciesY_f[i]*sum;
-  }
+  computeSpeciesDiffusionFluxWithRamshawCorrection(
+    &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
+    &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
+    $area.sada, $area.n, $Ns
+  );
 }
 
+//$rule pointwise(
+//  speciesVelocityD_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, Ns
+//), constraint((cl,cr)->vol, speciesMassDiffusionEnabled), prelude {
+//  $speciesVelocityD_f.setVecSize(*$Ns);
+//} {
+//  computeDiffusionVelocityWithRamshawCorrection(
+//    &$speciesVelocityD_f[0], &$gradv_f(speciesY)[0],
+//    &$speciesY_f[0], &$speciesDiffusivity_f[0], $Ns
+//  );
+//  
+//  //Loci::vector3d<double> correction(0.0, 0.0, 0.0);
+//  //for(int i = 0; i < $Ns; ++i) {
+//  //  Loci::vector3d<double> temp = -$speciesDiffusivity_f[i]*$gradv_f(speciesY);
+//  //  $speciesVelocityD_f[i] = temp/$speciesY_f[i];
+//  //  correction += temp;
+//  //}
+//  //for(int i = 0; i < $Ns; ++i) {
+//  //  $speciesVelocityD_f[i] -= correction;
+//  //}
+//}
+
+//$rule pointwise(
+//  msDiffusiveFlux_f <- density_f, speciesY_f, speciesVelocityD_f, area, Ns
+//), constraint(area, speciesMassDiffusionEnabled), prelude {
+//  $msDiffusiveFlux_f.setVecSize(*$Ns);
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    $msDiffusiveFlux_f[i] = -$density_f*$speciesY_f[i]*dot($speciesVelocityD_f[i], $area.n)*$area.sada;
+//  }
+//}
+
+//$rule pointwise(
+//  msDiffusiveFlux_f <- speciesDFlux_f, density_f, speciesY_f, speciesVelocityD_f, area, Ns
+//), constraint(area, speciesMassDiffusionEnabled), prelude {
+//  $msDiffusiveFlux_f.setVecSize(*$Ns);
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    $msDiffusiveFlux_f[i] = speciesDFlux_f[i]*$area.sada;
+//  }
+//}
 
 } // end: namespace flame

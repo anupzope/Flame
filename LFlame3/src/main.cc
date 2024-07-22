@@ -61,7 +61,7 @@ static error_t parse_opt(int key, char * arg, argp_state * state) {
 static struct argp argp = { options, parse_opt, args_doc, doc };
 
 void logPrefix(std::ostream& s, const google::LogMessage & l, void* data) {
-  s << l.severity();
+  s << google::GetLogSeverityName(l.severity());
 }
 
 int main(int argc, char * argv[]) {

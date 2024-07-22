@@ -299,4 +299,37 @@ void AUSMPlusUpFluxMultiSpeciesIdealGas(
   }
 }
 
+void computeDiffusionVelocityWithRamshawCorrection(
+  Loci::vector3d<double> * velocityD,
+  Loci::vector3d<double> const * gradY, double const * Y,
+  double const * D, int const Ns
+) {
+  Loci::vector3d<double> correction(0.0, 0.0, 0.0);
+  for(int i = 0; i < Ns; ++i) {
+    Loci::vector3d<double> temp = -D[i]*gradY[i];
+    velocityD[i] = temp/Y[i];
+    correction += temp;
+  }
+  for(int i = 0; i < Ns; ++i) {
+    velocityD[i] -= correction;
+  }
+}
+
+void computeSpeciesDiffusionFluxWithRamshawCorrection(
+  double * flux,
+  Loci::vector3d<double> const * gradY, double const * Y,
+  double const * D, double const rho, double const area,
+  Loci::vector3d<double> normal, int const Ns
+) {
+  double correction = 0.0;
+  for(int i = 0; i < Ns; ++i) {
+    double temp = -rho*D[i]*dot(gradY[i], normal)*area;
+    flux[i] = temp;
+    correction += temp;
+  }
+  for(int i = 0; i < Ns; ++i) {
+    flux[i] -= Y[i]*correction;
+  }
+}
+  
 } // end: namespace flame

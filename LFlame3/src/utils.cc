@@ -1377,6 +1377,137 @@ int getRegionGeom(
       errmsg << "[" << functionName << " requires point and normal]";
       ++error;
     }
+  } else if(functionName == "sphere") {
+    bool centerSpecified = false, radiusSpecified = false;
+    std::vector<double> center;
+    double radius;
+    options_list::arg_list::const_iterator aiter = args.begin();
+    while(aiter != args.end()) {
+      std::string argName;
+      aiter->get_value(argName);
+      if(argName == "center") {
+        if(getArgValues(*aiter, {"m", "m", "m"}, 3, 3, center, errmsg)) {
+          ++error;
+        } else {
+          centerSpecified = true;
+        }
+      } else if(argName == "radius") {
+        if(getArgValue(*aiter, "m", radius, errmsg)) {
+          ++error;
+        } else {
+          radiusSpecified = true;
+        }
+      }
+      ++aiter;
+    }
+    if(centerSpecified && radiusSpecified) {
+      SphereICRegionGeom * sphere = new SphereICRegionGeom();
+      sphere->setCenter(center[0], center[1], center[2]);
+      sphere->setRadius(radius);
+      *geom = sphere;
+    } else {
+      errmsg << "[" << functionName << " requires center and radius]";
+      ++error;
+    }
+  } else if(functionName == "box") {
+    bool corner1Specified = false, corner2Specified = false;
+    std::vector<double> corner1, corner2;
+    options_list::arg_list::const_iterator aiter = args.begin();
+    while(aiter != args.end()) {
+      std::string argName;
+      aiter->get_value(argName);
+      if(argName == "corner1") {
+        if(getArgValues(*aiter, {"m", "m", "m"}, 3, 3, corner1, errmsg)) {
+          ++error;
+        } else {
+          corner1Specified = true;
+        }
+      } else if(argName == "corner2") {
+        if(getArgValues(*aiter, {"m", "m", "m"}, 3, 3, corner2, errmsg)) {
+          ++error;
+        } else {
+          corner2Specified = true;
+        }
+      }
+      ++aiter;
+    }
+    if(corner1Specified && corner2Specified) {
+      BoxICRegionGeom * box = new BoxICRegionGeom();
+      box->setCorners(
+        corner1[0], corner1[1], corner1[2],
+	corner2[0], corner2[1], corner2[2]
+      );
+      *geom = box;
+    } else {
+      errmsg << "[" << functionName << " requires corner1 and corner2]";
+      ++error;
+    }
+  } else if(functionName == "convexPolyhedron") {
+    std::set<std::string> names;
+    std::map<std::string, bool> pointSpecified, normalSpecified;
+    std::map<std::string, double> px, py, pz, nx, ny, nz;
+    std::vector<double> point, normal;
+    options_list::arg_list::const_iterator aiter = args.begin();
+    while(aiter != args.end()) {
+      std::string argName;
+      aiter->get_value(argName);
+      if(argName.compare(0, 5, "point") == 0) {
+        std::string name = argName.substr(5);
+        if(name.size() > 0) {
+          if(getArgValues(*aiter, {"m", "m", "m"}, 3, 3, point, errmsg)) {
+            ++error;
+          } else {
+            names.insert(name);
+            pointSpecified.insert(std::pair<std::string, bool>(name, true));
+            px.insert(std::pair<std::string, double>(name, point[0]));
+            py.insert(std::pair<std::string, double>(name, point[1]));
+            pz.insert(std::pair<std::string, double>(name, point[2]));
+          }
+        }
+      } else if(argName.compare(0, 6, "normal") == 0) {
+        std::string name = argName.substr(6);
+        if(name.size() > 0) {
+          if(getArgValues(*aiter, {"m", "m", "m"}, 3, 3, normal, errmsg)) {
+            ++error;
+          } else {
+            names.insert(name);
+            normalSpecified.insert(std::pair<std::string, bool>(name, true));
+            nx.insert(std::pair<std::string, double>(name, normal[0]));
+            ny.insert(std::pair<std::string, double>(name, normal[1]));
+            nz.insert(std::pair<std::string, double>(name, normal[2]));
+          }
+        }
+      }
+      ++aiter;
+    }
+
+    ConvexPolyhedronICRegionGeom * convexPolyhedron = new ConvexPolyhedronICRegionGeom;
+    size_t size = names.size();
+    std::set<std::string>::const_iterator niter = names.begin();
+    bool allSpecified = true;
+    while(niter != names.end()) {
+      std::map<std::string, bool>::const_iterator ps = pointSpecified.find(*niter);
+      std::map<std::string, bool>::const_iterator ns = normalSpecified.find(*niter);
+      if(ps != pointSpecified.end() && ns != normalSpecified.end()) {
+        convexPolyhedron->addPlane(
+          px[*niter], py[*niter], pz[*niter],
+          nx[*niter], ny[*niter], nz[*niter]
+        );
+      } else {
+        errmsg << "[" << functionName << ", plane " << *niter
+               << " requires point and normal]";
+        allSpecified = false;
+        ++error;
+        break;
+      }
+      ++niter;
+    }
+
+    if(allSpecified && size > 0) {
+      *geom = convexPolyhedron;
+    } else {
+      delete convexPolyhedron;
+    }
   } else {
     errmsg << "[unknown region type: " << functionName << "]";
     ++error;
@@ -1405,6 +1536,43 @@ int getRegionGeom(
   return error;
 }
 
+GeomType SphereICRegionGeom::type() const {
+  return GEOM_SPHERE;
+}
+
+bool SphereICRegionGeom::in(double x, double y, double z) const {
+  double dx = x-cx;
+  double dy = y-cy;
+  double dz = z-cz;
+  double dist2 = dx*dx+dy*dy+dz*dz;
+  return dist2 <= r2;
+}
+
+GeomType ConvexPolyhedronICRegionGeom::type() const {
+  return GEOM_CONVEX_POLYHEDRON;
+}
+
+bool ConvexPolyhedronICRegionGeom::in(double x, double y, double z) const {
+  size_t size = px.size();
+  size_t count = 0;
+  for(size_t i = 0; i < size; ++i) {
+    double dx = x-px[i];
+    double dy = y-py[i];
+    double dz = z-pz[i];
+    double dot = dx*nx[i]+dy*ny[i]+dz*nz[i];
+    count += dot <= 0.0;
+  }
+  return count == size;
+}
+
+GeomType BoxICRegionGeom::type() const {
+  return GEOM_BOX;
+}
+
+bool BoxICRegionGeom::in(double x, double y, double z) const {
+  return x >= px1 && x <= px2 && y >= py1 && y <= py2 && z >= pz1 && z <= pz2;
+}
+
 GeomType LeftPlaneICRegionGeom::type() const {
   return GEOM_LEFT_PLANE;
 }
@@ -1414,7 +1582,7 @@ bool LeftPlaneICRegionGeom::in(double x, double y, double z) const {
   double dy = y-py;
   double dz = z-pz;
   double dot = dx*nx+dy*ny+dz*nz;
-  return dot < 0.0 ? true : false;
+  return dot <= 0.0;
 }
 
 GeomType RightPlaneICRegionGeom::type() const {
@@ -1426,7 +1594,7 @@ bool RightPlaneICRegionGeom::in(double x, double y, double z) const {
   double dy = y-py;
   double dz = z-pz;
   double dot = dx*nx+dy*ny+dz*nz;
-  return dot >= 0.0 ? true : false;
+  return dot >= 0.0;
 }
 
 } // end: namespace flame

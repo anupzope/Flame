@@ -31,6 +31,16 @@ $rule pointwise(speciesY_f <- faceAvgFactor, (cl,cr)->(vol,speciesY), Ns), prelu
   }
 }
 
+//$rule pointwise(
+//  speciesVelocityD_f <- faceAvgFactor, (cl,cr)->(vol,speciesVelocityD), Ns
+//), prelude {
+//  $speciesVelocityD_f.setVecSize(*$Ns);
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    $speciesVelocityD_f[i] = $faceAvgFactor*($cl->$vol*$cr->$speciesVelocityD[i] + $cr->$vol*$cl->$speciesVelocityD[i]);
+//  }
+//}
+
 // =============================================================================
 
 $rule pointwise(mixtureW_f, mixtureR_f <- (cl,cr)->vol, speciesY_f, speciesW, Runiv, Ns) {

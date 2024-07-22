@@ -29,7 +29,7 @@ constraint(singleSpecies, thermallyPerfectGas, geom_cells) {
 }
 
 $rule pointwise(density_f <- temperature_f, gagePressure_f, speciesR, Pambient),
-constraint(singleSpecies, thermallyPerfectGas, area) {
+  constraint(singleSpecies, thermallyPerfectGas, area) {
   $density_f = ($gagePressure_f+$Pambient)/($speciesR[0]*$temperature_f);
 }
 

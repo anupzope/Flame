@@ -327,7 +327,10 @@ int getStateSpec(
 
 enum GeomType {
   GEOM_LEFT_PLANE,
-  GEOM_RIGHT_PLANE
+  GEOM_RIGHT_PLANE,
+  GEOM_SPHERE,
+  GEOM_CONVEX_POLYHEDRON,
+  GEOM_BOX
 };
 
 class ICRegionGeom : public Loci::CPTR_type {
@@ -347,6 +350,67 @@ int getRegionGeom(
   ICRegionGeom ** geom, std::ostream & errmsg
 );
 
+class SphereICRegionGeom : public ICRegionGeom {
+  double cx, cy, cz, r, r2;
+
+public:
+  void setCenter(double cx, double cy, double cz) {
+    this->cx = cx;
+    this->cy = cy;
+    this->cz = cz;
+  }
+
+  void setRadius(double r) {
+    this->r = r;
+    this->r2 = r*r;
+  }
+
+  GeomType type() const override;
+
+  bool in(double x, double y, double z) const override;
+};
+
+class ConvexPolyhedronICRegionGeom : public ICRegionGeom {
+  std::vector<double> nx, ny, nz;
+  std::vector<double> px, py, pz;
+
+public:
+  void addPlane(
+    double px, double py, double pz, double nx, double ny, double nz
+  ) {
+    this->px.push_back(px);
+    this->py.push_back(py);
+    this->pz.push_back(pz);
+    this->nx.push_back(nx);
+    this->ny.push_back(ny);
+    this->nz.push_back(nz);
+  }
+
+  GeomType type() const override;
+
+  bool in(double x, double y, double z) const override;
+};
+
+class BoxICRegionGeom : public ICRegionGeom {
+  double px1, py1, pz1, px2, py2, pz2;
+
+public:
+  void setCorners(
+    double px1, double py1, double pz1, double px2, double py2, double pz2
+  ) {
+    this->px1 = (px1 < px2 ? px1 : px2);
+    this->py1 = (py1 < py2 ? py1 : py2);
+    this->pz1 = (pz1 < pz2 ? pz1 : pz2);
+    this->px2 = (px1 < px2 ? px2 : px1);
+    this->py2 = (py1 < py2 ? py2 : py1);
+    this->pz2 = (pz1 < pz2 ? pz2 : pz1);
+  }
+
+  GeomType type() const override;
+
+  bool in(double x, double y, double z) const override;
+};
+  
 class LeftPlaneICRegionGeom : public ICRegionGeom {
   double nx, ny, nz;
   double px, py, pz;

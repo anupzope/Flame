@@ -246,8 +246,6 @@ $type viscousFlow Constraint;
 $type laminarFlow Constraint;
 $type turbulentFlow Constraint;
 
-$type hasSpeciesDiffusion Constraint;
-
 // Ambient pressure.
 $type Pambient param<double>;
 
@@ -540,6 +538,10 @@ $type msConvectiveFlux_f storeVec<double>;
 
 // Vector of multi-species diffusive flux (at face).
 $type msDiffusiveFlux_f storeVec<double>;
+//$type speciesDiffusionFlux_f storeVec<Loci::vector<double> >;
+
+//$type speciesVelocityD storeVec<Loci::vector3d<double> >;
+//$type speciesVelocityD_f storeVec<Loci::vector3d<double> >;
 
 // Vector of multi-species residual (at cell).
 $type msResidual storeVec<double>;

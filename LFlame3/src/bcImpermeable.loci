@@ -104,6 +104,37 @@ constraint(multiSpecies, symmetry_BC), prelude {
   }
 }
 
+//$rule pointwise(
+//  speciesVelocityD_f <- area, ci->speciesVelocityD, Ns
+//), constraint(symmetry_BC), prelude {
+//  $speciesVelocityD_f.setVecSize(*$Ns);
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    double const uit = dot($ci->$speciesVelocityD[i], $area.n);
+//    $speciesVelocityD_f[i] = $ci->$speciesVelocityD[i] - uit*$area.n;
+//  }
+//}
+
+$rule pointwise(
+  msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f,
+  density_f, area, Ns
+), constraint(symmetry_BC), prelude {
+  $msDiffusiveFlux_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $msDiffusiveFlux_f[i] = 0.0;
+  }
+  //computeSpeciesDiffusionFluxWithRamshawCorrection(
+  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
+  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
+  //  $area.sada, $area.n, $Ns
+  //);
+  //for(int i = 0; i < $Ns; ++i) {
+  //  double const uit = dot($ci->$speciesVelocityD[i], $area.n);
+  //  $speciesVelocityD_f[i] = $ci->$speciesVelocityD[i] - uit*$area.n;
+  //}
+}
+
 // =============================================================================
 
 class ReflectingBCChecker : public BoundaryChecker {
@@ -244,6 +275,37 @@ $rule pointwise(
   for(int i = 0; i < $Ns-1; ++i) {
     flux[5+i] = 0.0;
   }
+}
+
+//$rule pointwise(
+//  speciesVelocityD_f <- area, ci->speciesVelocityD, Ns
+//), constraint(reflecting_BC), prelude {
+//  $speciesVelocityD_f.setVecSize(*$Ns);
+//} {
+//  for(int i = 0; i < $Ns; ++i) {
+//    double const uit = dot($ci->$speciesVelocityD[i], $area.n);
+//    $speciesVelocityD_f[i] = $ci->$speciesVelocityD[i] - uit*$area.n;
+//  }
+//}
+
+$rule pointwise(
+  msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f,
+  density_f, area, Ns
+), constraint(reflecting_BC), prelude {
+  $msDiffusiveFlux_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $msDiffusiveFlux_f[i] = 0.0;
+  }
+  //computeSpeciesDiffusionFluxWithRamshawCorrection(
+  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
+  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
+  //  $area.sada, $area.n, $Ns
+  //);
+  //for(int i = 0; i < $Ns; ++i) {
+  //  double const uit = dot($ci->$speciesVelocityD[i], $area.n);
+  //  $speciesVelocityD_f[i] = $ci->$speciesVelocityD[i] - uit*$area.n;
+  //}
 }
 
 // =============================================================================

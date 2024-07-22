@@ -210,6 +210,17 @@ $rule pointwise(
   );
 }
 
+//$rule pointwise(
+//  speciesVelocityD_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, Ns
+//), constraint(supersonicInflow_BC), prelude {
+//  $speciesVelocityD_f.setVecSize(*$Ns);
+//} {
+//  computeDiffusionVelocityWithRamshawCorrection(
+//    &$speciesVelocityD_f[0], &$gradv_f(speciesY)[0],
+//    &$speciesY_f[0], &$speciesDiffusivity_f[0], $Ns
+//  );
+//}
+
 // =============================================================================
 
 $rule pointwise(gagePressure_f <- ci->gagePressure),
@@ -312,6 +323,17 @@ $rule pointwise(
     1.0
   );
 }
+
+//$rule pointwise(
+//  speciesVelocityD_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, Ns
+//), constraint(supersonicOutflow_BC), prelude {
+//  $speciesVelocityD_f.setVecSize(*$Ns);
+//} {
+//  computeDiffusionVelocityWithRamshawCorrection(
+//    &$speciesVelocityD_f[0], &$gradv_f(speciesY)[0],
+//    &$speciesY_f[0], &$speciesDiffusivity_f[0], $Ns
+//  );
+//}
 
 // =============================================================================
 
@@ -513,6 +535,62 @@ $rule pointwise(
     $area.sada, $area.n, $Pambient,
     1.0
   );
+}
+
+//$rule pointwise(
+//  speciesVelocityD_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, Ns
+//), constraint(farfield_BC), prelude {
+//  $speciesVelocityD_f.setVecSize(*$Ns);
+//} {
+//  computeDiffusionVelocityWithRamshawCorrection(
+//    &$speciesVelocityD_f[0], &$gradv_f(speciesY)[0],
+//    &$speciesY_f[0], &$speciesDiffusivity_f[0], $Ns
+//  );
+//}
+
+$rule pointwise(
+  msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, density_f, area, Ns
+), constraint(farfield_BC), prelude {
+  $msDiffusiveFlux_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $msDiffusiveFlux_f[i] = 0.0;
+  }
+  //computeSpeciesDiffusionFluxWithRamshawCorrection(
+  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
+  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
+  //  $area.sada, $area.n, $Ns
+  //);
+}
+
+$rule pointwise(
+  msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, density_f, area, Ns
+), constraint(supersonicInflow_BC), prelude {
+  $msDiffusiveFlux_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $msDiffusiveFlux_f[i] = 0.0;
+  }
+  //computeSpeciesDiffusionFluxWithRamshawCorrection(
+  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
+  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
+  //  $area.sada, $area.n, $Ns
+  //);
+}
+
+$rule pointwise(
+  msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, density_f, area, Ns
+), constraint(supersonicOutflow_BC), prelude {
+  $msDiffusiveFlux_f.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $msDiffusiveFlux_f[i] = 0.0;
+  }
+  //computeSpeciesDiffusionFluxWithRamshawCorrection(
+  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
+  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
+  //  $area.sada, $area.n, $Ns
+  //);
 }
 
 // =============================================================================

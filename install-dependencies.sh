@@ -51,40 +51,66 @@
 #module load cmake texlive python
 
 # On Hercules
-BUILD_NTHREADS=10
-COMPILER_MODULE="intel-oneapi-compilers/2023.1.0"
-MPI_MODULE="intel-oneapi-mpi/2021.9.0"
+#COMPILER_MODULE="intel-oneapi-compilers/2023.1.0"
+#MPI_MODULE="intel-oneapi-mpi/2021.9.0"
+#MKL_MODULE="intel-oneapi-mkl/2023.1.0"
+#module load "${COMPILER_MODULE}"
+#module load "${MPI_MODULE}"
+#module load "${MKL_MODULE}"
+#export CC=icc
+#export CXX=icpc
+#export F90=ifort
+#export F77=ifort
+#export FC=ifort
+#export I_MPI_CC="${CC}"
+#export I_MPI_CXX="${CXX}"
+#export I_MPI_F90="${F90}"
+#export MKL_INCLUDE_DIR="${MKLROOT}/include"
+#export MKL_LIBRARY_DIR="${MKLROOT}/lib"
+#export MKL_LIBRARY_NAMES=("mkl_scalapack_lp64" "mkl_intel_lp64" "mkl_sequential" "mkl_core" "mkl_blacs_intelmpi_lp64" "pthread" "m" "dl")
+#export MKL_LDFLAGS="-L${MKL_LIBRARY_DIR} -Wl,--no-as-needed ${MKL_LIBRARY_NAMES[@]/#/-l}"
+#export MKL_CFLAGS="-I${MKL_INCLUDE_DIR}"
+
+MPI_MODULE="openmpi/4.1.4"
 MKL_MODULE="intel-oneapi-mkl/2023.1.0"
-HDF5_MODULE="hdf5/1.14.1-2"
-IPATH="/apps/contrib/FSI/Flame-Stack/1.0"
-MPATH="/apps/contrib/FSI/Flame-Stack/1.0/modulefiles"
-module load "${COMPILER_MODULE}"
 module load "${MPI_MODULE}"
 module load "${MKL_MODULE}"
-module load "${HDF5_MODULE}"
+export CC=gcc
+export CXX=g++
+export F90=gfortran
+export F77=gfortran
+export FC=gfortran
+export MKL_INCLUDE_DIR="${MKLROOT}/include"
+export MKL_LIBRARY_DIR="${MKLROOT}/lib"
+export MKL_LIBRARY_NAMES=("mkl_scalapack_lp64" "mkl_intel_lp64" "mkl_gnu_thread" "mkl_core" "mkl_blacs_openmpi_lp64" "gomp" "pthread" "m" "dl")
+export MKL_LDFLAGS="-m64 -L${MKL_LIBRARY_DIR} -Wl,--no-as-needed ${MKL_LIBRARY_NAMES[@]/#/-l}"
+export MKL_CFLAGS="-m64 -I${MKL_INCLUDE_DIR}"
 
-module load cmake
+BUILD_NTHREADS=10
+IPATH="/apps/contrib/FSI/Flame-Stack/1.0"
+MPATH="/apps/contrib/FSI/Flame-Stack/1.0/modulefiles"
 
 echo "Modules:"
 module list
 
-export CC=icc
-export CXX=icpc
-export F90=ifort
-export F77=ifort
-export FC=ifort
 
-export I_MPI_CC="icc"
-export I_MPI_CXX="icpc"
-export I_MPI_F90="ifort"
-
-export MKL_INCLUDE_DIR="${MKLROOT}/include"
-export MKL_LIBRARY_DIR="${MKLROOT}/lib"
-export MKL_LIBRARY_NAMES=("mkl_scalapack_lp64" "mkl_intel_lp64" "mkl_sequential" "mkl_core" "mkl_blacs_intelmpi_lp64" "pthread" "m" "dl")
-export MKL_LDFLAGS="-L${MKL_LIBRARY_DIR} -Wl,--no-as-needed ${MKL_LIBRARY_NAMES[@]/#/-l}"
-export MKL_CFLAGS="-I${MKL_INCLUDE_DIR}"
 
 module use "${MPATH}"
+
+mkdir -p "${MPATH}/FlameSystem"
+cat > "${MPATH}/FlameSystem/1.0.lua" <<EOF
+family("FlameSystem")
+
+always_load("${MPI_MODULE}")
+always_load("${MKL_MODULE}")
+
+setenv("CC", "${CC}")
+setenv("CXX", "${CXX}")
+setenv("F90", "${F90}")
+setenv("F77", "${F77}")
+setenv("FC", "${FC}")
+
+EOF
 
 function prompt_yn() {
     read -p "$1" -n 1 response
@@ -94,6 +120,94 @@ function prompt_yn() {
 	echo "0"
     fi
 }
+
+CMAKE_VERSION="3.30.0"
+if [ ! -f "cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" ]; then
+    wget -O "cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
+fi
+
+if [ ! -d "cmake-${CMAKE_VERSION}-linux-x86_64" ]; then
+    tar -xf "cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
+fi
+
+PATH="${PWD}/cmake-${CMAKE_VERSION}-linux-x86_64/bin:${PATH}"
+
+echo "CMake is:"
+which cmake
+
+echo "CMake version:"
+cmake --version
+
+##############################
+## Install Autoconf Archive ##
+##############################
+
+INSTALL_ACARCHIVE=$(prompt_yn "Install Autoconf Archive?")
+ACARCHIVE_IPATH="${IPATH}/autoconf-archive"
+if [[ "${INSTALL_ACARCHIVE}" -eq 1 ]]; then
+    if [ ! -d "autoconf-archive" ]; then
+        git clone "git://git.sv.gnu.org/autoconf-archive.git"
+    fi
+
+    cd "autoconf-archive"
+    autoreconf -i
+    mkdir build
+    cd build && echo "Directory: ${PWD}"
+    ../configure --prefix="${ACARCHIVE_IPATH}"
+    make install
+    cd .. && echo "Directory: ${PWD}"
+    cd .. && echo "Directory: ${PWD}"
+fi
+
+#####################
+## Install libxml2 ##
+#####################
+
+LIBXML2_VERSION="2.13.2"
+INSTALL_LIBXML2=$(prompt_yn "Install libxml2/${LIBXML2_VERSION}?")
+LIBXML2_MODULENAME="FlameXML2"
+LIBXML2_IPATH="${IPATH}/libxml2/${LIBXML2_VERSION}"
+LIBXML2_MPATH="${MPATH}/${LIBXML2_MODULENAME}"
+if [[ "${INSTALL_LIBXML2}" -eq 1 ]]; then
+    if [ ! -f "libxml2-v${LIBXML2_VERSION}.tar.gz" ]; then
+        wget -O "libxml2-v${LIBXML2_VERSION}.tar.gz" "https://github.com/GNOME/libxml2/archive/refs/tags/v${LIBXML2_VERSION}.tar.gz"
+    fi
+
+    if [ ! -d "libxml2-v${LIBXML2_VERSION}" ]; then
+        tar -xf "libxml2-v${LIBXML2_VERSION}.tar.gz"
+    fi
+
+    cd "libxml2-v${LIBXML2_VERSION}" && echo "Directory: ${PWD}"
+    cmake -S . -B build \
+        -DCMAKE_INSTALL_PREFIX="${LIBXML2_IPATH}" \
+        -DCMAKE_BUILD_TYPE=Release
+    tempval=$(prompt_yn "Is the configuration ok?")
+    cmake --build build --parallel "${BUILD_NTHREADS}"
+    cmake --install build
+    cd .. && echo "Directory: ${PWD}"
+
+    mkdir -p "${LIBXML2_MPATH}"
+    cat > "${LIBXML2_MPATH}/${LIBXML2_VERSION}.lua" <<EOF
+family("${LIBXML2_MODULENAME}")
+
+always_load("FlameSystem/1.0")
+
+local package="libxml2"
+local version="${LIBXML2_VERSION}"
+local path="${LIBXML2_IPATH}"
+
+prepend_path("PATH", pathJoin(path, "bin"))
+prepend_path("LD_LIBRARY_PATH", pathJoin(path, "lib64"))
+prepend_path("PKG_CONFIG_PATH", pathJoin(pathJoin(path, "lib64"), "pkgconfig"))
+setenv("LIBXML2_DIR", path)
+
+whatis("Package: "..package)
+whatis("Version: "..version)
+whatis("Path: "..path)
+EOF
+fi
+
+module load "${LIBXML2_MODULENAME}/${LIBXML2_VERSION}"
 
 ############################################
 ## Install Google Test and Google Logging ##
@@ -126,6 +240,8 @@ if [[ "${INSTALL_GTEST}" -eq 1 ]]; then
     mkdir -p "${GTEST_MPATH}"
     cat > "${GTEST_MPATH}/${GTEST_VERSION}.lua" <<EOF
 family("${GTEST_MODULENAME}")
+
+always_load("FlameSystem/1.0")
 
 local package="Gtest"
 local version="${GTEST_VERSION}"
@@ -160,8 +276,9 @@ if [[ ${INSTALL_GLOG} -eq 1 ]]; then
 	tar -xf "glog-${GLOG_VERSION}.tar.gz"
     fi
 
+    cmake --version
     cd "glog-${GLOG_VERSION}" && echo "Directory: ${PWD}"
-    cmake -S . -B build -DCMAKE_INSTALL_PREFIX="${GLOG_IPATH}"
+    cmake -S . -B build -DCMAKE_INSTALL_PREFIX="${GLOG_IPATH}" -DWITH_PKGCONFIG=ON
     tempval=$(prompt_yn "Is the configuration ok?")
     cmake --build build --parallel "${BUILD_NTHREADS}"
     cmake --build build --target test
@@ -172,6 +289,8 @@ if [[ ${INSTALL_GLOG} -eq 1 ]]; then
     mkdir -p "${GLOG_MPATH}"
     cat > "${GLOG_MPATH}/${GLOG_VERSION}.lua" <<EOF
 family("${GLOG_MODULENAME}")
+
+always_load("FlameSystem/1.0")
 
 local package="Glog"
 local version="${GLOG_VERSION}"
@@ -234,6 +353,8 @@ if [[ "${INSTALL_METIS}" -eq 1 ]]; then
     cat > "${METIS_MPATH}/${METIS_VERSION}.lua" <<EOF
 family("${METIS_MODULENAME}")
 
+always_load("FlameSystem/1.0")
+
 local package="METIS"
 local version="${METIS_VERSION}"
 local path="${METIS_IPATH}"
@@ -277,6 +398,8 @@ if [[ "${INSTALL_PARMETIS}" -eq 1 ]]; then
     cat > "${PARMETIS_MPATH}/${PARMETIS_VERSION}.lua" <<EOF
 family("${PARMETIS_MODULENAME}")
 
+always_load("FlameSystem/1.0")
+
 local package="ParMETIS"
 local version="${PARMETIS_VERSION}"
 local path="${PARMETIS_IPATH}"
@@ -296,66 +419,115 @@ module load "${PARMETIS_MODULENAME}/${PARMETIS_VERSION}"
 
 
 ##################
+## Install zlib ##
+##################
+
+ZLIB_VERSION="1.3.1"
+INSTALL_ZLIB=$(prompt_yn "Install zlib/${ZLIB_VERSION}?")
+ZLIB_MODULENAME="FlameZlib"
+ZLIB_IPATH="${IPATH}/zlib/${ZLIB_VERSION}"
+ZLIB_MPATH="${MPATH}/${ZLIB_MODULENAME}"
+if [[ "${INSTALL_ZLIB}" -eq 1 ]]; then
+    if [ ! -f "zlib-${ZLIB_VERSION}.tar.gz" ]; then
+        wget -O "zlib-${ZLIB_VERSION}.tar.gz" "https://www.zlib.net/zlib-${ZLIB_VERSION}.tar.gz"
+    fi
+
+    if [ ! -d "zlib-${ZLIB_VERSION}" ]; then
+        tar -xf "zlib-${ZLIB_VERSION}.tar.gz"
+    fi
+
+    cd "zlib-${ZLIB_VERSION}" && echo "Directory: ${PWD}"
+    mkdir build
+    cd build
+    ../configure --prefix="${ZLIB_IPATH}"
+    tempval=$(prompt_yn "Is the configuration ok?")
+    make -j${BUILD_NTHREADS}
+    make install
+    cd .. && echo "Directory: ${PWD}"
+    cd .. && echo "Directory: ${PWD}"
+
+    mkdir -p "${ZLIB_MPATH}"
+    cat > "${ZLIB_MPATH}/${ZLIB_VERSION}.lua" <<EOF
+family("${ZLIB_MODULENAME}")
+
+always_load("FlameSystem/1.0")
+
+local package="zlib"
+local version="${ZLIB_VERSION}"
+local path="${ZLIB_IPATH}"
+
+prepend_path("PATH", pathJoin(path, "bin"))
+prepend_path("LD_LIBRARY_PATH", pathJoin(path,"lib"))
+setenv("ZLIB_DIR", path)
+setenv("ZLIB_ROOT", path)
+
+whatis("Package: "..package)
+whatis("Version: "..version)
+whatis("Path: "..path)
+EOF
+fi
+
+module load "${ZLIB_MODULENAME}/${ZLIB_VERSION}"
+
+##################
 ## Install HDF5 ##
 ##################
 
-#HDF5_VERSION="1.14.1"
-#INSTALL_HDF5=$(prompt_yn "Install hdf5/${HDF5_VERSION}?")
-#HDF5_MODULENAME="FlameHDF5"
-#HDF5_IPATH="${IPATH}/HDF5/${HDF5_VERSION}"
-#HDF5_MPATH="${MPATH}/${HDF5_MODULENAME}"
-#if [[ ${INSTALL_HDF5} -eq 1 ]]; then
-#  cd "${BDIR}" && echo "Directory: ${PWD}"
-#  rm -rf hdf5-1.14.1-2
-#  echo "Extracting source for HDF5..."
-#  tar -xf ../sources/hdf5-1.14.1-2.tar.gz
-#  cd hdf5-1.14.1-2 && echo "Directory: ${PWD}"
-#  mkdir build
-#  cd build && echo "Directory: ${PWD}"
-#  echo "Configuring HDF5..."
-#  cmake .. -DHDF5_ENABLE_PARALLEL=ON -DCMAKE_INSTALL_PREFIX="${HDF5_IPATH}"
+HDF5_VERSION="1.14.4.3"
+INSTALL_HDF5=$(prompt_yn "Install hdf5/${HDF5_VERSION}?")
+HDF5_MODULENAME="FlameHDF5"
+HDF5_IPATH="${IPATH}/HDF5/${HDF5_VERSION}"
+HDF5_MPATH="${MPATH}/${HDF5_MODULENAME}"
+if [[ ${INSTALL_HDF5} -eq 1 ]]; then
+    if [ ! -f "hdf5-${HDF5_TAR_VERSION}.tar.gz" ]; then
+        HDF5_TAR_VERSION=$(echo "${HDF5_VERSION}" | sed -r 's/(.*)\./\1-/g')
+        wget -O "" "https://github.com/HDFGroup/hdf5/releases/download/hdf5_${HDF5_VERSION}/hdf5-${HDF5_TAR_VERSION}.tar.gz"
+    fi
+
+    if [ ! -d "hdf5-${HDF5_TAR_VERSION}" ]; then
+        tar -xf "hdf5-${HDF5_TAR_VERSION}.tar.gz"
+    fi
+
+    cd "hdf5-${HDF5_TAR_VERSION}" && echo "Directory: ${PWD}"
+    cmake -S . -B build \
+        -DCMAKE_INSTALL_PREFIX="${HDF5_IPATH}" \
+	-DCMAKE_BUILD_TYPE=Release \
+        -DHDF5_ENABLE_PARALLEL=ON
 #  #CFLAGS="${MPI_CFLAGS}" CXXFLAGS="${MPI_CFLAGS}" LDFLAGS="${MPI_LDFLAGS}" ./configure --enable-parallel --prefix="${HDF5_IPATH}"
-#  echo "Building HDF5..."
-#  make -j4
-#  echo "Installing HDF5..."
-#  make install
-#  cd .. && echo "Directory: ${PWD}"
-#  cd .. && echo "Directory: ${PWD}"
-#  cd .. && echo "Directory: ${PWD}"
-#  
-#  echo "Creating modulefile for HDF5..."
-#  mkdir -p "${HDF5_MPATH}"
-#  cat > "${HDF5_MPATH}/${HDF5_VERSION}.lua" <<EOF
-#family("${HDF5_MODULENAME}")
-#
-#depends_on("${COMPILER_MODULE}")
-#depends_on("${MPI_MODULE}")
-#depends_on("${ZLIB_MODULE}")
-#
-#local package="HDF5"
-#local version="${HDF5_VERSION}"
-#local path="${HDF5_IPATH}"
-#
-#prepend_path("PATH", pathJoin(path, "bin"))
-#prepend_path("LD_LIBRARY_PATH", pathJoin(path,"lib"))
-#setenv("HDF5_DIR", path)
-#setenv("HDF5_ROOT", path)
-#
-#whatis("Package: "..package)
-#whatis("Version: "..version)
-#whatis("Path: "..path)
-#EOF
-#fi
-#
-#module load "${HDF5_MODULENAME}/${HDF5_VERSION}"
+    tempval=$(prompt_yn "Is the configuration ok?")
+    cmake --build build --parallel ${BUILD_NTHREADS}
+    cmake --install build
+    cd .. && echo "Directory: ${PWD}"
+
+    mkdir -p "${HDF5_MPATH}"
+    cat > "${HDF5_MPATH}/${HDF5_VERSION}.lua" <<EOF
+family("${HDF5_MODULENAME}")
+
+always_load("FlameSystem/1.0")
+always_load("${ZLIB_MODULENAME}/${ZLIB_VERSION}")
+
+local package="HDF5"
+local version="${HDF5_VERSION}"
+local path="${HDF5_IPATH}"
+
+prepend_path("PATH", pathJoin(path, "bin"))
+prepend_path("LD_LIBRARY_PATH", pathJoin(path,"lib"))
+prepend_path("PKG_CONFIG_PATH", pathJoin(pathJoin(path,"lib"),"pkgconfig"))
+setenv("HDF5_DIR", path)
+setenv("HDF5_ROOT", path)
+
+whatis("Package: "..package)
+whatis("Version: "..version)
+whatis("Path: "..path)
+EOF
+fi
+
+module load "${HDF5_MODULENAME}/${HDF5_VERSION}"
 
 
 ##################
 ## Install CGNS ##
 ##################
-
-# Obtain source from:
-# git clone -b master https://github.com/CGNS/CGNS.git
 
 CGNS_VERSION="4.4.0"
 INSTALL_CGNS=$(prompt_yn "Install cgns/${CGNS_VERSION}?")
@@ -391,6 +563,10 @@ if [[ ${INSTALL_CGNS} -eq 1 ]]; then
     mkdir -p "${CGNS_MPATH}"
     cat > "${CGNS_MPATH}/${CGNS_VERSION}.lua" <<EOF
 family("${CGNS_MODULENAME}")
+
+always_load("FlameSystem/1.0")
+always_load("${ZLIB_MODULENAME}/${ZLIB_VERSION}")
+always_load("${HDF5_MODULENAME}/${HDF5_VERSION}")
 
 local package="CGNS"
 local version="${CGNS_VERSION}"
@@ -506,9 +682,16 @@ if [[ ${INSTALL_PETSC} -eq 1 ]]; then
     cat > "${PETSC_MPATH}/${PETSC_VERSION}.lua" <<EOF
 family("${PETSC_MODULENAME}")
 
+always_load("FlameSystem/1.0")
+always_load("${ZLIB_MODULENAME}/${ZLIB_VERSION}")
+always_load("${HDF5_MODULENAME}/${HDF5_VERSION}")
+always_load("${CGNS_MODULENAME}/${CGNS_VERSION}")
+always_load("${METIS_MODULENAME}/${METIS_VERSION}")
+always_load("${PARMETIS_MODULENAME}/${PARMETIS_VERSION}")
+
 local package="PETSc"
-local version="${PETSc_VERSION}"
-local path="${PETSc_IPATH}"
+local version="${PETSC_VERSION}"
+local path="${PETSC_IPATH}"
 
 prepend_path("PATH", pathJoin(path, "bin"))
 prepend_path("LD_LIBRARY_PATH", pathJoin(path,"lib"))
@@ -545,6 +728,7 @@ if [[ ${INSTALL_LOCI} -eq 1 ]]; then
     cd Loci && echo "Directory: ${PWD}"
     echo "Configuring Loci..."
     ./configure --prefix "${LOCI_IPATH}" --with-metis "${PARMETIS_DIR}"
+    tempval=$(prompt_yn "Is the configuration ok?")
     echo "Building Loci..."
     cd OBJ && echo "Directory: ${PWD}"
     make -j4
@@ -558,16 +742,16 @@ if [[ ${INSTALL_LOCI} -eq 1 ]]; then
     cat > "${LOCI_MPATH}/${LOCI_VERSION}.lua" <<EOF
 family("${LOCI_MODULENAME}")
 
-depends_on("${COMPILER_MODULE}")
-depends_on("${MPI_MODULE}")
-depends_on("${MKL_MODULE}")
-depends_on("${HDF5_MODULE}")
-depends_on("${GLOG_MODULENAME}/${GLOG_VERSION}")
-depends_on("${GTEST_MODULENAME}/${GTEST_VERSION}")
-depends_on("${METIS_MODULENAME}/${METIS_VERSION}")
-depends_on("${PARMETIS_MODULENAME}/${PARMETIS_VERSION}")
-depends_on("${CGNS_MODULENAME}/${CGNS_VERSION}")
-depends_on("${PETSC_MODULENAME}/${PETSC_VERSION}")
+always_load("FlameSystem/1.0")
+always_load("${GLOG_MODULENAME}/${GLOG_VERSION}")
+always_load("${GTEST_MODULENAME}/${GTEST_VERSION}")
+always_load("${LIBXML2_MODULENAME}/${LIBXML2_VERSION}")
+always_load("${ZLIB_MODULENAME}/${ZLIB_VERSION}")
+always_load("${HDF5_MODULENAME}/${HDF5_VERSION}")
+always_load("${CGNS_MODULENAME}/${CGNS_VERSION}")
+always_load("${METIS_MODULENAME}/${METIS_VERSION}")
+always_load("${PARMETIS_MODULENAME}/${PARMETIS_VERSION}")
+always_load("${PETSC_MODULENAME}/${PETSC_VERSION}")
 
 local package="Loci"
 local version="${LOCI_VERSION}"

@@ -24,6 +24,19 @@ void AUSMPlusUpFluxMultiSpeciesIdealGas(
   double const Minf
 );
 
+void computeDiffusionVelocityWithRamshawCorrection(
+  Loci::vector3d<double> * velocityD,
+  Loci::vector3d<double> const * gradY, double const * Y,
+  double const * D, int const Ns
+);
+
+void computeSpeciesDiffusionFluxWithRamshawCorrection(
+  double * flux,
+  Loci::vector3d<double> const * gradY, double const * Y,
+  double const * D, double const rho, double const area,
+  Loci::vector3d<double> normal, int const Ns
+);
+
 }
 
 #endif // end: #ifndef FLAME_FLUX_HH
