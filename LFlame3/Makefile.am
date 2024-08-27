@@ -5,7 +5,7 @@ LPP = @LPP@
 SUFFIXES = .loci
 
 .loci.cc:
-	$(LPP) $(LOCI_INCLUDES) -I$(srcdir)/include $< -o $@
+	$(LPP) $(LOCI_CXXFLAGS) -I$(srcdir)/include $< -o $@
 
 LFlame3_SOURCES=src/main.cc \
   src/boundary_checker.cc \
@@ -44,18 +44,14 @@ LFlame3_SOURCES=src/main.cc \
   src/signal_handler.cc \
   src/gridMetrics.cc \
   src/solverDiffusive.cc
+
 LFlame3_LDFLAGS = $(LDFLAGS)
 LFlame3_LDADD = 
 LFlame3_CXXFLAGS = $(CXXFLAGS) -I$(srcdir)/include
 LFlame3_CPPFLAGS = $(CPPFLAGS) -DFLAME_DATA_DIR=\"$(pkgdatadir)\" \
   -DFLAME_NAME_MAX_LENGTH=256 \
   -DFLAME_MAX_NSPECIES=256
-if HAVE_MPI
-  LFlame3_LDFLAGS += $(MPI_LDFLAGS)
-  LFlame3_LDADD += $(MPI_LIBS)
-  LFlame3_CXXFLAGS += $(MPI_CXXFLAGS)
-  LFlame3_CPPFLAGS += $(MPI_CPPFLAGS)
-endif
+
 if HAVE_XML2
   LFlame3_CXXFLAGS += $(XML2_CFLAGS)
   LFlame3_LDFLAGS += $(XML2_LIBS)
@@ -76,23 +72,18 @@ endif
 LFlame3UTests_SOURCES=src/mixture.cc \
   tests/unit_tests_main.cc \
   tests/test_mixture_specification.cc
+
 LFlame3UTests_LDFLAGS = $(LDFLAGS)
 LFlame3UTests_LDADD = 
 LFlame3UTests_CXXFLAGS = $(CXXFLAGS) -I$(srcdir)/include
 LFlame3UTests_CPPFLAGS = $(CPPFLAGS) -DFLAME_DATA_DIR=\"$(pkgdatadir)\" \
   -DFLAME_NAME_MAX_LENGTH=256 \
   -DFLAME_MAX_NSPECIES=256
-if HAVE_MPI
-  LFlame3UTests_LDFLAGS += $(MPI_LDFLAGS)
-  LFlame3UTests_LDADD += $(MPI_LIBS)
-  LFlame3UTests_CXXFLAGS += $(MPI_CXXFLAGS)
-  LFlame3UTests_CPPFLAGS += $(MPI_CPPFLAGS)
-endif
+
 if HAVE_XML2
   LFlame3UTests_CXXFLAGS += $(XML2_CFLAGS)
   LFlame3UTests_LDFLAGS += $(XML2_LIBS)
 endif
-
 if HAVE_LOCI
   LFlame3UTests_LDFLAGS += $(LOCI_LDFLAGS)
   LFlame3UTests_LDADD += $(LOCI_LIBS)
