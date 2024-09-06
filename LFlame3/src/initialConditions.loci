@@ -118,10 +118,123 @@ $rule singleton(speciesIC <- initialConditions, Ns), constraint(UNIVERSE) {
   }
 }
 
+
+$rule singleton(icMixtureW, icMixtureR <- speciesW, Runiv),
+constraint(singleSpecies) {
+  $icMixtureW = $speciesW[0];
+  $icMixtureR = $Runiv/$speciesW[0];
+}
+
+$rule singleton(icMixtureCp <- speciesCp_Constant),
+constraint(singleSpecies, caloricallyPerfectGas) {
+  $icMixtureCp = $speciesCp_Constant[0];
+}
+
+$rule singleton(icMixtureW, icMixtureR <- speciesIC, speciesW, Runiv, Ns),
+constraint(multiSpecies) {
+  double const * sW = &$speciesW[0];
+  double const * F = &$speciesIC.fractions.data[0];
+
+  switch($speciesIC.type) {
+  case SPECIES_SPEC_X:
+    $icMixtureW = mixture_mW_from_X_sW($Ns, F, sW);
+    $icMixtureR = $Runiv/$icMixtureW;
+    break;
+  case SPECIES_SPEC_Y:
+    $icMixtureW = mixture_mW_from_Y_sW($Ns, F, sW);
+    $icMixtureR = $Runiv/$icMixtureW;
+    break;
+  }
+}
+
+$rule singleton(icSpeciesY <- speciesIC, icMixtureW, speciesW, Runiv, Ns),
+constraint(multiSpecies) {
+  $icSpeciesY.resize($Ns);
+
+  switch($speciesIC.type) {
+  case SPECIES_SPEC_X:
+    mixture_Y_from_X_sW_mW($Ns, &$icSpeciesY[0], &$speciesIC.fractions.data[0], &$speciesW[0], $icMixtureW);
+    break;
+  case SPECIES_SPEC_Y:
+    for(int i = 0; i < $Ns; ++i) {
+      $icSpeciesY[i] = $speciesIC.fractions.data[i];
+    }
+    break;
+  }
+}
+
+$rule singleton(icMixtureCp <- icMixtureR, speciesCp_Constant, icSpeciesY, Ns),
+constraint(multiSpecies, caloricallyPerfectGas) {
+  $icMixtureCp = mixture_Cp_from_sCp_Y($Ns, &$speciesCp_Constant[0], &$icSpeciesY[0]);
+}
+    
+$rule singleton(
+  icGagePressure, icTemperature
+  <-
+  thermoIC, icMixtureR, Pambient
+), constraint(thermallyPerfectGas) {
+  switch($thermoIC.type) {
+  case THERMO_SPEC_PT:
+    $icGagePressure = $thermoIC.pressure - $Pambient;
+    $icTemperature = $thermoIC.temperature;
+    break;
+  case THERMO_SPEC_DT:
+    $icGagePressure = eos_TP_P_from_r_T_R($thermoIC.density, $thermoIC.temperature, $icMixtureR) - $Pambient;
+    $icTemperature = $thermoIC.temperature;
+    break;
+  case THERMO_SPEC_DP:
+    $icGagePressure = $thermoIC.pressure - $Pambient;
+    $icTemperature = eos_TP_T_from_r_P_R($thermoIC.density, $thermoIC.pressure, $icMixtureR);
+    break;
+  }
+}
+
+$rule singleton(icSpeedOfSound <- icTemperature, icMixtureCp, icMixtureR),
+constraint(thermallyPerfectGas) {
+  $icSpeedOfSound = eos_TP_a_from_Cp_R_T($icMixtureCp, $icMixtureR, $icTemperature);
+}
+
+$rule singleton(icVelocity <- icSpeedOfSound, velocityIC),
+constraint(thermallyPerfectGas) {
+  switch($velocityIC.type) {
+  case VEL_SPEC_VELOCITY:
+    $icVelocity = $velocityIC.value;
+    break;
+  case VEL_SPEC_MACH:
+    $icVelocity = $icSpeedOfSound*$velocityIC.value;
+    break;
+  }
+}
+
 // -----------------------------------------------------------------------------
 
+$rule apply(gagePressure_ic <- icGagePressure)[Loci::Summation],
+constraint(withoutICDirectory) {
+  join($gagePressure_ic, $icGagePressure);
+}
+
+$rule apply(velocity_ic <- icVelocity)[Loci::Summation],
+constraint(withoutICDirectory) {
+  join($velocity_ic, $icVelocity);
+}
+
+$rule apply(temperature_ic <- icTemperature)[Loci::Summation],
+constraint(withoutICDirectory) {
+  join($temperature_ic, $icTemperature);
+}
+
+$rule apply(speciesY_ic <- icSpeciesY, Ns)[Loci::Summation],
+constraint(withoutICDirectory) {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesY_ic[i] += $icSpeciesY[i];
+  }
+}
+
+// =============================================================================
+
 $rule singleton(
-  thermoICRegion, velocityICRegion, speciesICRegion, geomICRegion, stateICRegion
+  nICRegions, nICRegionStates, thermoICRegion, velocityICRegion,
+  speciesICRegion, geomICRegion, stateICRegion
   <- initialConditionRegions, Ns
 ), option(disable_threading) {
   std::string olName = "initialConditionRegions";
@@ -207,6 +320,9 @@ $rule singleton(
     ++nliter;
   }
 
+  $nICRegions = regionIdx;
+  $nICRegionStates = stateIdx;
+
   $stateICRegion.resize(regionIdx);
   nliter = nl.begin();
   while(nliter != nl.end()) {
@@ -240,31 +356,27 @@ $rule singleton(
 
 $rule singleton(
   icRegionMixtureW, icRegionMixtureR
-  <- speciesICRegion, speciesW, speciesR, Ns
+  <- nICRegionStates, speciesICRegion, speciesW, Runiv, Ns
 ), constraint(singleSpecies) {
-  int const nRegions = $speciesICRegion.size();
+  $icRegionMixtureW.resize($nICRegionStates);
+  $icRegionMixtureR.resize($nICRegionStates);
 
-  $icRegionMixtureW.resize(nRegions);
-  $icRegionMixtureR.resize(nRegions);
-
-  for(int i = 0; i < nRegions; ++i) {
+  for(int i = 0; i < $nICRegionStates; ++i) {
     $icRegionMixtureW[i] = $speciesW[0];
-    $icRegionMixtureR[i] = $speciesR[0];
+    $icRegionMixtureR[i] = $Runiv/$speciesW[0];
   }
 }
 
 $rule singleton(
   icRegionMixtureW, icRegionMixtureR
-  <- speciesICRegion, speciesW, Runiv, Ns
+  <- nICRegionStates, speciesICRegion, speciesW, Runiv, Ns
 ), constraint(multiSpecies) {
-  int const nRegions = $speciesICRegion.size();
-
-  $icRegionMixtureW.resize(nRegions);
-  $icRegionMixtureR.resize(nRegions);
+  $icRegionMixtureW.resize($nICRegionStates);
+  $icRegionMixtureR.resize($nICRegionStates);
 
   double const * sW = &$speciesW[0];
 
-  for(int i = 0; i < nRegions; ++i) {
+  for(int i = 0; i < $nICRegionStates; ++i) {
     double const * F = &$speciesICRegion[i].fractions.data[0];
 
     switch($speciesICRegion[i].type) {
@@ -281,15 +393,13 @@ $rule singleton(
 }
 
 $rule singleton(
-  icRegionSpeciesY <- speciesICRegion, icRegionMixtureW, speciesW, Ns
+  icRegionSpeciesY <- nICRegionStates, speciesICRegion, icRegionMixtureW, speciesW, Ns
 ), constraint(multiSpecies) {
-  int const nRegions = $speciesICRegion.size();
-
-  $icRegionSpeciesY.resize(nRegions);
+  $icRegionSpeciesY.resize($nICRegionStates);
 
   double const * sW = &$speciesW[0];
 
-  for(int i = 0; i < nRegions; ++i) {
+  for(int i = 0; i < $nICRegionStates; ++i) {
     $icRegionSpeciesY[i].resize($Ns);
 
     double const mW = $icRegionMixtureW[i];
@@ -309,13 +419,30 @@ $rule singleton(
   }
 }
 
+$rule singleton(icRegionMixtureCp <- nICRegionStates, speciesCp_Constant),
+constraint(singleSpecies, caloricallyPerfectGas) {
+  $icRegionMixtureCp.resize($nICRegionStates);
+  for(int i = 0; i < $nICRegionStates; ++i) {
+    $icRegionMixtureCp[i] = $speciesCp_Constant[i];
+  }
+}
+
+$rule singleton(icRegionMixtureCp <- nICRegionStates, icRegionSpeciesY, speciesCp_Constant, Ns),
+constraint(multiSpecies, caloricallyPerfectGas) {
+  $icRegionMixtureCp.resize($nICRegionStates);
+  for(int i = 0; i < $nICRegionStates; ++i) {
+    $icRegionMixtureCp[i] = mixture_Cp_from_sCp_Y($Ns, &$speciesCp_Constant[0], &$icRegionSpeciesY[i][0]);
+  }
+}
+
 $rule singleton(
-  icRegionGagePressure, icRegionTemperature <- thermoICRegion, icRegionMixtureR, Pambient
-), constraint(singleSpecies, thermallyPerfectGas) {
-  int const nRegions = $thermoICRegion.size();
-  $icRegionTemperature.resize(nRegions);
-  $icRegionGagePressure.resize(nRegions);
-  for(int i = 0; i < nRegions; ++i) {
+  icRegionGagePressure, icRegionTemperature
+  <-
+  nICRegionStates, thermoICRegion, icRegionMixtureR, Pambient
+), constraint(thermallyPerfectGas) {
+  $icRegionTemperature.resize($nICRegionStates);
+  $icRegionGagePressure.resize($nICRegionStates);
+  for(int i = 0; i < $nICRegionStates; ++i) {
     double const T = $thermoICRegion[i].temperature;
     double const r = $thermoICRegion[i].density;
     double const P = $thermoICRegion[i].pressure;
@@ -339,26 +466,30 @@ $rule singleton(
 }
 
 $rule singleton(
-  icRegionVelocity <- velocityICRegion, icRegionTemperature,
-  speciesCp_Constant, icRegionMixtureR
-), constraint(thermallyPerfectGas, caloricallyPerfectGas) {
-  int const nRegions = $velocityICRegion.size();
-  $icRegionVelocity.resize(nRegions);
-
-  double const Cp = $speciesCp_Constant[0];
-
-  for(int i = 0; i < nRegions; ++i) {
+  icRegionSpeedOfSound <- nICRegionStates, icRegionTemperature,
+  icRegionMixtureCp, icRegionMixtureR
+), constraint(thermallyPerfectGas) {
+  $icRegionSpeedOfSound.resize($nICRegionStates);
+  for(int i = 0; i < $nICRegionStates; ++i) {
+    double const Cp = $icRegionMixtureCp[i];
     double const T = $icRegionTemperature[i];
     double const R = $icRegionMixtureR[i];
+    $icRegionSpeedOfSound[i] = eos_TP_a_from_Cp_R_T(Cp, R, T);
+  }
+}
 
+$rule singleton(
+  icRegionVelocity <- nICRegionStates, icRegionSpeedOfSound, velocityICRegion
+), constraint(thermallyPerfectGas) {
+  $icRegionVelocity.resize($nICRegionStates);
+
+  for(int i = 0; i < $nICRegionStates; ++i) {
     switch($velocityICRegion[i].type) {
     case VEL_SPEC_VELOCITY:
-      $icRegionVelocity[i] = $velocityICRegion[i].scale*$velocityICRegion[i].direction;
+      $icRegionVelocity[i] = $velocityICRegion[i].value;
       break;
     case VEL_SPEC_MACH:
-      $icRegionVelocity[i] = (
-        eos_TP_a_from_Cp_R_T(Cp, R, T)*$velocityICRegion[i].scale
-      )*$velocityICRegion[i].direction;
+      $icRegionVelocity[i] = $icRegionSpeedOfSound[i]*$velocityICRegion[i].value;
       break;
     }
   }
@@ -374,6 +505,8 @@ $rule pointwise(cellICRegionIdx <- geomICRegion, stateICRegion, cellcenter) {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
 
 $rule apply(gagePressure_ic <- cellICRegionIdx, icRegionGagePressure)[Loci::Summation],
   constraint(withoutICDirectory, geom_cells) {
@@ -394,157 +527,6 @@ $rule apply(speciesY_ic <- cellICRegionIdx, icRegionSpeciesY, Ns)[Loci::Summatio
   constraint(withoutICDirectory, geom_cells) {
   for(int i = 0; i < $Ns; ++i) {
     $speciesY_ic[i] += $icRegionSpeciesY[$cellICRegionIdx][i];
-  }
-}
-
-// -----------------------------------------------------------------------------
-
-$rule singleton(
-  icGagePressure, icTemperature
-  <-
-  thermoIC, speciesR, Pambient
-), constraint(singleSpecies, thermallyPerfectGas) {
-  switch($thermoIC.type) {
-  case THERMO_SPEC_PT:
-    $icGagePressure = $thermoIC.pressure - $Pambient;
-    $icTemperature = $thermoIC.temperature;
-    break;
-  case THERMO_SPEC_DT:
-    $icGagePressure = $thermoIC.density*$speciesR[0]*$thermoIC.temperature - $Pambient;
-    $icTemperature = $thermoIC.temperature;
-    break;
-  case THERMO_SPEC_DP:
-    $icGagePressure = $thermoIC.pressure - $Pambient;
-    $icTemperature = $thermoIC.pressure/($thermoIC.density*$speciesR[0]);
-    break;
-  }
-}
-
-$rule singleton(
-  icVelocity
-  <-
-  icGagePressure, icTemperature, velocityIC,
-  speciesCp_Constant, speciesR
-), constraint(singleSpecies, thermallyPerfectGas) {
-  switch($velocityIC.type) {
-  case VEL_SPEC_VELOCITY:
-    $icVelocity = $velocityIC.scale*$velocityIC.direction;
-    break;
-  case VEL_SPEC_MACH:
-    {
-      double const Cp = $speciesCp_Constant[0];
-      double const Cv = $speciesCp_Constant[0] - $speciesR[0];
-      double const gamma = Cp/Cv;
-      double const a = sqrt(gamma*$speciesR[0]*$icTemperature);
-      $icVelocity = (a*$velocityIC.scale)*$velocityIC.direction;
-    }
-    break;
-  }
-}
-
-// -----------------------------------------------------------------------------
-
-$rule singleton(
-  icSpeciesY, icMixtureW, icMixtureR
-  <-
-  speciesIC, speciesW, Runiv, Ns
-), constraint(multiSpecies) {
-  $icSpeciesY.resize($Ns);
-  
-  switch($speciesIC.type) {
-  case SPECIES_SPEC_X:
-    {
-      $icMixtureW = 0.0;
-      for(int i = 0; i < $Ns; ++i) {
-        $icMixtureW += $speciesIC.fractions.data[i]*$speciesW[i];
-      }
-      for(int i = 0; i < $Ns; ++i) {
-        $icSpeciesY[i] = $speciesIC.fractions.data[i]*$speciesW[i]/$icMixtureW;
-      }
-      $icMixtureR = $Runiv/$icMixtureW;
-    }
-    break;
-  case SPECIES_SPEC_Y:
-    {
-      double rW = 0.0;
-      for(int i = 0; i < $Ns; ++i) {
-        $icSpeciesY[i] = $speciesIC.fractions.data[i];
-        rW += $speciesIC.fractions.data[i]/$speciesW[i];
-      }
-      $icMixtureR = $Runiv*rW;
-      $icMixtureW = 1.0/rW;
-    }
-    break;
-  }
-}
-
-$rule singleton(
-  icGagePressure, icTemperature
-  <-
-  thermoIC, icMixtureR, Pambient
-), constraint(multiSpecies, thermallyPerfectGas) {
-  switch($thermoIC.type) {
-  case THERMO_SPEC_PT:
-    $icGagePressure = $thermoIC.pressure - $Pambient;
-    $icTemperature = $thermoIC.temperature;
-    break;
-  case THERMO_SPEC_DT:
-    $icGagePressure = $thermoIC.density*$icMixtureR*$thermoIC.temperature - $Pambient;
-    $icTemperature = $thermoIC.temperature;
-    break;
-  case THERMO_SPEC_DP:
-    $icGagePressure = $thermoIC.pressure - $Pambient;
-    $icTemperature = $thermoIC.pressure/($thermoIC.density*$icMixtureR);
-    break;
-  }
-}
-
-$rule singleton(
-  icVelocity
-  <-
-  icGagePressure, icTemperature, velocityIC,
-  speciesCp_Constant, icMixtureR, icSpeciesY, Ns
-), constraint(multiSpecies, thermallyPerfectGas) {
-  switch($velocityIC.type) {
-  case VEL_SPEC_VELOCITY:
-    $icVelocity = $velocityIC.scale*$velocityIC.direction;
-    break;
-  case VEL_SPEC_MACH:
-    {
-      double Cp = 0.0;
-      for(int i = 0; i < $Ns; ++i) {
-        Cp += $speciesCp_Constant[0]*$icSpeciesY[i];
-      }
-      double const Cv = Cp - $icMixtureR;
-      double const gamma = Cp/Cv;
-      double const a = sqrt(gamma*$icMixtureR*$icTemperature);
-      $icVelocity = (a*$velocityIC.scale)*$velocityIC.direction;
-    }
-    break;
-  }
-}
-
-// -----------------------------------------------------------------------------
-
-$rule apply(gagePressure_ic <- icGagePressure)[Loci::Summation],
-constraint(withoutICDirectory) {
-  join($gagePressure_ic, $icGagePressure);
-}
-
-$rule apply(velocity_ic <- icVelocity)[Loci::Summation],
-constraint(withoutICDirectory) {
-  join($velocity_ic, $icVelocity);
-}
-
-$rule apply(temperature_ic <- icTemperature)[Loci::Summation],
-constraint(withoutICDirectory) {
-  join($temperature_ic, $icTemperature);
-}
-
-$rule apply(speciesY_ic <- icSpeciesY, Ns)[Loci::Summation],
-constraint(withoutICDirectory) {
-  for(int i = 0; i < $Ns; ++i) {
-    $speciesY_ic[i] += $icSpeciesY[i];
   }
 }
 
@@ -573,15 +555,18 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
   bool rhorefSet = false;
   double rhoref;
   
-  bool UrefSet;
+  bool UrefSet = false;
   double Uref;
+
+  bool MrefSet = false;
+  double Mref;
   
   std::ostringstream errmsg;
   int error = 0;
   
   options_list::option_namelist li = $initialConditionsTGV.getOptionNameList();
   for(auto const & optName : li) {
-    if(optName == "X") {
+    if(optName == "referencePosition") {
       std::ostringstream ss;
       std::vector<double> values;
       int err = getOptionValues(
@@ -612,7 +597,7 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
           break;
         }
       }
-    } else if(optName == "L") {
+    } else if(optName == "referenceLength") {
       std::ostringstream ss;
       std::vector<double> values;
       int err = getOptionValues(
@@ -643,7 +628,7 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
           break;
         }
       }
-    } else if(optName == "K") {
+    } else if(optName == "referenceMode") {
       std::ostringstream ss;
       std::vector<double> values;
       int err = getOptionValues(
@@ -651,7 +636,8 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
       );
       
       if(err) {
-        errmsg << "[Error parsing initialConditionsTGV::K : " << ss.str() << "]";
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
         ++error;
       } else {
         KrefSet = true;
@@ -673,7 +659,7 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
           break;
         }
       }
-    } else if(optName == "p") {
+    } else if(optName == "referencePressure") {
       std::ostringstream ss;
       double value;
       int err = getOptionValue(
@@ -688,22 +674,7 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
         PrefSet = true;
         Pref = value;
       }
-    } else if(optName == "T") {
-      std::ostringstream ss;
-      double value;
-      int err = getOptionValue(
-        $initialConditionsTGV, optName, "K", value, ss
-      );
-      
-      if(err) {
-        errmsg << "[Error parsing initialConditionsTGV::" << optName
-          << " : " << ss.str() << "]";
-        ++error;
-      } else {
-        TrefSet = true;
-        Tref = value;
-      }
-    } else if(optName == "rho") {
+    } else if(optName == "referenceDensity") {
       std::ostringstream ss;
       double value;
       int err = getOptionValue(
@@ -718,7 +689,22 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
         rhorefSet = true;
         rhoref = value;
       }
-    } else if(optName == "u" || optName == "v") {
+    } else if(optName == "referenceTemperature") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsTGV, optName, "K", value, ss
+      );
+      
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        TrefSet = true;
+        Tref = value;
+      }
+    } else if(optName == "referenceVelocity") {
       std::ostringstream ss;
       double value;
       int err = getOptionValue(
@@ -733,17 +719,57 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
         UrefSet = true;
         Uref = value;
       }
+    } else if(optName == "referenceMach") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsTGV, optName, "", value, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsTGV::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        MrefSet = true;
+        Mref = value;
+      }
     } else {
       errmsg << "[unknown option initialConditionsTGV::" << optName << "]";
       ++error;
     }
   }
-  
-  if(!XrefSet || !LrefSet || !KrefSet || !PrefSet || !rhorefSet || !UrefSet) {
-    errmsg << "[initialConditionsTGV requires X, L, K, p, rho, and u/v]";
+
+  if(UrefSet == MrefSet) {
+    errmsg << "[initialConditionsTGV requires either referenceVelocity or referenceMach]";
     ++error;
   }
-  
+
+  if(rhorefSet == TrefSet) {
+    errmsg << "[initialConditionsTGV requires either referenceDensity or referenceTemperature]";
+    ++error;
+  }
+
+  if(!XrefSet) {
+    errmsg << "[initialConditionsTGV requires referencePosition]";
+    ++error;
+  }
+
+  if(!LrefSet) {
+    errmsg << "[initialConditionsTGV requires referenceLength]";
+    ++error;
+  }
+
+  if(!KrefSet) {
+    errmsg << "[initialConditionsTGV requires referenceMode]";
+    ++error;
+  }
+
+  if(!PrefSet) {
+    errmsg << "[initialConditionsTGV requires referencePressure]";
+    ++error;
+  }
+
   if(error) {
     $[Once] {
       LOG(ERROR) << errmsg.str();
@@ -755,107 +781,110 @@ $rule singleton(tgvICParameters <- initialConditionsTGV) {
     $tgvICParameters.Kref = Kref;
     $tgvICParameters.Pref = Pref;
     $tgvICParameters.rhoref = rhoref;
+    $tgvICParameters.Tref = Tref;
     $tgvICParameters.Uref = Uref;
+    $tgvICParameters.Mref = Mref;
+    $tgvICParameters.rhorefSpecified = rhorefSet;
+    $tgvICParameters.UrefSpecified = UrefSet;
   }
+}
+
+$rule pointwise(mixtureW_TGV_ic, mixtureR_TGV_ic <- speciesW, Runiv),
+constraint(geom_cells, singleSpecies) {
+  $mixtureW_TGV_ic = $speciesW[0];
+  $mixtureR_TGV_ic = $Runiv/$speciesW[0];
+}
+
+$rule pointwise(mixtureCp_TGV_ic <- speciesCp_Constant),
+constraint(geom_cells, caloricallyPerfectGas, singleSpecies) {
+  $mixtureCp_TGV_ic = $speciesCp_Constant[0];
+}
+
+$rule pointwise(speciesY_TGV_ic <- tgvICParameters, Ns),
+constraint(geom_cells, multiSpecies), prelude {
+  $speciesY_TGV_ic.setVecSize(*$Ns);
+} {
+  // TODO: need to revisit this
+  $speciesY_TGV_ic = mk_Scalar(0.0);
+  $speciesY_TGV_ic[0] = 1.0;
+}
+
+$rule pointwise(mixtureW_TGV_ic, mixtureR_TGV_ic <- speciesY_TGV_ic, speciesW, Runiv, Ns),
+constraint(geom_cells, multiSpecies) {
+  $mixtureW_TGV_ic = mixture_mW_from_Y_sW($Ns, &$speciesY_TGV_ic[0], &$speciesW[0]);
+  $mixtureR_TGV_ic = $Runiv/$mixtureW_TGV_ic;
+}
+
+$rule pointwise(mixtureCp_TGV_ic <- speciesY_TGV_ic, speciesCp_Constant, Ns),
+constraint(geom_cells, caloricallyPerfectGas, multiSpecies) {
+  $mixtureCp_TGV_ic = mixture_Cp_from_sCp_Y($Ns, &$speciesCp_Constant[0], &$speciesY_TGV_ic[0]);
 }
 
 $rule pointwise(
   gagePressure_TGV_ic, velocity_TGV_ic, temperature_TGV_ic
   <-
-  speciesR, Pambient, cellcenter, tgvICParameters
-), constraint(geom_cells, thermallyPerfectGas, singleSpecies) {
+  mixtureCp_TGV_ic, mixtureR_TGV_ic, Pambient, cellcenter, tgvICParameters
+), constraint(geom_cells, thermallyPerfectGas) {
   double const x = $cellcenter.x;
   double const y = $cellcenter.y;
   double const z = $cellcenter.z;
-  
-  double const x0 = $tgvICParameters.Xref.x;
-  double const y0 = $tgvICParameters.Xref.y;
-  double const z0 = $tgvICParameters.Xref.z;
-  
-  double const Lx = $tgvICParameters.Lref.x;
-  double const Ly = $tgvICParameters.Lref.y;
-  double const Lz = $tgvICParameters.Lref.z;
-  
-  double const Kx = $tgvICParameters.Kref.x;
-  double const Ky = $tgvICParameters.Kref.y;
-  double const Kz = $tgvICParameters.Kref.z;
-  
-  double const P0 = $tgvICParameters.Pref;
-  double const T0 = $tgvICParameters.Tref;
-  double const rho0 = $tgvICParameters.rhoref;
-  double const U0 = $tgvICParameters.Uref;
-  
-  double const U02 = U0*U0;
-  
-  double const P = P0 + 0.0625*rho0*U02*(
-    std::cos(2.0*Kx*(x-x0)/Lx) + std::cos(2.0*Ky*(y-y0)/Ly)
-  )*(2.0 + std::cos(2.0*Kz*(z-z0)/Lz));
-  
-  $gagePressure_TGV_ic = P - $Pambient;
-  
-  $velocity_TGV_ic = Loci::vector3d<double>(
-     U0*std::sin(Kx*(x-x0)/Lx)*std::cos(Ky*(y-y0)/Ly)*std::cos(Kz*(z-z0)/Lz),
-    -U0*std::cos(Kx*(x-x0)/Lx)*std::sin(Ky*(y-y0)/Ly)*std::cos(Kz*(z-z0)/Lz),
-    0.0
-  );
-  
-  $temperature_TGV_ic = P/($speciesR[0]*rho0);
-}
 
-$rule pointwise(
-  gagePressure_TGV_ic, velocity_TGV_ic, temperature_TGV_ic, speciesY_TGV_ic
-  <-
-  speciesR, Pambient, cellcenter, tgvICParameters, Ns
-), constraint(geom_cells, thermallyPerfectGas, multiSpecies), prelude {
-  $speciesY_TGV_ic.setVecSize(*$Ns);
-} {
-  double const x = $cellcenter.x;
-  double const y = $cellcenter.y;
-  double const z = $cellcenter.z;
-  
   double const x0 = $tgvICParameters.Xref.x;
   double const y0 = $tgvICParameters.Xref.y;
   double const z0 = $tgvICParameters.Xref.z;
-  
+
   double const Lx = $tgvICParameters.Lref.x;
   double const Ly = $tgvICParameters.Lref.y;
   double const Lz = $tgvICParameters.Lref.z;
-  
+
   double const Kx = $tgvICParameters.Kref.x;
   double const Ky = $tgvICParameters.Kref.y;
   double const Kz = $tgvICParameters.Kref.z;
-  
+
   double const P0 = $tgvICParameters.Pref;
-  double const T0 = $tgvICParameters.Tref;
-  double const rho0 = $tgvICParameters.rhoref;
-  double const U0 = $tgvICParameters.Uref;
-  
-  double const dy = $tgvICParameters.Lref.y/$Ns;
-  
-  int const yi = ((int)(abs($cellcenter.y/dy)))%$Ns;
-  for(int i = 0; i < $Ns; ++i) {
-    $speciesY_TGV_ic[i] = 0.0;
+
+  double rho0, T0, U0, a0, M0;
+
+  if($tgvICParameters.rhorefSpecified) {
+    rho0 = $tgvICParameters.rhoref;
+    T0 = eos_TP_T_from_r_P_R(rho0, P0, $mixtureR_TGV_ic);
+  } else {
+    T0 = $tgvICParameters.Tref;
+    rho0 = eos_TP_r_from_P_T_R(P0, T0, $mixtureR_TGV_ic);
   }
-  $speciesY_TGV_ic[yi] = 1.0;
-  
+
+  if($tgvICParameters.UrefSpecified) {
+    U0 = $tgvICParameters.Uref;
+    a0 = eos_TP_a_from_Cp_R_T($mixtureCp_TGV_ic, $mixtureR_TGV_ic, T0);
+    M0 = U0/a0;
+  } else {
+    a0 = eos_TP_a_from_Cp_R_T($mixtureCp_TGV_ic, $mixtureR_TGV_ic, T0);
+    U0 = $tgvICParameters.Mref*a0;
+    M0 = $tgvICParameters.Mref;
+  }
+
   double const U02 = U0*U0;
-  
+
   double const P = P0 + 0.0625*rho0*U02*(
-    std::cos(2.0*Kx*(x-x0)/Lx) + std::cos(2.0*Ky*(y-y0)/Ly)
-  )*(2.0 + std::cos(2.0*Kz*(z-z0)/Lz));
-  
+    cos(2.0*Kx*(x-x0)/Lx) + cos(2.0*Ky*(y-y0)/Ly)
+  )*(2.0 + cos(2.0*Kz*(z-z0)/Lz));
+
   $gagePressure_TGV_ic = P - $Pambient;
-  
+
+  if($tgvICParameters.rhorefSpecified) {
+    $temperature_TGV_ic = eos_TP_T_from_r_P_R(rho0, P, $mixtureR_TGV_ic);
+  } else {
+    $temperature_TGV_ic = T0;
+  }
+
   $velocity_TGV_ic = Loci::vector3d<double>(
-     U0*std::sin(Kx*(x-x0)/Lx)*std::cos(Ky*(y-y0)/Ly)*std::cos(Kz*(z-z0)/Lz),
-    -U0*std::cos(Kx*(x-x0)/Lx)*std::sin(Ky*(y-y0)/Ly)*std::cos(Kz*(z-z0)/Lz),
+     U0*sin(Kx*(x-x0)/Lx)*cos(Ky*(y-y0)/Ly)*cos(Kz*(z-z0)/Lz),
+    -U0*cos(Kx*(x-x0)/Lx)*sin(Ky*(y-y0)/Ly)*cos(Kz*(z-z0)/Lz),
     0.0
   );
-  
-  $temperature_TGV_ic = P/($speciesR[yi]*rho0);
 }
 
-// =============================================================================
+// -----------------------------------------------------------------------------
 
 $rule apply(gagePressure_ic <- gagePressure_TGV_ic)[Loci::Summation],
 constraint(geom_cells, withoutICDirectory) {
@@ -876,6 +905,8 @@ $rule apply(speciesY_ic <- speciesY_TGV_ic)[Loci::Summation],
 constraint(geom_cells, withoutICDirectory) {
   join($speciesY_ic, $speciesY_TGV_ic);
 }
+
+// =============================================================================
 
 $rule unit(timeStep_ic), constraint(UNIVERSE) {
   $timeStep_ic = 0;
@@ -1038,6 +1069,8 @@ option(disable_threading), prelude {
   Loci::hdf5CloseFile(fileId);
 };
 
+// -----------------------------------------------------------------------------
+
 $rule apply(gagePressure_ic <- gagePressure_icf)[Loci::Summation],
 constraint(geom_cells, withICDirectory) {
   join($gagePressure_ic, $gagePressure_icf);
@@ -1057,5 +1090,7 @@ $rule apply(speciesY_ic <- speciesY_icf)[Loci::Summation],
 constraint(geom_cells, withICDirectory) {
   join($speciesY_ic, $speciesY_icf);
 }
+
+// =============================================================================
 
 } // end: namespace flame

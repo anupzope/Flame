@@ -46,6 +46,24 @@ void mixture_X_from_Y_sW_mW(
 }
 
 inline
+double mixture_Cp_from_sCp_Y(int const Ns, double const * sCp, double const * Y) {
+  double mixtureCp = 0.0;
+  for(int i = 0; i < Ns; ++i) {
+    mixtureCp += sCp[i]*Y[i];
+  }
+  return mixtureCp;
+}
+
+inline
+double mixture_H_from_sH_Y(int const Ns, double const * sH, double const * Y) {
+  double mixtureH = 0.0;
+  for(int i = 0; i < Ns; ++i) {
+    mixtureH += sH[i]*Y[i];
+  }
+  return mixtureH;
+}
+
+inline
 double eos_TP_a_from_Cp_R_T(double const Cp, double const R, double const T) {
   return sqrt((Cp/(Cp-R))*R*T);
 }

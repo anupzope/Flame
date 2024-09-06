@@ -72,6 +72,20 @@ int getOptionValues(
   std::ostream & errmsg
 );
 
+int getScaledVector3D(
+  options_list const & ol, std::string const & optName,
+  std::string const & unit,
+  Loci::vector3d<double> & vec,
+  std::ostream & errmsg
+);
+
+int getScaledVector3D(
+  Loci::option_values const & arg,
+  std::string const & unit,
+  Loci::vector3d<double> & vec,
+  std::ostream & errmsg
+);
+
 enum ThermoSpecType {
   THERMO_SPEC_PT, // pressure-temperature
   THERMO_SPEC_DT, // density-temperature
@@ -121,8 +135,7 @@ std::istream & operator>>(std::istream & s, VelSpecType & obj);
 
 struct VelSpec {
   VelSpecType type;
-  Loci::vector3d<double> direction;
-  double scale;
+  Loci::vector3d<double> value;
 };
 
 std::ostream & operator<<(std::ostream & s, VelSpec const & obj);
@@ -512,8 +525,7 @@ template<> struct data_schema_traits<flame::VelSpec> {
   static DatatypeP get_type() {
     CompoundDatatypeP ct = CompoundFactory(flame::VelSpec());
     LOCI_INSERT_TYPE(ct, flame::VelSpec, type);
-    LOCI_INSERT_TYPE(ct, flame::VelSpec, direction);
-    LOCI_INSERT_TYPE(ct, flame::VelSpec, scale);
+    LOCI_INSERT_TYPE(ct, flame::VelSpec, value);
     return DatatypeP(ct);
   }
 };

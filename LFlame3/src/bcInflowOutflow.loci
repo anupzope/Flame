@@ -108,6 +108,8 @@ public:
 registerBoundaryChecker<InflowBCChecker> inflowBCChecker;
 
 // =============================================================================
+// Supersonic inflow implementation.
+// -----------------------------------------------------------------------------
 
 $rule pointwise(gagePressure_f <- gagePressureRef),
 constraint(supersonicInflow_BC) {
@@ -222,6 +224,8 @@ $rule pointwise(
 //}
 
 // =============================================================================
+// Supersonic outflow implementation
+// -----------------------------------------------------------------------------
 
 $rule pointwise(gagePressure_f <- ci->gagePressure),
 constraint(supersonicOutflow_BC) {
@@ -336,6 +340,8 @@ $rule pointwise(
 //}
 
 // =============================================================================
+// Farfield implementation.
+// -----------------------------------------------------------------------------
 
 $rule pointwise(
   gagePressure_f, temperature_f, velocity_f

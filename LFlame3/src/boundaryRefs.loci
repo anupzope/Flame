@@ -6,6 +6,8 @@ $include "FVM.lh"
 namespace flame {
 
 // =============================================================================
+// Copy boundary reference state from boundary specification.
+// -----------------------------------------------------------------------------
 
 $rule pointwise(gagePressureRef <- ref->gagePressureRef_BC) {
   $gagePressureRef = $ref->$gagePressureRef_BC;
@@ -26,28 +28,8 @@ $rule pointwise(speciesYRef <- ref->speciesYRef_BC, Ns), prelude {
 }
 
 // =============================================================================
-
-$rule pointwise(
-  mixtureWRef, mixtureRRef <- speciesYRef, speciesW, Runiv, Ns
-), constraint(multiSpecies, speciesYRef) {
-  double Winv = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Winv += $speciesYRef[i]/$speciesW[i];
-  }
-  $mixtureWRef = 1.0/Winv;
-  $mixtureRRef = $Runiv*Winv;
-}
-
-$rule pointwise(mixtureCpRef <- speciesYRef, speciesCp_Constant, Ns),
-constraint(multiSpecies, speciesYRef) {
-  double Cp = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesYRef[i]*$speciesCp_Constant[i];
-  }
-  $mixtureCpRef = Cp;
-}
-
-// =============================================================================
+// Calculation of boundary reference molar fractions.
+// -----------------------------------------------------------------------------
 
 $rule pointwise(speciesXRef <- speciesYRef, mixtureWRef, speciesW, Ns), prelude {
   $speciesXRef.setVecSize(*$Ns);
@@ -58,35 +40,102 @@ $rule pointwise(speciesXRef <- speciesYRef, mixtureWRef, speciesW, Ns), prelude 
 }
 
 // =============================================================================
+// Calculation of boundary reference density.
+// -----------------------------------------------------------------------------
 
-$rule pointwise(soundSpeedRef <- temperatureRef, speciesCp_Constant, speciesR),
-constraint(singleSpecies, thermallyPerfectGas, temperatureRef) {
-  double const & Cp = $speciesCp_Constant[0];
-  double const & R = $speciesR[0];
-  double const & T = $temperatureRef;
-  $soundSpeedRef = sqrt((Cp*R*T)/(Cp-R));
+// For thermally perfect gas.
+$rule pointwise(densityRef <- gagePressureRef, temperatureRef, mixtureRRef, Pambient),
+constraint(thermallyPerfectGas, temperatureRef, gagePressureRef) {
+  $densityRef = ($gagePressureRef+$Pambient)/($mixtureRRef*$temperatureRef);
 }
 
+// =============================================================================
+// Calculation of boundary reference molecular weight and gas constant.
+// -----------------------------------------------------------------------------
+
+$rule pointwise(mixtureWRef, mixtureRRef <- speciesW, Runiv),
+constraint(singleSpecies, boundary_faces) {
+  $mixtureWRef = $speciesW[0];
+  $mixtureRRef = $Runiv/$speciesW[0];
+}
+
+// multi-species
+$rule pointwise(mixtureWRef, mixtureRRef <- speciesYRef, speciesW, Runiv, Ns),
+constraint(multiSpecies, speciesYRef) {
+  double Winv = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    Winv += $speciesYRef[i]/$speciesW[i];
+  }
+  $mixtureWRef = 1.0/Winv;
+  $mixtureRRef = $Runiv*Winv;
+}
+
+// =============================================================================
+// Calculation of boundary reference specific heat.
+// -----------------------------------------------------------------------------
+
+// Species specific heat: calorically perfect gas + multi-species
+$rule pointwise(speciesCpRef <- speciesCp_Constant, Ns),
+constraint(caloricallyPerfectGas, multiSpecies, temperatureRef), prelude {
+  $speciesCpRef.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesCpRef[i] = $speciesCp_Constant[i];
+  }
+}
+
+// Mixture specific heat: calorically perfect gas + multi-species
+$rule pointwise(mixtureCpRef <- speciesCpRef, speciesYRef, Ns) {
+  $mixtureCpRef = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    $mixtureCpRef += $speciesYRef[i]*$speciesCpRef[i];
+  }
+}
+
+// Mixture specific heat: calorically perfect gas + single-species
+$rule pointwise(mixtureCpRef <- speciesCp_Constant),
+constraint(caloricallyPerfectGas, singleSpecies, temperatureRef) {
+  $mixtureCpRef = $speciesCp_Constant[0];
+}
+
+// =============================================================================
+// Calculation of boundary reference specific enthalpy.
+// -----------------------------------------------------------------------------
+
+// Species specific enthalpy: calorically perfect gas + multi-species
+$rule pointwise(speciesEnthalpyRef <- speciesCp_Constant, temperatureRef, Ns),
+constraint(caloricallyPerfectGas, multiSpecies, temperatureRef), prelude {
+  $speciesEnthalpyRef.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesEnthalpyRef[i] = $speciesCp_Constant[i]*$temperatureRef;
+  }
+}
+
+// Mixture specific enthalpy: calorically perfect gas + multi-species
+$rule pointwise(mixtureEnthalpyRef <- speciesEnthalpyRef, speciesYRef, Ns) {
+  $mixtureEnthalpyRef = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    $mixtureEnthalpyRef += $speciesYRef[i]*$speciesEnthalpyRef[i];
+  }
+}
+
+// Mixture specific enthalpy: calorically perfect gas + single-species
+$rule pointwise(mixtureEnthalpyRef <- speciesCp_Constant, temperatureRef) {
+  $mixtureEnthalpyRef = $speciesCp_Constant[0]*$temperatureRef;
+}
+
+// =============================================================================
+// Calculation of boundary reference speed of sound.
+// -----------------------------------------------------------------------------
+
+// For thermally perfect gas.
 $rule pointwise(soundSpeedRef <- temperatureRef, mixtureCpRef, mixtureRRef),
-constraint(multiSpecies, thermallyPerfectGas, temperatureRef) {
+constraint(thermallyPerfectGas, temperatureRef) {
   double const & Cp = $mixtureCpRef;
   double const & R = $mixtureRRef;
   double const & T = $temperatureRef;
   $soundSpeedRef = sqrt((Cp*R*T)/(Cp-R));
-}
-
-// =============================================================================
-
-// Calculate density of single species ideal gas.
-$rule pointwise(densityRef <- gagePressureRef, temperatureRef, speciesR, Pambient),
-constraint(singleSpecies, thermallyPerfectGas, temperatureRef) {
-  $densityRef = ($gagePressureRef+$Pambient)/($speciesR[0]*$temperatureRef);
-}
-
-// Calculate density of multi-species ideal gas.
-$rule pointwise(densityRef <- gagePressureRef, temperatureRef, mixtureRRef, Pambient),
-constraint(multiSpecies, thermallyPerfectGas, temperatureRef) {
-  $densityRef = ($gagePressureRef+$Pambient)/($mixtureRRef*$temperatureRef);
 }
 
 // =============================================================================

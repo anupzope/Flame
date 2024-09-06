@@ -149,35 +149,13 @@ constraint(molarFractions_BCoption), prelude {
 
 // Parse velocity from boundary specification.
 $rule pointwise(velocity_BC <- BC_options), constraint(velocity_BCoption) {
-  std::vector<double> values;
   std::ostringstream errmsg;
-  
-  int error = getOptionValues(
-    $BC_options, "velocity", {"m/s", "m/s", "m/s"}, 1, 3, values, errmsg
-  );
-  
-  if(error) {
+
+  if(getScaledVector3D(
+    $BC_options, "velocity", "m/s", $velocity_BC, errmsg
+  )) {
     LOG(ERROR) << errmsg.str();
     Loci::Abort();
-  }
-  
-  int const sz = values.size();
-  switch(sz) {
-  case 1:
-    $velocity_BC.x = values[0];
-    $velocity_BC.y = 0.0;
-    $velocity_BC.z = 0.0;
-    break;
-  case 2:
-    $velocity_BC.x = values[0];
-    $velocity_BC.y = values[1];
-    $velocity_BC.z = 0.0;
-    break;
-  case 3:
-    $velocity_BC.x = values[0];
-    $velocity_BC.y = values[1];
-    $velocity_BC.z = values[2];
-    break;
   }
 }
 
@@ -185,34 +163,13 @@ $rule pointwise(velocity_BC <- BC_options), constraint(velocity_BCoption) {
 
 // Parse Mach number from boundary specification.
 $rule pointwise(Mach_BC <- BC_options), constraint(Mach_BCoption) {
-  std::vector<double> values;
-  std::vector<std::string> units;
   std::ostringstream errmsg;
-  
-  int error = getOptionValues($BC_options, "Mach", units, 1, 3, values, errmsg);
-  
-  if(error) {
+
+  if(getScaledVector3D(
+    $BC_options, "Mach", "", $Mach_BC, errmsg
+  )) {
     LOG(ERROR) << errmsg.str();
     Loci::Abort();
-  }
-  
-  int const sz = values.size();
-  switch(sz) {
-  case 1:
-    $Mach_BC.x = values[0];
-    $Mach_BC.y = 0.0;
-    $Mach_BC.z = 0.0;
-    break;
-  case 2:
-    $Mach_BC.x = values[0];
-    $Mach_BC.y = values[1];
-    $Mach_BC.z = 0.0;
-    break;
-  case 3:
-    $Mach_BC.x = values[0];
-    $Mach_BC.y = values[1];
-    $Mach_BC.z = values[2];
-    break;
   }
 }
 

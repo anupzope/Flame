@@ -472,7 +472,7 @@ int getArgValues(
         if(minValues <= lsz && lsz <= maxValues) {
           for(int i = 0; i < lsz; ++i) {
             if(listValues[i].type_of() == Loci::UNIT_VALUE) {
-              if(units.size() > i && !units[i].empty()) {
+              if(units.size() > (size_t)i && !units[i].empty()) {
                 Loci::UNIT_type ut;
                 listValues[i].get_value(ut);
                 if(ut.is_compatible(units[i])) {
@@ -548,6 +548,256 @@ int getArgValues(
   return error;
 }
 
+int getScaledVector3D(
+  Loci::option_values const & arg,
+  std::string const & unit,
+  Loci::vector3d<double> & vec,
+  std::ostream & errmsg
+) {
+  Loci::vector3d<double> temp(0.0, 0.0, 0.0);
+  int error = 0;
+
+  std::string argName;
+  arg.get_value(argName);
+
+  Loci::option_value_type type = arg.type_of();
+
+  if(type == Loci::NAME_ASSIGN) {
+    Loci::option_values::value_list_type argValues;
+    arg.get_value(argValues);
+    int const sz1 = argValues.size();
+    if(sz1 != 1) {
+      errmsg << "[argument " << argName << " must have only one value]";
+      ++error;
+    } else {
+      if(argValues[0].type_of() == Loci::LIST) {
+        options_list::arg_list args;
+        argValues[0].get_value(args);
+        int const sz = args.size();
+        if(sz <= 4) {
+          if(sz == 4) {
+            // first get the magnitude
+            double magnitude = 0.0;
+            if(args[3].type_of() == Loci::UNIT_VALUE) {
+              if(unit.empty()) {
+                errmsg << "[element 4 of argument " << argName
+                  << " LIST must be unit-less]";
+                ++error;
+              } else {
+                Loci::UNIT_type ut;
+                args[3].get_value(ut);
+                if(ut.is_compatible(unit)) {
+                  magnitude = ut.get_value_in(unit);
+                } else {
+                  errmsg << "[unit of element 4 of argument " << argName
+                    << " LIST must be compatible with " << unit << "]";
+                  ++error;
+                }
+              }
+            } else if(args[3].type_of() == Loci::REAL) {
+              args[3].get_value(magnitude);
+            } else {
+              errmsg << "[element 4 of argument " << argName
+                << " must be a REAL or LIST]";
+              ++error;
+            }
+	    
+            // Then get the direction components
+            for(int i = 0; i < 3; ++i) {
+              if(args[i].type_of() == Loci::REAL) {
+                args[i].get_value(temp[i]);
+              } else {
+                errmsg << "[element " << i << " of argument " << argName
+                  << " must be a REAL]";
+                ++error;
+              }
+            }
+	    
+            // Multiply the normalized vector with the magnitude.
+            temp /= magnitude*norm(temp);
+          } else {
+            for(int i = 0; i < 3; ++i) {
+              if(i < sz) {
+                if(args[i].type_of() == Loci::UNIT_VALUE) {
+                  if(unit.empty()) {
+                    errmsg << "[element " << i << " of argument " << argName
+                      << " LIST must be unit-less]";
+                    ++error;
+                  } else {
+                    Loci::UNIT_type ut;
+                    args[i].get_value(ut);
+                    if(ut.is_compatible(unit)) {
+                      temp[i] = ut.get_value_in(unit);
+                    } else {
+                      errmsg << "[unit of element " << i << " of argument " << argName
+                        << " LIST must be compatible with " << unit << "]";
+                      ++error;
+                    }
+                  }
+                } else if(args[i].type_of() == Loci::REAL) {
+                  args[i].get_value(temp[i]);
+                } else {
+                  errmsg << "[element " << i << " of argument " << argName
+                      << " a REAL or LIST]";
+                  ++error;
+                }
+              }
+            }
+          }
+        } else {
+          errmsg << "[argument " << argName << " must be a LIST of size <= 4]";
+          ++error;
+        }
+      } else if(argValues[0].type_of() == Loci::UNIT_VALUE) {
+        if(unit.empty()) {
+          errmsg << "[argument " << argName << " must be unit-less]";
+          ++error;
+        } else {
+          Loci::UNIT_type ut;
+          argValues[0].get_value(ut);
+          if(ut.is_compatible(unit)) {
+            temp[0] = ut.get_value_in(unit);
+          } else {
+            errmsg << "[unit of argument " << argName
+              << " value must be compatible with " << unit << "]";
+            ++error;
+          }
+        }
+      } else if(argValues[0].type_of() == Loci::REAL) {
+        argValues[0].get_value(temp[0]);
+      }
+    }
+  } else {
+    errmsg << "[argument " << argName << " must be a NAME_ASSIGN]";
+    ++error;
+  }
+
+  if(!error) vec = temp;
+
+  return error;
+}
+
+int getScaledVector3D(
+  options_list const & ol, std::string const & optName,
+  std::string const & unit,
+  Loci::vector3d<double> & vec,
+  std::ostream & errmsg
+) {
+  Loci::vector3d<double> temp(0.0, 0.0, 0.0);
+  
+  int error = 0;
+  Loci::option_value_type type = ol.getOptionValueType(optName);
+  
+  if(type == Loci::LIST) {
+    options_list::arg_list args;
+    ol.getOption(optName, args);
+    int const sz = args.size();
+    if(sz <= 4) {
+      if(sz == 4) {
+        // First get the magnitude
+        double magnitude = 0.0;
+        if(args[3].type_of() == Loci::UNIT_VALUE) {
+          if(unit.empty()) {
+            errmsg << "[element 4 of option " << optName
+              << " LIST must be unit-less]";
+            ++error;
+          } else {
+            Loci::UNIT_type ut;
+            args[3].get_value(ut);
+            if(ut.is_compatible(unit)) {
+              magnitude = ut.get_value_in(unit);
+            } else {
+              errmsg << "[unit of element 4 of option " << optName
+                << " LIST must be compatible with " << unit << "]";
+              ++error;
+            }
+          }
+        } else if(args[3].type_of() == Loci::REAL) {
+          args[3].get_value(magnitude);
+        } else {
+          errmsg << "[element 4 of option " << optName
+              << " must be a REAL or LIST]";
+          ++error;
+        }
+      
+        // Then get the direction components
+        for(int i = 0; i < 3; ++i) {
+          if(args[i].type_of() == Loci::REAL) {
+            double value;
+            args[i].get_value(value);
+            temp[i] = value;
+          } else {
+            errmsg << "[element " << i << " of option " << optName
+              << " must be a REAL]";
+            ++error;
+          }
+        }
+
+        // Multiply the normalized vector with the magnitude.
+        temp /= magnitude*norm(temp);
+      } else {
+        for(int i = 0; i < 3; ++i) {
+          if(i < sz) {
+            if(args[i].type_of() == Loci::UNIT_VALUE) {
+              if(unit.empty()) {
+                errmsg << "[element " << i << " of option " << optName
+                  << " LIST must be unit-less]";
+                ++error;
+              } else {
+                Loci::UNIT_type ut;
+                args[i].get_value(ut);
+                if(ut.is_compatible(unit)) {
+                  double value = ut.get_value_in(unit);
+                  temp[i] = value;
+                } else {
+                  errmsg << "[unit of element " << i << " of option " << optName
+                    << " LIST must be compatible with " << unit << "]";
+                  ++error;
+                }
+              }
+            } else if(args[i].type_of() == Loci::REAL) {
+              double value;
+              args[i].get_value(value);
+              temp[i] = value;
+            } else {
+              errmsg << "[element " << i << " of option " << optName
+                  << " must be a REAL or LIST]";
+              ++error;
+            }
+          }
+        }
+      }
+    } else {
+      errmsg << "[option " << optName << " must be a LIST of size <= 4]";
+      ++error;
+    }
+  } else if(type == Loci::UNIT_VALUE) {
+    if(unit.empty()) {
+      errmsg << "[option " << optName << " must be unit-less]";
+      ++error;
+    } else {
+      Loci::UNIT_type ut;
+      ol.getOption(optName, ut);
+      if(ut.is_compatible(unit)) {
+        temp[0] = ut.get_value_in(unit);
+      } else {
+        errmsg << "[unit of option " << optName
+          << " must be compatible with " << unit << "]";
+        ++error;
+      }
+    }
+  } else if(type == Loci::REAL) {
+    ol.getOption(optName, temp[0]);
+  } else {
+    errmsg << "[option " << optName << " must be a LIST, UNIT_TYPE, or REAL]";
+    ++error;
+  }
+
+  if(!error) vec = temp;
+
+  return error;
+}
+
 int getOptionValues(
   options_list const & ol, std::string const & optName,
   std::vector<std::string> const & units,
@@ -567,7 +817,7 @@ int getOptionValues(
     if(minValues <= sz && sz <= maxValues) {
       for(int i = 0; i < sz; ++i) {
         if(args[i].type_of() == Loci::UNIT_VALUE) {
-          if(units.size() > i && !units[i].empty()) {
+          if(units.size() > (size_t)i && !units[i].empty()) {
             Loci::UNIT_type ut;
             args[i].get_value(ut);
             if(ut.is_compatible(units[i])) {
@@ -820,20 +1070,18 @@ std::istream & operator>>(std::istream & s, VelSpecType & obj) {
 }
 
 std::ostream & operator<<(std::ostream & s, VelSpec const & obj) {
-  s << ' ' << obj.type << ' ' << obj.direction.x << ' ' << obj.direction.y
-    << ' ' << obj.direction.z << ' ' << obj.scale << ' ';
+  s << ' ' << obj.type << ' ' << obj.value.x << ' ' << obj.value.y
+    << ' ' << obj.value.z << ' ';
   return s;
 }
 
 std::istream & operator>>(std::istream & s, VelSpec & obj) {
   VelSpecType type;
-  Loci::vector3d<double> direction;
-  double scale;
-  s >> type >> direction.x >> direction.y >> direction.z >> scale;
+  Loci::vector3d<double> value;
+  s >> type >> value.x >> value.y >> value.z;
   if(s) {
     obj.type = type;
-    obj.direction = direction;
-    obj.scale = scale;
+    obj.value = value;
   }
   return s;
 }
@@ -847,7 +1095,6 @@ int getVelSpec(
   std::ostream & errmsg
 ) {
   unsigned int flags = 0;
-  double scale = 1.0;
   int error = 0;
   VelSpec tmp;
 
@@ -859,17 +1106,12 @@ int getVelSpec(
       flags |= 0x1u;
 
       std::ostringstream ss;
-      std::vector<double> values;
-      if(getArgValues(arg, {"m/s", "m/s", "m/s", ""}, 1, 4, values, ss)) {
+      if(getScaledVector3D(
+        arg, "m/s", tmp.value, ss
+      )) {
         errmsg << "[Error parsing " << olName << "::" << velocityOptName
           << " : " << ss.str() << "]";
         ++error;
-      } else {
-        int const sz = values.size();
-        tmp.direction.x = (sz > 0 ? values[0] : 0.0);
-        tmp.direction.y = (sz > 1 ? values[1] : 0.0);
-        tmp.direction.z = (sz > 2 ? values[2] : 0.0);
-        tmp.scale = (sz > 3 ? values[3] : 1.0);
       }
     }
 
@@ -877,17 +1119,12 @@ int getVelSpec(
       flags |= 0x2u;
 
       std::ostringstream ss;
-      std::vector<double> values;
-      if(getArgValues(arg, {"", "", "", "", ""}, 1, 4, values, ss)) {
+      if(getScaledVector3D(
+        arg, "", tmp.value, ss
+      )) {
         errmsg << "[Error parsing " << olName << "::" << MachOptName
           << " : " << ss.str() << "]";
         ++error;
-      } else {
-        int const sz = values.size();
-        tmp.direction.x = (sz > 0 ? values[0] : 0.0);
-        tmp.direction.y = (sz > 1 ? values[1] : 0.0);
-        tmp.direction.z = (sz > 2 ? values[2] : 0.0);
-        tmp.scale = (sz > 3 ? values[3] : 1.0);
       }
     }
   }
@@ -919,7 +1156,6 @@ int getVelSpec(
   std::ostream & errmsg
 ) {
   unsigned int flags = 0;
-  double scale = 1.0;
   int error = 0;
   VelSpec tmp;
 
@@ -927,19 +1163,12 @@ int getVelSpec(
     flags |= 0x1u;
 
     std::ostringstream ss;
-    std::vector<double> values;
-    if(getOptionValues(
-      ol, velocityOptName, {"m/s", "m/s", "m/s", ""}, 1, 4, values, ss
+    if(getScaledVector3D(
+      ol, velocityOptName, "m/s", tmp.value, ss
     )) {
       errmsg << "[Error parsing " << olName << "::" << velocityOptName
         << " : " << ss.str() << "]";
       ++error;
-    } else {
-      int const sz = values.size();
-      tmp.direction.x = (sz > 0 ? values[0] : 0.0);
-      tmp.direction.y = (sz > 1 ? values[1] : 0.0);
-      tmp.direction.z = (sz > 2 ? values[2] : 0.0);
-      tmp.scale = (sz > 3 ? values[3] : 1.0);
     }
   }
   
@@ -947,19 +1176,12 @@ int getVelSpec(
     flags |= 0x2u;
 
     std::ostringstream ss;
-    std::vector<double> values;
-    if(getOptionValues(
-      ol, MachOptName, {"", "", "", "", ""}, 1, 4, values, ss
+    if(getScaledVector3D(
+      ol, MachOptName, "", tmp.value, ss
     )) {
       errmsg << "[Error parsing " << olName << "::" << MachOptName
         << " : " << ss.str() << "]";
       ++error;
-    } else {
-      int const sz = values.size();
-      tmp.direction.x = (sz > 0 ? values[0] : 0.0);
-      tmp.direction.y = (sz > 1 ? values[1] : 0.0);
-      tmp.direction.z = (sz > 2 ? values[2] : 0.0);
-      tmp.scale = (sz > 3 ? values[3] : 1.0);
     }
   }
 
@@ -1434,8 +1656,8 @@ int getRegionGeom(
     if(corner1Specified && corner2Specified) {
       BoxICRegionGeom * box = new BoxICRegionGeom();
       box->setCorners(
-        corner1[0], corner1[1], corner1[2],
-	corner2[0], corner2[1], corner2[2]
+        min(corner1[0], corner2[0]), min(corner1[1], corner2[1]), min(corner1[2], corner2[2]),
+	max(corner1[0], corner2[0]), max(corner1[1], corner2[1]), max(corner1[2], corner2[2])
       );
       *geom = box;
     } else {

@@ -15,6 +15,9 @@ struct TGVICParameters {
   double Tref;
   double rhoref;
   double Uref;
+  double Mref;
+  int rhorefSpecified;
+  int UrefSpecified;
 };
 
 // =============================================================================
@@ -37,6 +40,9 @@ template<> struct data_schema_traits<flame::TGVICParameters> {
     LOCI_INSERT_TYPE(ct, flame::TGVICParameters, Tref);
     LOCI_INSERT_TYPE(ct, flame::TGVICParameters, rhoref);
     LOCI_INSERT_TYPE(ct, flame::TGVICParameters, Uref);
+    LOCI_INSERT_TYPE(ct, flame::TGVICParameters, Mref);
+    LOCI_INSERT_TYPE(ct, flame::TGVICParameters, rhorefSpecified);
+    LOCI_INSERT_TYPE(ct, flame::TGVICParameters, UrefSpecified);
     return DatatypeP(ct);
   }
 };

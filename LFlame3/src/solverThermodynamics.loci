@@ -5,6 +5,50 @@ $include "flame.lh"
 
 namespace flame {
 
+$rule pointwise(speciesCp <- speciesCp_Constant, Ns),
+constraint(caloricallyPerfectGas, multiSpecies, geom_cells), prelude {
+  $speciesCp.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesCp[i] = $speciesCp_Constant[i];
+  }
+}
+
+$rule pointwise(speciesEnthalpy <- speciesCp_Constant, temperature, Ns),
+constraint(caloricallyPerfectGas, multiSpecies, geom_cells), prelude {
+  $speciesEnthalpy.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesEnthalpy[i] = $speciesCp_Constant[i]*$temperature;
+  }
+}
+
+$rule pointwise(mixtureCp <- speciesCp, speciesY, Ns),
+constraint(multiSpecies, geom_cells) {
+  $mixtureCp = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    $mixtureCp += $speciesY[i]*$speciesCp[i];
+  }
+}
+
+$rule pointwise(mixtureEnthalpy <- speciesEnthalpy, speciesY, Ns),
+constraint(multiSpecies, geom_cells) {
+  $mixtureEnthalpy = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    $mixtureEnthalpy += $speciesY[i]*$speciesEnthalpy[i];
+  }
+}
+
+$rule pointwise(mixtureCp <- speciesCp_Constant),
+constraint(caloricallyPerfectGas, singleSpecies, geom_cells) {
+  $mixtureCp = $speciesCp_Constant[0];
+}
+
+$rule pointwise(mixtureEnthalpy <- speciesCp_Constant, temperature),
+constraint(caloricallyPerfectGas, singleSpecies, geom_cells) {
+  $mixtureEnthalpy = $speciesCp_Constant[0]*$temperature;
+}
+
 /*$rule pointwise(mixtureCp <- speciesCp_Constant),
   constraint(geom_cells, singleSpecies) {
   $mixtureCp = $speciesCp_Constant[0];

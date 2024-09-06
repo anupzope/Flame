@@ -156,6 +156,8 @@ $type icVelocity param<Loci::vector3d<double> >;
 $type icSpeciesY param<std::vector<double> >;
 $type icMixtureW param<double>;
 $type icMixtureR param<double>;
+$type icMixtureCp param<double>;
+$type icSpeedOfSound param<double>;
 
 // -----------------------------------------------------------------------------
 
@@ -172,6 +174,9 @@ $type gagePressure_TGV_ic store<double>;
 $type velocity_TGV_ic store<Loci::vector3d<double> >;
 $type temperature_TGV_ic store<double>;
 $type speciesY_TGV_ic storeVec<double>;
+$type mixtureW_TGV_ic store<double>;
+$type mixtureR_TGV_ic store<double>;
+$type mixtureCp_TGV_ic store<double>;
 
 // -----------------------------------------------------------------------------
 
@@ -180,6 +185,8 @@ $type initialConditionRegions param<options_list>;
 
 // Initial condition region specification extracted from
 // initialConditionRegions.
+$type nICRegions param<int>;
+$type nICRegionStates param<int>;
 $type thermoICRegion blackbox<std::vector<ThermoSpec> >;
 $type velocityICRegion blackbox<std::vector<VelSpec> >;
 $type speciesICRegion blackbox<std::vector<SpeciesSpec> >;
@@ -194,6 +201,8 @@ $type icRegionVelocity blackbox<std::vector<Loci::vector3d<double> > >;
 $type icRegionSpeciesY blackbox<std::vector<std::vector<double> > >;
 $type icRegionMixtureW blackbox<std::vector<double> >;
 $type icRegionMixtureR blackbox<std::vector<double> >;
+$type icRegionMixtureCp blackbox<std::vector<double> >;
+$type icRegionSpeedOfSound blackbox<std::vector<double> >;
 
 // Initial condition region id (geom_cells)
 $type cellICRegionIdx store<int>;
@@ -216,16 +225,16 @@ $type timeStep_ic param<int>;
 // Initial value of simulation time.
 $type stime_ic param<double>;
 
-// Initial gage pressure (at cell).
+// Initial gage pressure (at geom_cell).
 $type gagePressure_ic store<double>;
 
-// Initial velocity (at cell).
+// Initial velocity (at geom_cell).
 $type velocity_ic store<Loci::vector3d<double> >;
 
-// Initial temperature (at cell).
+// Initial temperature (at geom_cell).
 $type temperature_ic store<double>;
 
-// Initial species mass fractions (at cell).
+// Initial species mass fractions (at geom_cell).
 $type speciesY_ic storeVec<double>;
 
 // =============================================================================
@@ -300,7 +309,10 @@ $type speciesXRef_BC storeVec<double>;
 $type velocityRef_BC store<Loci::vector3d<double> >;
 $type mixtureWRef_BC store<double>;
 $type mixtureRRef_BC store<double>;
+$type speciesCpRef_BC storeVec<double>;
+$type speciesEnthalpyRef_BC storeVec<double>;
 $type mixtureCpRef_BC store<double>;
+$type mixtureEnthalpyRef_BC store<double>;
 $type soundSpeedRef_BC store<double>;
 
 $type gagePressureRef store<double>;
@@ -311,7 +323,10 @@ $type speciesXRef storeVec<double>;
 $type velocityRef store<Loci::vector3d<double> >;
 $type mixtureWRef store<double>;
 $type mixtureRRef store<double>;
+$type speciesCpRef storeVec<double>;
+$type speciesEnthalpyRef storeVec<double>;
 $type mixtureCpRef store<double>;
+$type mixtureEnthalpyRef store<double>;
 $type soundSpeedRef store<double>;
 
 // =============================================================================
@@ -518,6 +533,12 @@ $type mixtureR_f store<double>;
 // Adiabatic index of mixture (at face): [-]
 //$type mixtureGamma_f store<double>;
 
+// Species specific heat at constant pressure (at cell); [J/kg.K]
+$type speciesCp storeVec<double>;
+
+// Species specific enthalpy (at cell); [J/kg.K]
+$type speciesEnthalpy storeVec<double>;
+
 // Mixture specific heat at constant pressure (at cell); [J/kg.K]
 $type mixtureCp store<double>;
 
@@ -525,7 +546,7 @@ $type mixtureCp store<double>;
 $type mixtureCp_f store<double>;
 
 // Mixture enthalpy (at cell); [J/kg.K]
-//$type mixtureEnthalpy store<double>;
+$type mixtureEnthalpy store<double>;
 
 // Fraction Wk/mixtureW of the species (at cell): [-]
 //$type speciesWFrac storeVec<double>;
