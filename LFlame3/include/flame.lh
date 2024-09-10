@@ -486,6 +486,12 @@ $type viscousWallTemperature_f store<double>;
 // heat flux.
 $type viscousWallHeatFluxFaces store<bool>;
 
+// Vector of conservative variables for single-species equations
+$type ssQ store<Loci::Array<double, 5> >;
+
+// Vector of conservative variables for multi-species equations
+$type msQ storeVec<double>;
+
 // =============================================================================
 // Variables related to single-species solver state.
 // =============================================================================
