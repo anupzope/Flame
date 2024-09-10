@@ -68,7 +68,8 @@ $rule unit(msResidual <- Ns), constraint(geom_cells, multiSpecies), prelude {
 // to compute contribution to the source term at a cell.
 // =============================================================================
 
-// Add convetive contribution from a face to its left cell.
+// Add convetive contribution from internal faces to left and right
+// cells.
 $rule apply((cl,cr)->ssResidual <- ssConvectiveFlux_f)[Loci::Summation],
 constraint((cl,cr)->geom_cells, singleSpecies) {
   for(int i = 0; i < 5; ++i) {
@@ -77,7 +78,7 @@ constraint((cl,cr)->geom_cells, singleSpecies) {
   }
 }
 
-// Add convective contribution from a face to its right cell.
+// Add convective contribution from boundary faces to left cells.
 $rule apply(cl->ssResidual <- ssConvectiveFlux_f)[Loci::Summation],
 constraint(boundary_faces, singleSpecies) {
   for(int i = 0; i < 5; ++i) {
@@ -85,7 +86,8 @@ constraint(boundary_faces, singleSpecies) {
   }
 }
 
-// Add diffusive contribution from a face to its left cell.
+// Add diffusive contribution from internal faces to left and right
+// cells.
 $rule apply((cl,cr)->ssResidual <- viscousFlux_f)[Loci::Summation],
 constraint((cl,cr)->geom_cells, singleSpecies, viscousFlow) {
   for(int i = 0; i < 4; ++i) {
@@ -94,7 +96,7 @@ constraint((cl,cr)->geom_cells, singleSpecies, viscousFlow) {
   }
 }
 
-// Add diffusive contribution from a face to its right cell.
+// Add diffusive contribution from boundary faces to left cells.
 $rule apply(cl->ssResidual <- viscousFlux_f)[Loci::Summation],
 constraint(boundary_faces, singleSpecies, viscousFlow) {
   for(int i = 0; i < 4; ++i) {
@@ -107,7 +109,8 @@ constraint(boundary_faces, singleSpecies, viscousFlow) {
 // compute contribution to the source term at a cell.
 // =============================================================================
 
-// Add convective contribution from a face to its left cell.
+// Add convective contribution from internal faces to left and right
+// cells.
 $rule apply((cl,cr)->msResidual <- msConvectiveFlux_f, Ns)[Loci::Summation],
 constraint((cl,cr)->geom_cells, multiSpecies) {
   for(int i = 0; i < $Ns+4; ++i) {
@@ -116,7 +119,7 @@ constraint((cl,cr)->geom_cells, multiSpecies) {
   }
 }
 
-// Add convective contribution from a face to its right cell.
+// Add convective contribution from boundary faces to left cells.
 $rule apply(cl->msResidual <- msConvectiveFlux_f, Ns)[Loci::Summation],
 constraint(boundary_faces, multiSpecies) {
   for(int i = 0; i < $Ns+4; ++i) {
@@ -124,7 +127,8 @@ constraint(boundary_faces, multiSpecies) {
   }
 }
 
-// Add diffusive contribution from a face to its left cell.
+// Add viscous contribution from internal faces to left and right
+// cells.
 $rule apply((cl,cr)->msResidual <- viscousFlux_f)[Loci::Summation],
 constraint((cl,cr)->geom_cells, multiSpecies, viscousFlow) {
   for(int i = 0; i < 4; ++i) {
@@ -133,7 +137,7 @@ constraint((cl,cr)->geom_cells, multiSpecies, viscousFlow) {
   }
 }
 
-// Add diffusive contribution from a face to its right cell.
+// Add viscous contribution from boundary faces to left cells.
 $rule apply(cl->msResidual <- viscousFlux_f, Ns)[Loci::Summation],
 constraint(boundary_faces, multiSpecies, viscousFlow) {
   for(int i = 0; i < 4; ++i) {
@@ -141,6 +145,8 @@ constraint(boundary_faces, multiSpecies, viscousFlow) {
   }
 }
 
+  // Add diffusive contribution from internal faces to left and right
+// cells.
 $rule apply((cl,cr)->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
   constraint((cl,cr)->geom_cells, multiSpecies, speciesMassDiffusionEnabled) {
     for(int i = 5; i < $Ns+4; ++i) {
@@ -149,6 +155,7 @@ $rule apply((cl,cr)->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
     }
 }
 
+  // Add diffusive contribution from boundary faces to left cells.
 $rule apply(cl->msResidual <- msDiffusiveFlux_f, Ns)[Loci::Summation],
   constraint(boundary_faces, multiSpecies, speciesMassDiffusionEnabled) {
     for(int i = 5; i < $Ns+4; ++i) {
@@ -186,8 +193,65 @@ $rule pointwise(speciesY{n=0} <- speciesY_ic, Ns), prelude {
   $speciesY{n=0} = $speciesY_ic;
 }
 
+// =============================================================================
+// Calculation of time-step specific variables.
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// Single-species calculations.
+// -----------------------------------------------------------------------------
+
+// Calculation of mixture molecular weight.
+$rule pointwise(mixtureW{n} <- speciesW, Ns),
+  constraint(singleSpecies, geom_cells) {
+  $mixtureW{n} = $speciesW[0];
+}
+
+// Calculation of mixture specific heat.
+$rule pointwise(mixtureCp{n} <- speciesCp_Constant),
+constraint(singleSpecies, caloricallyPerfectGas, geom_cells) {
+  $mixtureCp{n} = $speciesCp_Constant[0];
+}
+
+// Calculation of mixture enthalpy.
+$rule pointwise(mixtureEnthalpy{n} <- temperature{n}, speciesCp_Constant),
+constraint(singleSpecies, caloricallyPerfectGas, geom_cells) {
+  $mixtureEnthalpy{n} = $speciesCp_Constant[0]*$temperature{n};
+}
+
+// Calculation of conservative variables.
+$rule pointwise(
+  ssQ{n}
+  <-
+  gagePressure{n}, density{n}, velocity{n}, temperature{n},
+  mixtureEnthalpy{n}, vol{n}, Pambient
+), constraint(singleSpecies, geom_cells) {
+  Loci::Array<double, 5> & Q = $ssQ{n};
+  
+  double const P = $gagePressure{n}+$Pambient;
+  double const rho = $density{n};
+  double const e = $mixtureEnthalpy{n} - P/rho;
+  double const e0 = e + 0.5*dot($velocity{n}, $velocity{n});
+  double const vol = $vol{n};
+  
+  double const r = vol*rho;
+  Loci::vector3d<double> m = vol*rho*$velocity{n};
+  double const e = vol*rho*e0;
+  
+  Q[0] = m[0];
+  Q[1] = m[1];
+  Q[2] = m[2];
+  Q[3] = e;
+  Q[4] = r;
+}
+
+// -----------------------------------------------------------------------------
+// Multi-species calculations.
+// -----------------------------------------------------------------------------
+
+// Calculation of mixture molecular weight.
 $rule pointwise(mixtureW{n} <- speciesY{n}, speciesW, Ns),
-constraint(geom_cells) {
+  constraint(multiSpecies, geom_cells) {
   double rW = 0.0;
   for(int i = 0; i < $Ns; ++i) {
     rW += $speciesY{n}[i]/$speciesW[i];
@@ -195,11 +259,7 @@ constraint(geom_cells) {
   $mixtureW{n} = 1.0/rW;
 }
 
-$rule pointwise(mixtureR{n} <- mixtureW{n}, Runiv),
-constraint(geom_cells) {
-  $mixtureR{n} = $Runiv/$mixtureW{n};
-}
-
+// Calculation of species molar fractions.
 $rule pointwise(speciesX{n} <- speciesY{n}, mixtureW{n}, speciesW, Ns),
 constraint(geom_cells), prelude {
   $speciesX{n}.setVecSize(*$Ns);
@@ -209,13 +269,82 @@ constraint(geom_cells), prelude {
   }
 }
 
-$rule pointwise(mixtureCp{n} <- speciesY{n}, speciesCp_Constant, Ns),
-constraint(geom_cells, multiSpecies) {
-  double Cp = 0.0;
+// Calculation of species specific heat.
+$rule pointwise(speciesCp{n} <- speciesCp_Constant, Ns),
+constraint(multiSpecies, caloricallyPerfectGas, geom_cells), prelude {
+  $speciesCp{n}.setVecSize(*$Ns);
+} {
   for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY{n}[i]*$speciesCp_Constant[i];
+    speciesCp{n}[i] = $speciesCp_Constant[i];
   }
-  $mixtureCp{n} = Cp;
+}
+
+// Calculation of species enthalpy.
+$rule pointwise(speciesEnthalpy{n} <- temperature{n}, speciesCp_Constant, Ns),
+constraint(multiSpecies, caloricallyPerfectGas, geom_cells), prelude {
+  $speciesEnthalpy{n}.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesEnthalpy{n}[i] = $speciesCp_Constant[i]*$temperature{n};
+  }
+}
+
+// Calculation of mixture specific heat.
+$rule pointwise(mixtureCp{n} <- speciesY{n}, speciesCp{n}, Ns),
+constraint(multiSpecies, caloricallyPerfectGas, geom_cells) {
+  $mixtureCp{n} = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    $mixtureCp{n} += $speciesY{n}[i]*$speciesCp{n}[i];
+  }
+}
+
+// Calculation of mixture enthalpy.
+$rule pointwise(mixtureEnthalpy{n} <- speciesY{n}, speciesEnthalpy{n}, Ns),
+constraint(multiSpecies, caloricallyPerfectGas, geom_cells) {
+  $mixtureEnthalpy{n} = 0.0;
+  for(int i = 0; i < $Ns; ++i) {
+    $mixtureEnthalpy{n} += $speciesY{n}[i]*$speciesEnthalpy{n}[i];
+  }
+}
+
+// Calculation of conservative variables.
+$rule pointwise(
+  msQ{n}
+  <-
+  gagePressure{n}, density{n}, velocity{n}, temperature{n}, speciesY{n},
+  mixtureEnthalpy{n}, vol{n}, Pambient, Ns
+), constraint(multiSpecies, geom_cells), prelude {
+  $msQ{n}.setVecSize(*$Ns+4);
+} {
+  Vect<double> Q = $msQ{n};
+  const_Vect<double> Y = $speciesY{n};
+  
+  double const P = $gagePressure{n}+$Pambient;
+  double const rho = $density{n};
+  double const e = $mixtureEnthalpy{n} - P/rho;
+  double const e0 = e + 0.5*dot($velocity{n}, $velocity{n});
+  double const vol = $vol{n};
+  
+  double const r = vol*rho;
+  Loci::vector3d<double> m = vol*rho*$velocity{n};
+  double const e = vol*rho*e0;
+  
+  Q[0] = m[0];
+  Q[1] = m[1];
+  Q[2] = m[2];
+  Q[3] = e;
+  Q[4] = r;
+  for(int i = 0; i < $Ns-1; ++i) {
+    Q[i+5] = Y[i]*r;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Both single-species and multi-species calculations
+
+$rule pointwise(mixtureR{n} <- mixtureW{n}, Runiv),
+constraint(geom_cells) {
+  $mixtureR{n} = $Runiv/$mixtureW{n};
 }
 
 // =============================================================================
@@ -229,7 +358,7 @@ constraint(geom_cells, multiSpecies) {
 // =============================================================================
 
 $rule singleton(timeStepFinished{n} <- $n{n}, timeStep{n}, nTimeSteps) {
-  $timeStepFinished{n} = $$n{n} >= $nTimeSteps; //$timeStep{n} == $nTimeSteps;
+  $timeStepFinished{n} = $$n{n} >= $nTimeSteps;
 }
 
 $rule pointwise(solution <- gagePressure{n}, velocity{n}, temperature{n}),

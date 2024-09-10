@@ -64,6 +64,7 @@ $type mixtureW_i store<double>;
 $type mixtureR_i store<double>;
 $type speciesX_i storeVec<double>;
 $type mixtureCp_i store<double>;
+$type mixtureEnthalpy_i store<double>;
 $type ssQ store<Loci::Array<double, 5> >;
 $type ssQ_i store<Loci::Array<double, 5> >;
 $type msQ storeVec<double>;
@@ -113,6 +114,11 @@ constraint(geom_cells) {
   $mixtureCp_i{n,rk=0} = $mixtureCp{n};
 }
 
+$rule pointwise(mixtureEnthalpy_i{n,rk=0} <- mixtureEnthalpy{n}),
+constraint(geom_cells) {
+  $mixtureEnthalpy_i{n,rk=0} = $mixtureEnthalpy{n};
+}
+
 $rule pointwise(ssQ_i{n,rk=0} <- ssQ{n}, Ns),
 constraint(geom_cells) {
   $ssQ_i{n,rk=0} = $ssQ{n};
@@ -159,6 +165,10 @@ $rule pointwise(mixtureCp{n,rk} <- mixtureCp_i{n,rk}),
 inplace(mixtureCp{n,rk}|mixtureCp_i{n,rk}), prelude {
 };
 
+$rule pointwise(mixtureEnthalpy{n,rk} <- mixtureEnthalpy_i{n,rk}),
+inplace(mixtureEnthalpy{n,rk}|mixtureEnthalpy_i{n,rk}), prelude {
+};
+
 $rule pointwise(ssQ{n,rk} <- ssQ_i{n,rk}),
 inplace(ssQ{n,rk}|ssQ_i{n,rk}), prelude {
 };
@@ -166,68 +176,6 @@ inplace(ssQ{n,rk}|ssQ_i{n,rk}), prelude {
 $rule pointwise(msQ{n,rk} <- msQ_i{n,rk}),
 inplace(msQ{n,rk}|msQ_i{n,rk}), prelude {
 };
-
-// =============================================================================
-// Calculation of conservative variables at current time iteration.
-// =============================================================================
-
-$rule pointwise(
-  msQ{n}
-  <-
-  gagePressure{n}, velocity{n}, temperature{n}, speciesY{n},
-  mixtureW{n}, mixtureR{n}, mixtureCp{n}, vol{n}, Pambient, Ns
-), constraint(multiSpecies, thermallyPerfectGas, geom_cells), prelude {
-  $msQ{n}.setVecSize(*$Ns+4);
-} {
-  Vect<double> Q = $msQ{n};
-  const_Vect<double> Y = $speciesY{n};
-  
-  double const P = $gagePressure{n}+$Pambient;
-  double const rho = P/($mixtureR{n}*$temperature{n});
-  double const Cv = $mixtureCp{n} - $mixtureR{n};
-  double const re = rho*Cv*$temperature{n};
-  double const re0 = re + 0.5*rho*dot($velocity{n}, $velocity{n});
-  double const vol = $vol{n};
-  
-  double const r = vol*rho;
-  Loci::vector3d<double> m = vol*rho*$velocity{n};
-  double const e = vol*re0;
-  
-  Q[0] = m[0];
-  Q[1] = m[1];
-  Q[2] = m[2];
-  Q[3] = e;
-  Q[4] = r;
-  for(int i = 0; i < $Ns-1; ++i) {
-    Q[i+5] = Y[i]*r;
-  }
-}
-
-$rule pointwise(
-  ssQ{n}
-  <-
-  gagePressure{n}, velocity{n}, temperature{n}, vol{n},
-  speciesW, speciesCp_Constant, speciesR, Pambient
-), constraint(singleSpecies, thermallyPerfectGas, geom_cells) {
-  Loci::Array<double, 5> & Q = $ssQ{n};
-  
-  double const P = $gagePressure{n}+$Pambient;
-  double const rho = P/($speciesR[0]*$temperature{n});
-  double const Cv = $speciesCp_Constant[0] - $speciesR[0];
-  double const re = rho*Cv*$temperature{n};
-  double const re0 = re + 0.5*rho*dot($velocity{n}, $velocity{n});
-  double const vol = $vol{n};
-  
-  double const r = vol*rho;
-  Loci::vector3d<double> m = vol*rho*$velocity{n};
-  double const e = vol*re0;
-  
-  Q[0] = m[0];
-  Q[1] = m[1];
-  Q[2] = m[2];
-  Q[3] = e;
-  Q[4] = r;
-}
 
 // =============================================================================
 // RK advance rules
@@ -243,8 +191,7 @@ constraint(timeIntegrationRK) {
   $stime{n,rk+1} = $stime{n,rk};
 }
 
-// -----------------------------------------------------------------------------
-
+// Advance the single-species conservative variables.
 $rule pointwise(
   ssQ_i{n,rk+1}
   <-
@@ -265,8 +212,7 @@ $rule pointwise(
   }
 }
 
-// -----------------------------------------------------------------------------
-
+// Advance the multi-species conservative variables.
 $rule pointwise(
   msQ_i{n,rk+1}
   <-
@@ -293,6 +239,46 @@ $rule pointwise(
 // Calculation of primitive variables from conservative variables at current
 // RK iteration.
 // =============================================================================
+
+$rule pointwise(
+  density_i{n,rk+1}, velocity_i{n,rk+1} <- ssQ_i{n,rk+1}, vol{n,rk},
+  Pambient
+), constraint(singleSpecies, geom_cells) {
+  double const rvol = 1.0/$vol{n,rk};
+  $density_i{n,rk+1} = ssQ_i{n,rk+1}[4]*rvol;
+  $velocity_i{n,rk+1}.x = Loci::vector3d<double>(
+    ssQ_i{n,rk+1}[0], ssQ_i{n,rk+1}[1], ssQ_i{n,rk+1}[2]
+  )*rvol/$density_i{n,rk+1};
+}
+
+$rule pointwise(mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1} <- speciesW, Runiv),
+constraint(singleSpecies, geom_cells) {
+  $mixtureW_i{n,rk+1} = $speciesW[0];
+  $mixtureR_i{n,rk+1} = $Runiv/$speciesW[0];
+}
+
+$rule pointwise(
+  mixtureEnthalpy_i{n,rk+1}, mixtureCp_i{n,rk+1}, temperature_i{n,rk+1}, ganePressure_i{n,rk+1}
+  <-
+  speciesCp_Constant, ssQ_i{n,rk+1}, density_i{n,rk+1}, velocity_i{n,rk+1}, vol{n,rk},
+  temperature{n,rk}, mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1}, Pambient
+), constraint(geom_cells, caloricallyPerfectGas, thermallyPerfectGas) {
+  double const e = $ssQ_i{n,rk+1}[3]/($density_i{n,rk+1}*$vol{n,rk}) - 0.5*dot($velocity_i{n,rk+1}, $velocity_i{n,rk+1});
+  double const Cv = speciesCp_Constant[0]
+  double const hTarget = $ssQ_i{n,rk+1}[3]/($density_i{n,rk+1}*$vol{n,rk});
+  
+  // Find T such that h(T) = e + P(T)/rho
+  double const r = $density_i{n,rk+1};
+  double T = $temperature{n,rk};
+  while(true) {
+    double P = r*R*T;
+    double h = $speciesCp_Constant[0]*T - e - R*T;
+  }
+}
+
+$rule pointwise(temperature{n,rk+1} <- density_i{n,rk+1}, temperature_i{n,rk+1})
+
+$rule pointwise(gagePressure{n,rk+1} <- density_i{n,rk+1}, temperature_i{n,rk+1})
 
 $rule pointwise(
   gagePressure_i{n,rk+1}, velocity_i{n,rk+1}, temperature_i{n,rk+1}
