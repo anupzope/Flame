@@ -56,6 +56,16 @@ $rule pointwise(gagePressure_f), constraint(ci->gagePressure, geom_cells) {}
 
 // -----------------------------------------------------------------------------
 
+$rule pointwise(cr->density <- pmap->cl->density) {
+  $cr->$density = $pmap->$cl->$density;
+}
+
+// this fix will allow gradients of gage pressure to be computed when all
+// boundaries are periodic
+$rule pointwise(density_f), constraint(ci->density, geom_cells) {}
+
+// -----------------------------------------------------------------------------
+
 $rule pointwise(cr->speciesY <- pmap->cl->speciesY) {
   $cr->$speciesY = $pmap->$cl->$speciesY;
 }
@@ -64,6 +74,30 @@ $rule pointwise(cr->speciesY <- pmap->cl->speciesY) {
 // all boundaries are periodic
 $rule pointwise(speciesY_f <- Ns), constraint(ci->speciesY, geom_cells), prelude {
   $speciesY_f.setVecSize(*$Ns);
+} {}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(cr->speciesCp <- pmap->cl->speciesCp) {
+  $cr->$speciesCp = $pmap->$cl->$speciesCp;
+}
+
+// this fix will allow gradients of mixture adiabatic index to be computed when
+// all boundaries are periodic
+$rule pointwise(speciesCp_f <- Ns), constraint(ci->speciesCp, geom_cells), prelude {
+  $speciesCp_f.setVecSize(*$Ns);
+} {}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(cr->speciesEnthalpy <- pmap->cl->speciesEnthalpy) {
+  $cr->$speciesEnthalpy = $pmap->$cl->$speciesEnthalpy;
+}
+
+// this fix will allow gradients of mixture adiabatic index to be computed when
+// all boundaries are periodic
+$rule pointwise(speciesEnthalpy_f <- Ns), constraint(ci->speciesEnthalpy, geom_cells), prelude {
+  $speciesEnthalpy_f.setVecSize(*$Ns);
 } {}
 
 // -----------------------------------------------------------------------------
@@ -84,7 +118,7 @@ $rule pointwise(cr->mixtureR <- pmap->cl->mixtureR) {
 
 // this fix will allow gradients of mixture gas constant to be computed when all
 // boundaries are periodic
-$rule pointwise(mixtureR_f), constraint(ci->mixtureR, geom_cells) {}
+//$rule pointwise(mixtureR_f), constraint(ci->mixtureR, geom_cells) {}
 
 // -----------------------------------------------------------------------------
 
@@ -107,6 +141,16 @@ $rule pointwise(cr->mixtureCp <- pmap->cl->mixtureCp) {
 // this fix will allow gradients of mixture adiabatic index to be computed when
 // all boundaries are periodic
 $rule pointwise(mixtureCp_f), constraint(ci->mixtureCp, geom_cells) {}
+
+// -----------------------------------------------------------------------------
+
+$rule pointwise(cr->mixtureEnthalpy <- pmap->cl->mixtureEnthalpy) {
+  $cr->$mixtureEnthalpy = $pmap->$cl->$mixtureEnthalpy;
+}
+
+// this fix will allow gradients of mixture adiabatic index to be computed when
+// all boundaries are periodic
+$rule pointwise(mixtureEnthalpy_f), constraint(ci->mixtureEnthalpy, geom_cells) {}
 
 // -----------------------------------------------------------------------------
 

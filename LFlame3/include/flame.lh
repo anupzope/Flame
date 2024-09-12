@@ -185,8 +185,8 @@ $type initialConditionRegions param<options_list>;
 
 // Initial condition region specification extracted from
 // initialConditionRegions.
-$type nICRegions param<int>;
-$type nICRegionStates param<int>;
+$type nICRegions blackbox<int>;
+$type nICRegionStates blackbox<int>;
 $type thermoICRegion blackbox<std::vector<ThermoSpec> >;
 $type velocityICRegion blackbox<std::vector<VelSpec> >;
 $type speciesICRegion blackbox<std::vector<SpeciesSpec> >;
@@ -225,17 +225,41 @@ $type timeStep_ic param<int>;
 // Initial value of simulation time.
 $type stime_ic param<double>;
 
-// Initial gage pressure (at geom_cell).
+// Initial gage pressure (at geom_cells).
 $type gagePressure_ic store<double>;
 
-// Initial velocity (at geom_cell).
-$type velocity_ic store<Loci::vector3d<double> >;
-
-// Initial temperature (at geom_cell).
+// Initial temperature (at geom_cells).
 $type temperature_ic store<double>;
 
-// Initial species mass fractions (at geom_cell).
+// Initial velocity (at geom_cells).
+$type velocity_ic store<Loci::vector3d<double> >;
+
+// Initial species mass fractions (at geom_cells).
 $type speciesY_ic storeVec<double>;
+
+// Initial mixture density (at geom_cells).
+$type density_ic store<double>;
+
+// Initial mixture molecular weight (at geom_cells).
+$type mixtureW_ic store<double>;
+
+// Initial mixture gas constant (at geom_cells).
+$type mixtureR_ic store<double>;
+
+// Initial species molar fractions (at geom_cells).
+$type speciesX_ic storeVec<double>;
+
+// Initial species specific heat (at geom_cells).
+$type speciesCp_ic storeVec<double>;
+
+// Initial species specific enthalpy (at geom_cells).
+$type speciesEnthalpy_ic storeVec<double>;
+
+// Initial mixture specific heat (at geom_cells).
+$type mixtureCp_ic store<double>;
+
+// Initial mixture specific enthalpy (at geom_cells).
+$type mixtureEnthalpy_ic store<double>;
 
 // =============================================================================
 // Parameters of the solver.
@@ -542,8 +566,12 @@ $type mixtureR_f store<double>;
 // Species specific heat at constant pressure (at cell); [J/kg.K]
 $type speciesCp storeVec<double>;
 
+$type speciesCp_f storeVec<double>;
+
 // Species specific enthalpy (at cell); [J/kg.K]
 $type speciesEnthalpy storeVec<double>;
+
+$type speciesEnthalpy_f storeVec<double>;
 
 // Mixture specific heat at constant pressure (at cell); [J/kg.K]
 $type mixtureCp store<double>;
@@ -553,6 +581,8 @@ $type mixtureCp_f store<double>;
 
 // Mixture enthalpy (at cell); [J/kg.K]
 $type mixtureEnthalpy store<double>;
+
+$type mixtureEnthalpy_f store<double>;
 
 // Fraction Wk/mixtureW of the species (at cell): [-]
 //$type speciesWFrac storeVec<double>;

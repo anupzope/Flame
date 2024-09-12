@@ -1087,8 +1087,84 @@ constraint(geom_cells, withICDirectory) {
 }
 
 $rule apply(speciesY_ic <- speciesY_icf)[Loci::Summation],
-constraint(geom_cells, withICDirectory) {
+constraint(geom_cells, withICDirectory, multiSpecies) {
   join($speciesY_ic, $speciesY_icf);
+}
+
+// =============================================================================
+// Calculate initial conditions of derived quantities from the
+// primitive variable initial conditions.
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// Calculations for single-species.
+
+$rule pointwise(mixtureW_ic <- speciesW),
+constraint(geom_cells, singleSpecies) {
+  $mixtureW_ic = $speciesW[0];
+}
+
+$rule pointwise(mixtureCp_ic, mixtureEnthalpy_ic <- temperature_ic, speciesCp_Constant),
+constraint(geom_cells, singleSpecies, caloricallyPerfectGas) {
+  $mixtureCp_ic = $speciesCp_Constant[0];
+  $mixtureEnthalpy_ic = $speciesCp_Constant[0]*$temperature_ic;
+}
+
+// -----------------------------------------------------------------------------
+// Calculations for multi-species.
+
+$rule pointwise(mixtureW_ic <- speciesY_ic, speciesW, Ns),
+constraint(geom_cells, multiSpecies) {
+  $mixtureW_ic = mixture_mW_from_Y_sW($Ns, &$speciesY_ic[0], &$speciesW[0]);
+}
+
+$rule pointwise(speciesX_ic <- speciesY_ic, mixtureW_ic, speciesW, Ns),
+constraint(geom_cells, multiSpecies), prelude {
+  $speciesX_ic.setVecSize(*$Ns);
+} {
+  mixture_X_from_Y_sW_mW(
+    $Ns, &$speciesX_ic[0], &$speciesY_ic[0], &$speciesW[0], $mixtureW_ic
+  );
+}
+
+$rule pointwise(
+  speciesCp_ic, speciesEnthalpy_ic
+  <-
+  temperature_ic, speciesCp_Constant, Ns
+), constraint(geom_cells, multiSpecies, caloricallyPerfectGas), prelude {
+  $speciesCp_ic.setVecSize(*$Ns);
+  $speciesEnthalpy_ic.setVecSize(*$Ns);
+} {
+  for(int i = 0; i < $Ns; ++i) {
+    $speciesCp_ic[i] = $speciesCp_Constant[i];
+    $speciesEnthalpy_ic[i] = $speciesCp_Constant[i]*$temperature_ic;
+  }
+}
+
+$rule pointwise(
+  mixtureCp_ic, mixtureEnthalpy_ic
+  <-
+  speciesY_ic, speciesCp_ic, speciesEnthalpy_ic, Ns
+), constraint(geom_cells, multiSpecies, caloricallyPerfectGas) {
+  $mixtureCp_ic = mixture_Cp_from_sCp_Y(
+    $Ns, &$speciesCp_ic[0], &$speciesY_ic[0]
+  );
+  $mixtureEnthalpy_ic = mixture_H_from_sH_Y(
+    $Ns, &$speciesEnthalpy_ic[0], &$speciesY_ic[0]
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Calculations common to both the single-species and multi-species.
+
+$rule pointwise(density_ic <- gagePressure_ic, temperature_ic, mixtureR_ic, Pambient),
+constraint(geom_cells, thermallyPerfectGas) {
+  $density_ic = eos_TP_r_from_P_T_R($gagePressure_ic+$Pambient, $temperature_ic, $mixtureR_ic);
+}
+
+$rule pointwise(mixtureR_ic <- mixtureW_ic, Runiv),
+constraint(geom_cells) {
+  $mixtureR_ic = $Runiv/$mixtureW_ic;
 }
 
 // =============================================================================

@@ -1,10 +1,14 @@
 $include "flame.lh"
 $include "FVM.lh"
 
+#include <eos.hh>
+
 #include <Loci.h>
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
+
+namespace flame {
 
 //==============================================================================
 
@@ -49,6 +53,7 @@ $rule singleton(rkOrderWeights <- rkOrder) {
 // =============================================================================
 
 $type gagePressure_i store<double>;
+$type density_i store<double>;
 $type velocity_i store<Loci::vector3d<double> >;
 $type temperature_i store<double>;
 $type speciesY_i storeVec<double>;
@@ -74,68 +79,81 @@ $rule singleton(stime{n,rk=0} <- stime{n}) {
   $stime{n,rk=0} = $stime{n};
 }
 
-$rule pointwise(gagePressure_i{n,rk=0} <- gagePressure{n}) {
+$rule pointwise(gagePressure_i{n,rk=0} <- gagePressure{n}),
+constraint(geom_cells) {
   $gagePressure_i{n,rk=0} = $gagePressure{n};
 }
 
-$rule pointwise(velocity_i{n,rk=0} <- velocity{n}) {
-  $velocity_i{n,rk=0} = $velocity{n};
-}
-
-$rule pointwise(temperature_i{n,rk=0} <- temperature{n}) {
+$rule pointwise(temperature_i{n,rk=0} <- temperature{n}),
+constraint(geom_cells) {
   $temperature_i{n,rk=0} = $temperature{n};
 }
 
+$rule pointwise(velocity_i{n,rk=0} <- velocity{n}),
+constraint(geom_cells) {
+  $velocity_i{n,rk=0} = $velocity{n};
+}
+
 $rule pointwise(speciesY_i{n,rk=0} <- speciesY{n}, Ns),
-prelude {
+constraint(geom_cells, multiSpecies), prelude {
   $speciesY_i{n,rk=0}.setVecSize(*$Ns);
 } {
   $speciesY_i{n,rk=0} = $speciesY{n};
 }
 
-$rule pointwise(mixtureW_i{n,rk=0} <- mixtureW{n}) {
+$rule pointwise(density_i{n,rk=0} <- density{n}),
+constraint(geom_cells) {
+  $density_i{n,rk=0} = $density{n};
+}
+
+$rule pointwise(mixtureW_i{n,rk=0} <- mixtureW{n}),
+constraint(geom_cells) {
   $mixtureW_i{n,rk=0} = $mixtureW{n};
 }
 
-$rule pointwise(mixtureR_i{n,rk=0} <- mixtureR{n}) {
+$rule pointwise(mixtureR_i{n,rk=0} <- mixtureR{n}),
+constraint(geom_cells) {
   $mixtureR_i{n,rk=0} = $mixtureR{n};
 }
 
 $rule pointwise(speciesX_i{n,rk=0} <- speciesX{n}, Ns),
-prelude {
+constraint(geom_cells, multiSpecies), prelude {
   $speciesX_i{n,rk=0}.setVecSize(*$Ns);
 } {
   $speciesX_i{n,rk=0} = $speciesX{n};
 }
 
 $rule pointwise(speciesCp_i{n,rk=0} <- speciesCp{n}, Ns),
-prelude {
+constraint(geom_cells, multiSpecies), prelude {
   $speciesCp_i{n,rk=0}.setVecSize(*$Ns);
 } {
   $speciesCp_i{n,rk=0} = $speciesCp{n};
 }
 
 $rule pointwise(speciesEnthalpy_i{n,rk=0} <- speciesEnthalpy{n}, Ns),
-prelude {
+constraint(geom_cells, multiSpecies), prelude {
   $speciesEnthalpy_i{n,rk=0}.setVecSize(*$Ns);
 } {
   $speciesEnthalpy_i{n,rk=0} = $speciesEnthalpy{n};
 }
 
-$rule pointwise(mixtureCp_i{n,rk=0} <- mixtureCp{n}) {
+$rule pointwise(mixtureCp_i{n,rk=0} <- mixtureCp{n}),
+constraint(geom_cells) {
   $mixtureCp_i{n,rk=0} = $mixtureCp{n};
 }
 
-$rule pointwise(mixtureEnthalpy_i{n,rk=0} <- mixtureEnthalpy{n}) {
+$rule pointwise(mixtureEnthalpy_i{n,rk=0} <- mixtureEnthalpy{n}),
+constraint(geom_cells) {
   $mixtureEnthalpy_i{n,rk=0} = $mixtureEnthalpy{n};
 }
 
-$rule pointwise(ssQ_i{n,rk=0} <- ssQ{n}, Ns) {
+$rule pointwise(ssQ_i{n,rk=0} <- ssQ{n}),
+constraint(geom_cells) {
   $ssQ_i{n,rk=0} = $ssQ{n};
 }
 
 $rule pointwise(msQ_i{n,rk=0} <- msQ{n}, Ns),
-prelude {
+constraint(geom_cells), prelude {
   $msQ_i{n,rk=0}.setVecSize(*$Ns+4);
 } {
   $msQ_i{n,rk=0} = $msQ{n};
@@ -144,56 +162,41 @@ prelude {
 // =============================================================================
 
 $rule pointwise(gagePressure{n,rk} <- gagePressure_i{n,rk}),
-inplace(gagePressure{n,rk}|gagePressure_i{n,rk}), prelude {
-};
+inplace(gagePressure{n,rk}|gagePressure_i{n,rk}), prelude {};
+
+$rule pointwise(density{n,rk} <- density_i{n,rk}),
+inplace(density{n,rk}|density_i{n,rk}), prelude {};
 
 $rule pointwise(velocity{n,rk} <- velocity_i{n,rk}),
-inplace(velocity{n,rk}|velocity_i{n,rk}), prelude {
-};
+inplace(velocity{n,rk}|velocity_i{n,rk}), prelude {};
 
 $rule pointwise(temperature{n,rk} <- temperature_i{n,rk}),
-inplace(temperature{n,rk}|temperature_i{n,rk}), prelude {
-};
+inplace(temperature{n,rk}|temperature_i{n,rk}), prelude {};
 
 $rule pointwise(speciesY{n,rk} <- speciesY_i{n,rk}),
-inplace(speciesY{n,rk}|speciesY_i{n,rk}), prelude {
-};
+inplace(speciesY{n,rk}|speciesY_i{n,rk}), prelude {};
 
 $rule pointwise(mixtureW{n,rk} <- mixtureW_i{n,rk}),
-inplace(mixtureW{n,rk}|mixtureW_i{n,rk}), prelude {
-};
+inplace(mixtureW{n,rk}|mixtureW_i{n,rk}), prelude {};
 
 $rule pointwise(mixtureR{n,rk} <- mixtureR_i{n,rk}),
 inplace(mixtureR{n,rk}|mixtureR_i{n,rk}), prelude {
 };
 
 $rule pointwise(speciesX{n,rk} <- speciesX_i{n,rk}),
-inplace(speciesX{n,rk}|speciesX_i{n,rk}), prelude {
-};
+inplace(speciesX{n,rk}|speciesX_i{n,rk}), prelude {};
 
 $rule pointwise(speciesCp{n,rk} <- speciesCp_i{n,rk}),
-inplace(speciesCp{n,rk}|speciesCp_i{n,rk}), prelude {
-};
+inplace(speciesCp{n,rk}|speciesCp_i{n,rk}), prelude {};
 
 $rule pointwise(speciesEnthalpy{n,rk} <- speciesEnthalpy_i{n,rk}),
-inplace(speciesEnthalpy{n,rk}|speciesEnthalpy_i{n,rk}), prelude {
-};
+inplace(speciesEnthalpy{n,rk}|speciesEnthalpy_i{n,rk}), prelude {};
 
 $rule pointwise(mixtureCp{n,rk} <- mixtureCp_i{n,rk}),
-inplace(mixtureCp{n,rk}|mixtureCp_i{n,rk}), prelude {
-};
+inplace(mixtureCp{n,rk}|mixtureCp_i{n,rk}), prelude {};
 
 $rule pointwise(mixtureEnthalpy{n,rk} <- mixtureEnthalpy_i{n,rk}),
-inplace(mixtureEnthalpy{n,rk}|mixtureEnthalpy_i{n,rk}), prelude {
-};
-
-$rule pointwise(ssQ{n,rk} <- ssQ_i{n,rk}),
-inplace(ssQ{n,rk}|ssQ_i{n,rk}), prelude {
-};
-
-$rule pointwise(msQ{n,rk} <- msQ_i{n,rk}),
-inplace(msQ{n,rk}|msQ_i{n,rk}), prelude {
-};
+inplace(mixtureEnthalpy{n,rk}|mixtureEnthalpy_i{n,rk}), prelude {};
 
 // =============================================================================
 // RK advance rules
@@ -213,7 +216,7 @@ constraint(timeIntegrationRK) {
 $rule pointwise(
   ssQ_i{n,rk+1}
   <-
-  ssQ{n}, ssQ{n,rk}, ssResidual{n,rk},
+  ssQ{n}, ssQ_i{n,rk}, ssResidual{n,rk},
   rkOrderWeights{n,rk}, $rk{n,rk}, dtRK{n,rk}, Ns
 ) {
   int const step = $$rk{n,rk};
@@ -222,7 +225,7 @@ $rule pointwise(
   
   Loci::Array<double, 5> & Qrkp1 = $ssQ_i{n,rk+1};
   Loci::Array<double, 5> const & Qn = $ssQ{n};
-  Loci::Array<double, 5> const & Qrk = $ssQ{n,rk};
+  Loci::Array<double, 5> const & Qrk = $ssQ_i{n,rk};
   Loci::Array<double, 5> const & R = $ssResidual{n,rk};
   
   for(int i = 0; i < 5; ++i) {
@@ -234,7 +237,7 @@ $rule pointwise(
 $rule pointwise(
   msQ_i{n,rk+1}
   <-
-  msQ{n}, msQ{n,rk}, msResidual{n,rk},
+  msQ{n}, msQ_i{n,rk}, msResidual{n,rk},
   rkOrderWeights{n,rk}, $rk{n,rk}, dtRK{n,rk}, Ns
 ), prelude {
   $msQ_i{n,rk+1}.setVecSize(*$Ns+4);
@@ -245,7 +248,7 @@ $rule pointwise(
   
   Vect<double> Qrkp1 = $msQ_i{n,rk+1};
   const_Vect<double> Qn = $msQ{n};
-  const_Vect<double> Qrk = $msQ{n,rk};
+  const_Vect<double> Qrk = $msQ_i{n,rk};
   const_Vect<double> R = $msResidual{n,rk};
   
   for(int i = 0; i < $Ns+4; ++i) {
@@ -259,18 +262,23 @@ $rule pointwise(
 // =============================================================================
 
 $rule pointwise(
-  density_i{n,rk+1}, velocity_i{n,rk+1} <- ssQ_i{n,rk+1}, vol{n,rk},
-  Pambient
+  density_i{n,rk+1}, velocity_i{n,rk+1} <- ssQ_i{n,rk+1}, vol{n,rk}
 ), constraint(singleSpecies, geom_cells) {
+  double const * Q = &$ssQ_i{n,rk+1}[0];
   double const rvol = 1.0/$vol{n,rk};
-  $density_i{n,rk+1} = ssQ_i{n,rk+1}[4]*rvol;
-  $velocity_i{n,rk+1} = Loci::vector3d<double>(
-    ssQ_i{n,rk+1}[0], ssQ_i{n,rk+1}[1], ssQ_i{n,rk+1}[2]
-  )*rvol/$density_i{n,rk+1};
+  double & r = $density_i{n,rk+1};
+  Loci::vector3d<double> & u = $velocity_i{n,rk+1};
+  
+  r = $ssQ_i{n,rk+1}[4]*rvol;
+  double const rvolr = 1.0/($vol{n,rk}*r);
+  u = Loci::vector3d<double>(Q[0], Q[1], Q[2])*rvolr;
 }
 
-$rule pointwise(mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1} <- speciesW, Runiv),
-constraint(singleSpecies, geom_cells) {
+$rule pointwise(
+  mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1}
+  <-
+  $rk{n,rk+1}, speciesW, Runiv
+), constraint(singleSpecies, geom_cells) {
   $mixtureW_i{n,rk+1} = $speciesW[0];
   $mixtureR_i{n,rk+1} = $Runiv/$speciesW[0];
 }
@@ -279,15 +287,15 @@ $rule pointwise(
   mixtureEnthalpy_i{n,rk+1}, mixtureCp_i{n,rk+1},
   temperature_i{n,rk+1}, gagePressure_i{n,rk+1}
   <-
-  speciesCp_Constant, ssQ_i{n,rk+1}, density_i{n,rk+1},
+  ssQ_i{n,rk+1}, density_i{n,rk+1},
   velocity_i{n,rk+1}, mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1},
-  vol{n,rk}, Pambient
+  vol{n,rk}, speciesCp_Constant, Pambient
 ), constraint(singleSpecies, caloricallyPerfectGas, thermallyPerfectGas, geom_cells) {
-  double const r = $density_i{n,rk+1};
+  double const & r = $density_i{n,rk+1};
   Loci::vector3d<double> const & u = $velocity_i{n,rk+1};
-  double const e0 = ssQ_i{n,rk+1}[3]/(r*$vol{n,rk});
-  double const Cp = $speciesCp_Constant[0];
-  double const R = $mixtureR_i{n,rk+1};
+  double const e0 = $ssQ_i{n,rk+1}[3]/(r*$vol{n,rk});
+  double const & Cp = $speciesCp_Constant[0];
+  double const & R = $mixtureR_i{n,rk+1};
   double const Cv = Cp - R;
   double const e = e0 - 0.5*dot(u, u);
   double const T = e/Cv;
@@ -305,7 +313,7 @@ $rule pointwise(
 $rule pointwise(
   density_i{n,rk+1}, velocity_i{n,rk+1}, speciesY_i{n,rk+1}
   <-
-  msQ_i{n,rk+1}, vol{n,rk}, Pambient, Ns
+  msQ_i{n,rk+1}, vol{n,rk}, Ns
 ), constraint(multiSpecies, geom_cells), prelude {
   $speciesY_i{n,rk+1}.setVecSize(*$Ns);
 } {
@@ -338,7 +346,7 @@ $rule pointwise(
 $rule pointwise(
   mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1}, speciesX_i{n,rk+1}
   <-
-  speciesY_i{m,rk+}, speciesW, Runiv, Ns
+  speciesY_i{n,rk+1}, speciesW, Runiv, Ns
 ), constraint(multiSpecies, geom_cells), prelude {
   $speciesX_i{n,rk+1}.setVecSize(*$Ns);
 } {
@@ -358,18 +366,16 @@ $rule pointwise(
   temperature_i{n,rk+1}, gagePressure_i{n,rk+1}
   <-
   msQ_i{n,rk+1}, density_i{n,rk+1},
-  velocity_i{n,rk+1}, speciesY_i{n,rk+1},
-  mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1},
+  velocity_i{n,rk+1}, speciesY_i{n,rk+1}, mixtureR_i{n,rk+1},
   vol{n,rk}, speciesCp_Constant, Pambient, Ns
 ), constraint(multiSpecies, caloricallyPerfectGas, thermallyPerfectGas, geom_cells), prelude {
-  $speciesEnthalpy_i{n,rk+1}.setVecSize(*$Ns);
   $speciesCp_i{n,rk+1}.setVecSize(*$Ns);
+  $speciesEnthalpy_i{n,rk+1}.setVecSize(*$Ns);
 } {
   double const * Q = &$msQ_i{n,rk+1}[0];
   double const & r = $density_i{n,rk+1};
   Loci::vector3d<double> const & u = $velocity_i{n,rk+1};
   double const * Y = &$speciesY_i{n,rk+1}[0];
-  double const & W = $mixtureW_i{n,rk+1};
   double const & R = $mixtureR_i{n,rk+1};
   double const & vol = $vol{n,rk};
 
@@ -421,58 +427,63 @@ conditional(rkFinished{n,rk}) {
   $stime{n+1} = $stime{n,rk} + $dtRK;
 }
 
-$rule pointwise(gagePressure{n+1} <- gagePressure{n,rk}),
-inplace(gagePressure{n+1}|gagePressure{n,rk}),
+$rule pointwise(gagePressure{n+1} <- gagePressure_i{n,rk}),
+inplace(gagePressure{n+1}|gagePressure_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
-$rule pointwise(velocity{n+1} <- velocity{n,rk}),
-inplace(velocity{n+1}|velocity{n,rk}),
+$rule pointwise(density{n+1} <- density_i{n,rk}),
+inplace(density{n+1}|density_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
-$rule pointwise(temperature{n+1} <- temperature{n,rk}),
-inplace(temperature{n+1}|temperature{n,rk}),
+$rule pointwise(velocity{n+1} <- velocity_i{n,rk}),
+inplace(velocity{n+1}|velocity_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
-$rule pointwise(speciesY{n+1} <- speciesY{n,rk}, Ns),
-inplace(speciesY{n+1}|speciesY{n,rk}),
+$rule pointwise(temperature{n+1} <- temperature_i{n,rk}),
+inplace(temperature{n+1}|temperature_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
-$rule pointwise(mixtureW{n+1} <- mixtureW{n,rk}),
-inplace(mixtureW{n+1}|mixtureW{n,rk}),
+$rule pointwise(speciesY{n+1} <- speciesY_i{n,rk}, Ns),
+inplace(speciesY{n+1}|speciesY_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+conditional(rkFinished{n,rk}), prelude {};
+
+$rule pointwise(mixtureW{n+1} <- mixtureW_i{n,rk}),
+inplace(mixtureW{n+1}|mixtureW_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
-$rule pointwise(mixtureR{n+1} <- mixtureR{n,rk}),
-inplace(mixtureR{n+1}|mixtureR{n,rk}),
+$rule pointwise(mixtureR{n+1} <- mixtureR_i{n,rk}),
+inplace(mixtureR{n+1}|mixtureR_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
-$rule pointwise(speciesX{n+1} <- speciesX{n,rk}, Ns),
-inplace(speciesX{n+1}|speciesX{n,rk}),
+$rule pointwise(speciesX{n+1} <- speciesX_i{n,rk}, Ns),
+inplace(speciesX{n+1}|speciesX_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
-$rule pointwise(speciesCp{n+1} <- speciesCp{n,rk}, Ns),
-inplace(speciesCp{n+1}|speciesCp{n,rk}),
-constraint(geom_cells, timeIntegrationRK),
-  consitional(rkFinished{n,rk}), prelude {};
-
-$rule pointwise(speciesEnthalpy{n+1} <- speciesEnthalpy{n,rk}, Ns),
-inplace(speciesEnthalpy{n+1}|speciesEnthalpy{n,rk}),
-constraint(geom_cells, timeIntegrationRK),
-  consitional(rkFinished{n,rk}), prelude {};
-
-$rule pointwise(mixtureCp{n+1} <- mixtureCp{n,rk}),
-inplace(mixtureCp{n+1}|mixtureCp{n,rk}),
+$rule pointwise(speciesCp{n+1} <- speciesCp_i{n,rk}, Ns),
+inplace(speciesCp{n+1}|speciesCp_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
-$rule pointwise(mixtureEnthalpy{n+1} <- mixtureEnthalpy{n,rk}),
-inplace(mixtureEnthalpy{n+1}|mixtureEnthalpy{n,rk}),
+$rule pointwise(speciesEnthalpy{n+1} <- speciesEnthalpy_i{n,rk}, Ns),
+inplace(speciesEnthalpy{n+1}|speciesEnthalpy_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+  conditional(rkFinished{n,rk}), prelude {};
+
+$rule pointwise(mixtureCp{n+1} <- mixtureCp_i{n,rk}),
+inplace(mixtureCp{n+1}|mixtureCp_i{n,rk}),
+constraint(geom_cells, timeIntegrationRK),
+  conditional(rkFinished{n,rk}), prelude {};
+
+$rule pointwise(mixtureEnthalpy{n+1} <- mixtureEnthalpy_i{n,rk}),
+inplace(mixtureEnthalpy{n+1}|mixtureEnthalpy_i{n,rk}),
 constraint(geom_cells, timeIntegrationRK),
   conditional(rkFinished{n,rk}), prelude {};
 
@@ -484,9 +495,4 @@ $rule pointwise(cfl <- cflpdt, dtRK) {
 
 //==============================================================================
 
-$rule pointwise(soundSpeed <- mixtureCp, mixtureR, temperature),
-constraint(thermallyPerfectGas, temperature) {
-  $soundSpeed = eos_TP_a_from_Cp_R_T($mixtureCp, $mixtureR, $temperature);
 }
-
-//==============================================================================

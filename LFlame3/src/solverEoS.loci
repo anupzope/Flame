@@ -23,26 +23,4 @@ $rule constraint(thermallyPerfectGas <- eosModel) {
 
 // =============================================================================
 
-//$rule pointwise(density <- temperature, gagePressure, speciesR, Pambient),
-//constraint(singleSpecies, thermallyPerfectGas, geom_cells) {
-//  $density = ($gagePressure+$Pambient)/($speciesR[0]*$temperature);
-//}
-//
-//$rule pointwise(density_f <- temperature_f, gagePressure_f, speciesR, Pambient),
-//  constraint(singleSpecies, thermallyPerfectGas, area) {
-//  $density_f = ($gagePressure_f+$Pambient)/($speciesR[0]*$temperature_f);
-//}
-
-$rule pointwise(density <- temperature, gagePressure, mixtureR, Pambient),
-constraint(thermallyPerfectGas, geom_cells) {
-  $density = ($gagePressure+$Pambient)/($mixtureR*$temperature);
-}
-
-$rule pointwise(density_f <- temperature_f, gagePressure_f, mixtureR_f, Pambient),
-constraint(thermallyPerfectGas, area) {
-  $density_f = ($gagePressure_f+$Pambient)/($mixtureR_f*$temperature_f);
-}
-
-// =============================================================================
-
 } // end: namespace flame

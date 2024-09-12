@@ -1,5 +1,6 @@
 #include <flame.hh>
 #include <plot.hh>
+#include <eos.hh>
 
 $include "flame.lh"
 $include "FVM.lh"
@@ -175,22 +176,72 @@ $rule singleton(stime{n=0} <- stime_ic) {
   $stime{n=0} = $stime_ic;
 }
 
-$rule pointwise(gagePressure{n=0} <- gagePressure_ic) {
+$rule pointwise(gagePressure{n=0} <- gagePressure_ic),
+constraint(geom_cells) {
   $gagePressure{n=0} = $gagePressure_ic;
 }
 
-$rule pointwise(temperature{n=0} <- temperature_ic) {
+$rule pointwise(temperature{n=0} <- temperature_ic),
+constraint(geom_cells) {
   $temperature{n=0} = $temperature_ic;
 }
 
-$rule pointwise(velocity{n=0} <- velocity_ic) {
+$rule pointwise(velocity{n=0} <- velocity_ic),
+constraint(geom_cells) {
   $velocity{n=0} = $velocity_ic;
 }
 
-$rule pointwise(speciesY{n=0} <- speciesY_ic, Ns), prelude {
+$rule pointwise(speciesY{n=0} <- speciesY_ic, Ns),
+constraint(geom_cells, multiSpecies), prelude {
   $speciesY{n=0}.setVecSize(*$Ns);
 } {
   $speciesY{n=0} = $speciesY_ic;
+}
+
+$rule pointwise(density{n=0} <- density_ic),
+constraint(geom_cells) {
+  $density{n=0} = $density_ic;
+}
+
+$rule pointwise(mixtureW{n=0} <- mixtureW_ic),
+constraint(geom_cells) {
+  $mixtureW{n=0} = $mixtureW_ic;
+}
+
+$rule pointwise(mixtureR{n=0} <- mixtureR_ic),
+constraint(geom_cells) {
+  $mixtureR{n=0} = $mixtureR_ic;
+}
+
+$rule pointwise(speciesX{n=0} <- speciesX_ic, Ns),
+constraint(geom_cells, multiSpecies), prelude {
+  $speciesX{n=0}.setVecSize(*$Ns);
+} {
+  $speciesX{n=0} = $speciesX_ic;
+}
+
+$rule pointwise(speciesCp{n=0} <- speciesCp_ic, Ns),
+constraint(geom_cells, multiSpecies), prelude {
+  $speciesCp{n=0}.setVecSize(*$Ns);
+} {
+  $speciesCp{n=0} = $speciesCp_ic;
+}
+
+$rule pointwise(speciesEnthalpy{n=0} <- speciesEnthalpy_ic, Ns),
+constraint(geom_cells, multiSpecies), prelude {
+  $speciesEnthalpy{n=0}.setVecSize(*$Ns);
+} {
+  $speciesEnthalpy{n=0} = $speciesEnthalpy_ic;
+}
+
+$rule pointwise(mixtureCp{n=0} <- mixtureCp_ic),
+constraint(geom_cells) {
+  $mixtureCp{n=0} = $mixtureCp_ic;
+}
+
+$rule pointwise(mixtureEnthalpy{n=0} <- mixtureEnthalpy_ic),
+constraint(geom_cells) {
+  $mixtureEnthalpy{n=0} = $mixtureEnthalpy_ic;
 }
 
 // =============================================================================
@@ -200,24 +251,6 @@ $rule pointwise(speciesY{n=0} <- speciesY_ic, Ns), prelude {
 // -----------------------------------------------------------------------------
 // Single-species calculations.
 // -----------------------------------------------------------------------------
-
-// Calculation of mixture molecular weight.
-$rule pointwise(mixtureW{n} <- speciesW, Ns),
-  constraint(singleSpecies, geom_cells) {
-  $mixtureW{n} = $speciesW[0];
-}
-
-// Calculation of mixture specific heat.
-$rule pointwise(mixtureCp{n} <- speciesCp_Constant),
-constraint(singleSpecies, caloricallyPerfectGas, geom_cells) {
-  $mixtureCp{n} = $speciesCp_Constant[0];
-}
-
-// Calculation of mixture enthalpy.
-$rule pointwise(mixtureEnthalpy{n} <- temperature{n}, speciesCp_Constant),
-constraint(singleSpecies, caloricallyPerfectGas, geom_cells) {
-  $mixtureEnthalpy{n} = $speciesCp_Constant[0]*$temperature{n};
-}
 
 // Calculation of conservative variables.
 $rule pointwise(
@@ -230,82 +263,23 @@ $rule pointwise(
   
   double const P = $gagePressure{n}+$Pambient;
   double const rho = $density{n};
-  double const e = $mixtureEnthalpy{n} - P/rho;
-  double const e0 = e + 0.5*dot($velocity{n}, $velocity{n});
+  double const h0 = $mixtureEnthalpy{n} + 0.5*dot($velocity{n}, $velocity{n});
   double const vol = $vol{n};
   
-  double const r = vol*rho;
-  Loci::vector3d<double> m = vol*rho*$velocity{n};
-  double const e = vol*rho*e0;
+  double const vr = vol*rho;
+  Loci::vector3d<double> vm = vol*rho*$velocity{n};
+  double const ve = vol*(rho*h0 - P);
   
-  Q[0] = m[0];
-  Q[1] = m[1];
-  Q[2] = m[2];
-  Q[3] = e;
-  Q[4] = r;
+  Q[0] = vm[0];
+  Q[1] = vm[1];
+  Q[2] = vm[2];
+  Q[3] = ve;
+  Q[4] = vr;
 }
 
 // -----------------------------------------------------------------------------
 // Multi-species calculations.
 // -----------------------------------------------------------------------------
-
-// Calculation of mixture molecular weight.
-$rule pointwise(mixtureW{n} <- speciesY{n}, speciesW, Ns),
-  constraint(multiSpecies, geom_cells) {
-  double rW = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    rW += $speciesY{n}[i]/$speciesW[i];
-  }
-  $mixtureW{n} = 1.0/rW;
-}
-
-// Calculation of species molar fractions.
-$rule pointwise(speciesX{n} <- speciesY{n}, mixtureW{n}, speciesW, Ns),
-constraint(geom_cells), prelude {
-  $speciesX{n}.setVecSize(*$Ns);
-} {
-  for(int i = 0; i < $Ns; ++i) {
-    $speciesX{n}[i] = $speciesY{n}[i]*$mixtureW{n}/$speciesW[i];
-  }
-}
-
-// Calculation of species specific heat.
-$rule pointwise(speciesCp{n} <- speciesCp_Constant, Ns),
-constraint(multiSpecies, caloricallyPerfectGas, geom_cells), prelude {
-  $speciesCp{n}.setVecSize(*$Ns);
-} {
-  for(int i = 0; i < $Ns; ++i) {
-    speciesCp{n}[i] = $speciesCp_Constant[i];
-  }
-}
-
-// Calculation of species enthalpy.
-$rule pointwise(speciesEnthalpy{n} <- temperature{n}, speciesCp_Constant, Ns),
-constraint(multiSpecies, caloricallyPerfectGas, geom_cells), prelude {
-  $speciesEnthalpy{n}.setVecSize(*$Ns);
-} {
-  for(int i = 0; i < $Ns; ++i) {
-    $speciesEnthalpy{n}[i] = $speciesCp_Constant[i]*$temperature{n};
-  }
-}
-
-// Calculation of mixture specific heat.
-$rule pointwise(mixtureCp{n} <- speciesY{n}, speciesCp{n}, Ns),
-constraint(multiSpecies, caloricallyPerfectGas, geom_cells) {
-  $mixtureCp{n} = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    $mixtureCp{n} += $speciesY{n}[i]*$speciesCp{n}[i];
-  }
-}
-
-// Calculation of mixture enthalpy.
-$rule pointwise(mixtureEnthalpy{n} <- speciesY{n}, speciesEnthalpy{n}, Ns),
-constraint(multiSpecies, caloricallyPerfectGas, geom_cells) {
-  $mixtureEnthalpy{n} = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    $mixtureEnthalpy{n} += $speciesY{n}[i]*$speciesEnthalpy{n}[i];
-  }
-}
 
 // Calculation of conservative variables.
 $rule pointwise(
@@ -321,30 +295,21 @@ $rule pointwise(
   
   double const P = $gagePressure{n}+$Pambient;
   double const rho = $density{n};
-  double const e = $mixtureEnthalpy{n} - P/rho;
-  double const e0 = e + 0.5*dot($velocity{n}, $velocity{n});
+  double const h0 = $mixtureEnthalpy{n} + 0.5*dot($velocity{n}, $velocity{n});
   double const vol = $vol{n};
   
-  double const r = vol*rho;
-  Loci::vector3d<double> m = vol*rho*$velocity{n};
-  double const e = vol*rho*e0;
+  double const vr = vol*rho;
+  Loci::vector3d<double> vm = vol*rho*$velocity{n};
+  double const ve = vol*(rho*h0 - P);
   
-  Q[0] = m[0];
-  Q[1] = m[1];
-  Q[2] = m[2];
-  Q[3] = e;
-  Q[4] = r;
+  Q[0] = vm[0];
+  Q[1] = vm[1];
+  Q[2] = vm[2];
+  Q[3] = ve;
+  Q[4] = vr;
   for(int i = 0; i < $Ns-1; ++i) {
-    Q[i+5] = Y[i]*r;
+    Q[i+5] = Y[i]*vr;
   }
-}
-
-// -----------------------------------------------------------------------------
-// Both single-species and multi-species calculations
-
-$rule pointwise(mixtureR{n} <- mixtureW{n}, Runiv),
-constraint(geom_cells) {
-  $mixtureR{n} = $Runiv/$mixtureW{n};
 }
 
 // =============================================================================
