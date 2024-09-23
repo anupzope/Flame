@@ -164,7 +164,7 @@ $rule singleton(
   
   int const nLevels = $plotSettings.nodalCounts.size();
   int const n = $timeStep{n};
-  
+
   for(int i = 0; i < nLevels; ++i) {
     int const f = $plotSettings.nodalFrequencies[i];
     int const c = $plotSettings.nodalCounts[i];
@@ -182,6 +182,16 @@ $rule singleton(
           $plotPostfix{n,rk} = ss.str();
         }
       }
+    }
+  }
+
+  int const nTimeSteps = $plotSettings.nodalTimeSteps.size();
+  for(int i = 0; i < nTimeSteps; ++i) {
+    if($timeStep{n} == $plotSettings.nodalTimeSteps[i]) {
+      $doPlot{n,rk} = true;
+      std::stringstream ss;
+      ss << $timeStep{n} << "FTS";
+      $plotPostfix{n,rk} = ss.str();
     }
   }
 }
@@ -214,6 +224,16 @@ $rule singleton(
           $plotBoundaryPostfix{n,rk} = ss.str();
         }
       }
+    }
+  }
+
+  int const nTimeSteps = $plotSettings.boundaryTimeSteps.size();
+  for(int i = 0; i < nTimeSteps; ++i) {
+    if($timeStep{n} == $plotSettings.boundaryTimeSteps[i]) {
+      $doBoundaryPlot{n,rk} = true;
+      std::stringstream ss;
+      ss << $timeStep{n} << "FTS";
+      $plotBoundaryPostfix{n,rk} = ss.str();
     }
   }
 }

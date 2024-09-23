@@ -222,10 +222,13 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
   
   std::vector<int> freq;
   std::vector<int> cnts;
+  std::vector<int> timeSteps;
   std::vector<int> nfreq;
   std::vector<int> ncnts;
+  std::vector<int> nTimeSteps;
   std::vector<int> bfreq;
   std::vector<int> bcnts;
+  std::vector<int> bTimeSteps;
   std::vector<std::string> nvars;
   std::vector<std::string> bvars;
   
@@ -235,7 +238,7 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
     if(optName == "nodalVariables") {
       std::vector<std::string> values;
       std::ostringstream ss;
-      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
       
       if(err == 0) {
         nvars.swap(values);
@@ -246,7 +249,7 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
     } else if(optName == "boundaryVariables") {
       std::vector<std::string> values;
       std::ostringstream ss;
-      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
       
       if(err == 0) {
         bvars.swap(values);
@@ -257,7 +260,7 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
     } else if(optName == "boundaryFrequencies") {
       std::vector<int> values;
       std::ostringstream ss;
-      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
       
       if(err == 0) {
         bool hasError = false;
@@ -279,7 +282,7 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
     } else if(optName == "boundaryCounts") {
       std::vector<int> values;
       std::ostringstream ss;
-      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
       
       if(err == 0) {
         bool hasError = false;
@@ -301,7 +304,7 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
     } else if(optName == "nodalFrequencies") {
       std::vector<int> values;
       std::ostringstream ss;
-      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
       
       if(err == 0) {
         bool hasError = false;
@@ -323,7 +326,7 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
     } else if(optName == "nodalCounts") {
       std::vector<int> values;
       std::ostringstream ss;
-      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
       
       if(err == 0) {
         bool hasError = false;
@@ -345,7 +348,7 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
     } else if(optName == "frequencies") {
       std::vector<int> values;
       std::ostringstream ss;
-      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
       
       if(err == 0) {
         bool hasError = false;
@@ -367,7 +370,7 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
     } else if(optName == "counts") {
       std::vector<int> values;
       std::ostringstream ss;
-      int err = getOptionValues(ol, optName, 0, 1000000, values, ss);
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
       
       if(err == 0) {
         bool hasError = false;
@@ -385,6 +388,69 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
       } else {
         errmsg << ss.str();
         ++error;
+      }
+    } else if(optName == "timeSteps") {
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
+      if(err == 0) {
+        bool hasError = false;
+        for(size_t i = 0; i < values.size(); ++i) {
+          if(values[i] <= 0) {
+            errmsg << "[element " << i << " of " << optName
+              << " must be a non-zero positive integer]";
+            ++error;
+            hasError = true;
+          }
+        }
+        if(!hasError) {
+          timeSteps.swap(values);
+        }
+      } else {
+        errmsg << ss.str();
+	++error;
+      }
+    } else if(optName == "nodalTimeSteps") {
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
+      if(err == 0) {
+	bool hasError = false;
+	for(size_t i = 0; i < values.size(); ++i) {
+	  if(values[i] <= 0) {
+	    errmsg << "[element " << i << " of " << optName
+		   << " must be a non-zero positive integer]";
+	    ++error;
+	    hasError = true;
+	  }
+	}
+	if(!hasError) {
+	  nTimeSteps.swap(values);
+	}
+      } else {
+	errmsg << ss.str();
+	++error;
+      }
+    } else if(optName == "boundaryTimeSteps") {
+      std::vector<int> values;
+      std::ostringstream ss;
+      int err = getOptionValues(ol, optName, 0, std::numeric_limits<int>::max(), values, ss);
+      if(err == 0) {
+	bool hasError = false;
+	for(size_t i = 0; i < values.size(); ++i) {
+	  if(values[i] <= 0) {
+	    errmsg << "[element " << i << " of " << optName
+		   << " must be a non-zero positive integer]";
+	    ++error;
+	    hasError = true;
+	  }
+	}
+	if(!hasError) {
+	  bTimeSteps.swap(values);
+	}
+      } else {
+	errmsg << ss.str();
+	++error;
       }
     } else {
       errmsg << "[unknown option " + optName + "]";
@@ -425,6 +491,18 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
       nodalFrequencies = freq;
       nodalCounts = cnts;
     }
+
+    if(bTimeSteps.size() > 0) {
+      boundaryTimeSteps.swap(bTimeSteps);
+    } else {
+      boundaryTimeSteps = timeSteps;
+    }
+    
+    if(nTimeSteps.size() > 0) {
+      nodalTimeSteps.swap(nTimeSteps);
+    } else {
+      nodalTimeSteps = timeSteps;
+    }
     
     nodalVariables.swap(nvars);
     boundaryVariables.swap(bvars);
@@ -435,13 +513,20 @@ int PlotSettings::fromOptionsList(options_list const & ol, std::string & err) {
 
 std::ostream & operator<<(std::ostream & s, PlotSettings const & rhs) {
   int const nNodalLevels = rhs.nodalCounts.size();
+  int const nNodalTimeSteps = rhs.nodalTimeSteps.size();
   int const nNodalVariables = rhs.nodalVariables.size();
   int const nBoundaryLevels = rhs.boundaryCounts.size();
+  int const nBoundaryTimeSteps = rhs.boundaryTimeSteps.size();
   int const nBoundaryVariables = rhs.boundaryVariables.size();
   
   s << nNodalLevels << " ";
   for(int i = 0; i < nNodalLevels; ++i) {
     s << rhs.nodalFrequencies[i] << " " << rhs.nodalCounts[i] << " ";
+  }
+  
+  s << nNodalTimeSteps << " ";
+  for(int i = 0; i < nNodalTimeSteps; ++i) {
+    s << rhs.nodalTimeSteps[i] << " ";
   }
   
   s << nNodalVariables << " ";
@@ -453,6 +538,11 @@ std::ostream & operator<<(std::ostream & s, PlotSettings const & rhs) {
   for(int i = 0; i < nBoundaryLevels; ++i) {
     s << rhs.boundaryFrequencies[i] << " " << rhs.boundaryCounts[i] << " ";
   }
+
+  s << nBoundaryTimeSteps << " ";
+  for(int i = 0; i < nBoundaryTimeSteps; ++i) {
+    s << rhs.boundaryTimeSteps[i] << " ";
+  }
   
   s << nBoundaryVariables << " ";
   for(int i = 0; i < nBoundaryVariables; ++i) {
@@ -463,14 +553,20 @@ std::ostream & operator<<(std::ostream & s, PlotSettings const & rhs) {
 }
 
 std::istream & operator>>(std::istream & s, PlotSettings & rhs) {
-  int nNodalLevels, nNodalVariables;
-  int nBoundaryLevels, nBoundaryVariables;
+  int nNodalLevels, nNodalTimeSteps, nNodalVariables;
+  int nBoundaryLevels, nBoundaryTimeSteps, nBoundaryVariables;
   
   s >> nNodalLevels;
   rhs.nodalFrequencies.resize(nNodalLevels);
   rhs.nodalCounts.resize(nNodalLevels);
   for(int i = 0; i < nNodalLevels; ++i) {
     s >> rhs.nodalFrequencies[i] >> rhs.nodalCounts[i];
+  }
+
+  s >> nNodalTimeSteps;
+  rhs.nodalTimeSteps.resize(nNodalTimeSteps);
+  for(int i = 0; i < nNodalTimeSteps; ++i) {
+    s >> rhs.nodalTimeSteps[i];
   }
   
   s >> nNodalVariables;
@@ -484,6 +580,12 @@ std::istream & operator>>(std::istream & s, PlotSettings & rhs) {
   rhs.boundaryCounts.resize(nBoundaryLevels);
   for(int i = 0; i < nBoundaryLevels; ++i) {
     s >> rhs.boundaryFrequencies[i] >> rhs.boundaryCounts[i];
+  }
+
+  s >> nBoundaryTimeSteps;
+  rhs.boundaryTimeSteps.resize(nBoundaryTimeSteps);
+  for(int i = 0; i < nBoundaryTimeSteps; ++i) {
+    s >> rhs.boundaryTimeSteps[i];
   }
   
   s >> nBoundaryVariables;

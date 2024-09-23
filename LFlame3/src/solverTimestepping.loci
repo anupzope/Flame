@@ -327,12 +327,12 @@ $rule singleton(timeStepFinished{n} <- $n{n}, timeStep{n}, nTimeSteps) {
 }
 
 $rule pointwise(solution <- gagePressure{n}, velocity{n}, temperature{n}),
-constraint(geom_cells{n}, singleSpecies),
+constraint(geom_cells, singleSpecies),
 conditional(timeStepFinished{n}),
 inplace(solution|gagePressure{n}), prelude {};
 
 $rule pointwise(solution <- gagePressure{n}, velocity{n}, temperature{n},
-speciesY{n}), constraint(geom_cells{n}, multiSpecies),
+speciesY{n}), constraint(geom_cells, multiSpecies),
 conditional(timeStepFinished{n}),
 inplace(solution|gagePressure{n}), prelude {};
 

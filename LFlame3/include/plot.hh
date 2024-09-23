@@ -31,9 +31,11 @@ struct PlotSettings {
   std::vector<std::string> nodalVariables;
   std::vector<int> nodalFrequencies;
   std::vector<int> nodalCounts;
+  std::vector<int> nodalTimeSteps;
   std::vector<std::string> boundaryVariables;
   std::vector<int> boundaryFrequencies;
   std::vector<int> boundaryCounts;
+  std::vector<int> boundaryTimeSteps;
   
   std::string toString() const;
   void fromString(std::string const & str);

@@ -261,6 +261,53 @@ $rule pointwise(
 // RK iteration.
 // =============================================================================
 
+//$rule pointwise(
+//  density_i{n,rk+1}, velocity_i{n,rk+1} <- ssQ_i{n,rk+1}, vol{n,rk}
+//), constraint(singleSpecies, geom_cells) {
+//  double const * Q = &$ssQ_i{n,rk+1}[0];
+//  double const rvol = 1.0/$vol{n,rk};
+//  double & r = $density_i{n,rk+1};
+//  Loci::vector3d<double> & u = $velocity_i{n,rk+1};
+//  
+//  r = $ssQ_i{n,rk+1}[4]*rvol;
+//  double const rvolr = 1.0/($vol{n,rk}*r);
+//  u = Loci::vector3d<double>(Q[0], Q[1], Q[2])*rvolr;
+//}
+//
+//$rule pointwise(
+//  mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1}
+//  <-
+//  $rk{n,rk+1}, speciesW, Runiv
+//), constraint(singleSpecies, geom_cells) {
+//  $mixtureW_i{n,rk+1} = $speciesW[0];
+//  $mixtureR_i{n,rk+1} = $Runiv/$speciesW[0];
+//}
+//
+//$rule pointwise(
+//  mixtureEnthalpy_i{n,rk+1}, mixtureCp_i{n,rk+1},
+//  temperature_i{n,rk+1}, gagePressure_i{n,rk+1}
+//  <-
+//  ssQ_i{n,rk+1}, density_i{n,rk+1},
+//  velocity_i{n,rk+1}, mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1},
+//  vol{n,rk}, speciesCp_Constant, Pambient
+//), constraint(singleSpecies, caloricallyPerfectGas, thermallyPerfectGas, geom_cells) {
+//  double const & r = $density_i{n,rk+1};
+//  Loci::vector3d<double> const & u = $velocity_i{n,rk+1};
+//  double const e0 = $ssQ_i{n,rk+1}[3]/(r*$vol{n,rk});
+//  double const & Cp = $speciesCp_Constant[0];
+//  double const & R = $mixtureR_i{n,rk+1};
+//  double const Cv = Cp - R;
+//  double const e = e0 - 0.5*dot(u, u);
+//  double const T = e/Cv;
+//  double const h = Cp*T;
+//  double const P = eos_TP_P_from_r_T_R(r, T, R);
+//  
+//  $mixtureEnthalpy_i{n,rk+1} = h;
+//  $mixtureCp_i{n,rk+1} = Cp;
+//  $temperature_i{n,rk+1} = T;
+//  $gagePressure_i{n,rk+1} = P - $Pambient;
+//}
+
 $rule pointwise(
   density_i{n,rk+1}, velocity_i{n,rk+1} <- ssQ_i{n,rk+1}, vol{n,rk}
 ), constraint(singleSpecies, geom_cells) {
@@ -274,10 +321,14 @@ $rule pointwise(
   u = Loci::vector3d<double>(Q[0], Q[1], Q[2])*rvolr;
 }
 
+// Variable density_i{n,rk+1} is not used in the computations of this
+// rule, but it is required to enforce calculation of
+// mixtureW_i{n,rk+1} which is further required for calculation of
+// temperature_i{n,rk+1}.
 $rule pointwise(
   mixtureW_i{n,rk+1}, mixtureR_i{n,rk+1}
   <-
-  $rk{n,rk+1}, speciesW, Runiv
+  density_i{n,rk+1}, speciesW, Runiv
 ), constraint(singleSpecies, geom_cells) {
   $mixtureW_i{n,rk+1} = $speciesW[0];
   $mixtureR_i{n,rk+1} = $Runiv/$speciesW[0];
