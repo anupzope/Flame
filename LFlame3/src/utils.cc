@@ -1564,6 +1564,7 @@ int getRegionGeom(
   if(functionName == "leftPlane" || functionName == "rightPlane") {
     bool pointSpecified = false, normalSpecified = false;
     std::vector<double> point, normal;
+    double priority = 0;
     options_list::arg_list::const_iterator aiter = args.begin();
     while(aiter != args.end()) {
       std::string argName;
@@ -1580,6 +1581,10 @@ int getRegionGeom(
         } else {
           normalSpecified = true;
         }
+      } else if(argName == "priority") {
+        if(getArgValue(*aiter, "", priority, errmsg)) {
+          ++error;
+        }
       }
       ++aiter;
     }
@@ -1588,11 +1593,13 @@ int getRegionGeom(
         LeftPlaneICRegionGeom * leftPlane = new LeftPlaneICRegionGeom();
         leftPlane->setPoint(point[0], point[1], point[2]);
         leftPlane->setNormal(normal[0], normal[1], normal[2]);
+        leftPlane->setPriority((int)priority);
         *geom = leftPlane;
       } else {
         RightPlaneICRegionGeom * rightPlane = new RightPlaneICRegionGeom();
         rightPlane->setPoint(point[0], point[1], point[2]);
         rightPlane->setNormal(normal[0], normal[1], normal[2]);
+        rightPlane->setPriority((int)priority);
         *geom = rightPlane;
       }
     } else {
@@ -1602,7 +1609,7 @@ int getRegionGeom(
   } else if(functionName == "sphere") {
     bool centerSpecified = false, radiusSpecified = false;
     std::vector<double> center;
-    double radius;
+    double radius, priority = 0;
     options_list::arg_list::const_iterator aiter = args.begin();
     while(aiter != args.end()) {
       std::string argName;
@@ -1619,6 +1626,10 @@ int getRegionGeom(
         } else {
           radiusSpecified = true;
         }
+      } else if(argName == "priority") {
+        if(getArgValue(*aiter, "", priority, errmsg)) {
+          ++error;
+        }
       }
       ++aiter;
     }
@@ -1626,6 +1637,7 @@ int getRegionGeom(
       SphereICRegionGeom * sphere = new SphereICRegionGeom();
       sphere->setCenter(center[0], center[1], center[2]);
       sphere->setRadius(radius);
+      sphere->setPriority((int)priority);
       *geom = sphere;
     } else {
       errmsg << "[" << functionName << " requires center and radius]";
@@ -1634,6 +1646,7 @@ int getRegionGeom(
   } else if(functionName == "box") {
     bool corner1Specified = false, corner2Specified = false;
     std::vector<double> corner1, corner2;
+    double priority = 0;
     options_list::arg_list::const_iterator aiter = args.begin();
     while(aiter != args.end()) {
       std::string argName;
@@ -1650,6 +1663,10 @@ int getRegionGeom(
         } else {
           corner2Specified = true;
         }
+      } else if(argName == "priority") {
+        if(getArgValue(*aiter, "", priority, errmsg)) {
+          ++error;
+        }
       }
       ++aiter;
     }
@@ -1659,6 +1676,7 @@ int getRegionGeom(
         min(corner1[0], corner2[0]), min(corner1[1], corner2[1]), min(corner1[2], corner2[2]),
 	max(corner1[0], corner2[0]), max(corner1[1], corner2[1]), max(corner1[2], corner2[2])
       );
+      box->setPriority((int)priority);
       *geom = box;
     } else {
       errmsg << "[" << functionName << " requires corner1 and corner2]";
@@ -1669,6 +1687,7 @@ int getRegionGeom(
     std::map<std::string, bool> pointSpecified, normalSpecified;
     std::map<std::string, double> px, py, pz, nx, ny, nz;
     std::vector<double> point, normal;
+    double priority = 0;
     options_list::arg_list::const_iterator aiter = args.begin();
     while(aiter != args.end()) {
       std::string argName;
@@ -1699,6 +1718,10 @@ int getRegionGeom(
             nz.insert(std::pair<std::string, double>(name, normal[2]));
           }
         }
+      } else if(argName == "priority") {
+        if(getArgValue(*aiter, "", priority, errmsg)) {
+          ++error;
+        }
       }
       ++aiter;
     }
@@ -1724,6 +1747,7 @@ int getRegionGeom(
       }
       ++niter;
     }
+    convexPolyhedron->setPriority((int)priority);
 
     if(allSpecified && size > 0) {
       *geom = convexPolyhedron;

@@ -347,7 +347,16 @@ enum GeomType {
 };
 
 class ICRegionGeom : public Loci::CPTR_type {
+protected:
+  int m_priority;
+
 public:
+  ICRegionGeom() : m_priority(0) { }
+
+  void setPriority(int priority) { m_priority = priority; }
+
+  int getPriority() const { return m_priority; }
+
   virtual GeomType type() const = 0;
 
   virtual bool in(double x, double y, double z) const = 0;

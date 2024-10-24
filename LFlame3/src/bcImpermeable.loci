@@ -4,6 +4,7 @@ $include "FVM.lh"
 $include "flame.lh"
 
 #include <flux.hh>
+#include <eos.hh>
 
 namespace flame {
 
@@ -30,53 +31,67 @@ public:
 
 registerBoundaryChecker<SymmetryBCChecker> symmetryBCChecker;
 
-$rule pointwise(velocity_f <- area, ci->velocity), constraint(symmetry_BC) {
+$rule pointwise(gagePressure_f <- ci->gagePressure),
+constraint(symmetry_BC) {
+  $gagePressure_f = $ci->$gagePressure;
+}
+
+$rule pointwise(density_f <- ci->density),
+constraint(symmetry_BC) {
+  $density_f = $ci->$density;
+}
+
+$rule pointwise(temperature_f <- ci->temperature),
+constraint(symmetry_BC) {
+  $temperature_f = $ci->$temperature;
+}
+
+$rule pointwise(velocity_f <- area, ci->velocity),
+constraint(symmetry_BC) {
   double const uit = dot($ci->$velocity, $area.n);
   $velocity_f = $ci->$velocity - uit*$area.n;
 }
 
-$rule pointwise(gagePressure_f <- area, ci->(velocity,gagePressure,density), Pambient),
-constraint(symmetry_BC) {
-  double const uit = dot($ci->$velocity, $area.n);
-  double const U = norm($ci->$velocity);
-  $gagePressure_f = $ci->$gagePressure + 0.5*($ci->$density)*U*uit;
-}
-
-$rule pointwise(temperature_f <- ci->temperature), constraint(symmetry_BC) {
-  $temperature_f = $ci->$temperature;
-}
-
-$rule pointwise(speciesY_f <- ci->speciesY, Ns), constraint(symmetry_BC),
-prelude {
+$rule pointwise(speciesY_f <- ci->speciesY, Ns),
+constraint(symmetry_BC), prelude {
   $speciesY_f.setVecSize(*$Ns);
 } {
   $speciesY_f = $ci->$speciesY;
 }
 
-$rule pointwise(speciesX_f <- ci->speciesX, Ns), constraint(symmetry_BC),
-prelude {
+$rule pointwise(speciesX_f <- ci->speciesX, Ns),
+constraint(symmetry_BC), prelude {
   $speciesX_f.setVecSize(*$Ns);
 } {
   $speciesX_f = $ci->$speciesX;
 }
 
-$rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
-  constraint(symmetry_BC) {
-  double Winv = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Winv += $speciesY_f[i]/$speciesW[i];
-  }
-  $mixtureW_f = 1.0/Winv;
-  $mixtureR_f = $Runiv*Winv;
+$rule pointwise(mixtureW_f, mixtureR_f <- ci->(mixtureW, mixtureR)),
+constraint(symmetry_BC) {
+  $mixtureW_f = $ci->$mixtureW;
+  $mixtureR_f = $ci->$mixtureR;
 }
 
-$rule pointwise(mixtureCp_f <- speciesY_f, speciesCp_Constant, Ns),
-  constraint(symmetry_BC) {
-  double Cp = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY_f[i]*$speciesCp_Constant[i];
-  }
-  $mixtureCp_f = Cp;
+$rule pointwise(
+  mixtureCp_f, mixtureEnthalpy_f <- ci->(mixtureCp, mixtureEnthalpy)
+), constraint(symmetry_BC) {
+  $mixtureCp_f = $ci->$mixtureCp;
+  $mixtureEnthalpy_f = $ci->$mixtureEnthalpy;
+}
+
+$rule pointwise(
+  speciesCp_f, speciesEnthalpy_f <- ci->(speciesCp, speciesEnthalpy), Ns
+), constraint(symmetry_BC), prelude {
+  $speciesCp_f.setVecSize(*$Ns);
+  $speciesEnthalpy_f.setVecSize(*$Ns);
+} {
+  $speciesCp_f = $ci->$speciesCp;
+  $speciesEnthalpy_f = $ci->$speciesEnthalpy;
+}
+
+$rule pointwise(soundSpeed_f <- ci->soundSpeed),
+constraint(symmetry_BC) {
+  $soundSpeed_f = $ci->$soundSpeed;
 }
 
 $rule pointwise(ssConvectiveFlux_f <- gagePressure_f, velocity_f, area),
@@ -104,17 +119,6 @@ constraint(multiSpecies, symmetry_BC), prelude {
   }
 }
 
-//$rule pointwise(
-//  speciesVelocityD_f <- area, ci->speciesVelocityD, Ns
-//), constraint(symmetry_BC), prelude {
-//  $speciesVelocityD_f.setVecSize(*$Ns);
-//} {
-//  for(int i = 0; i < $Ns; ++i) {
-//    double const uit = dot($ci->$speciesVelocityD[i], $area.n);
-//    $speciesVelocityD_f[i] = $ci->$speciesVelocityD[i] - uit*$area.n;
-//  }
-//}
-
 $rule pointwise(
   msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f,
   density_f, area, Ns
@@ -124,15 +128,6 @@ $rule pointwise(
   for(int i = 0; i < $Ns; ++i) {
     $msDiffusiveFlux_f[i] = 0.0;
   }
-  //computeSpeciesDiffusionFluxWithRamshawCorrection(
-  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
-  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
-  //  $area.sada, $area.n, $Ns
-  //);
-  //for(int i = 0; i < $Ns; ++i) {
-  //  double const uit = dot($ci->$speciesVelocityD[i], $area.n);
-  //  $speciesVelocityD_f[i] = $ci->$speciesVelocityD[i] - uit*$area.n;
-  //}
 }
 
 // =============================================================================
@@ -158,11 +153,6 @@ public:
 
 registerBoundaryChecker<ReflectingBCChecker> reflectingBCChecker;
 
-$rule pointwise(velocity_f <- area, ci->velocity), constraint(reflecting_BC) {
-  double const uit = dot($ci->$velocity, $area.n);
-  $velocity_f = $ci->$velocity - uit*$area.n;
-}
-
 $rule pointwise(gagePressure_f <- area, ci->(velocity,gagePressure,density), Pambient),
 constraint(reflecting_BC) {
   double const uit = dot($ci->$velocity,$area.n);
@@ -170,41 +160,62 @@ constraint(reflecting_BC) {
   $gagePressure_f = max(Pmin, $ci->$gagePressure + 0.5*($ci->$density)*uit*fabs(uit));
 }
 
-$rule pointwise(temperature_f <- ci->temperature), constraint(reflecting_BC) {
+$rule pointwise(density_f <- temperature_f, gagePressure_f, mixtureR_f, Pambient),
+constraint(thermallyPerfectGas, reflecting_BC) {
+  $density_f = eos_TP_r_from_P_T_R(
+    $gagePressure_f + $Pambient, $temperature_f, $mixtureR_f
+  );
+}
+
+$rule pointwise(temperature_f <- ci->temperature),
+constraint(reflecting_BC) {
   $temperature_f = $ci->$temperature;
 }
 
-$rule pointwise(speciesY_f <- ci->speciesY, Ns), constraint(reflecting_BC),
-prelude {
+$rule pointwise(velocity_f <- area, ci->velocity),
+constraint(reflecting_BC) {
+  double const uit = dot($ci->$velocity, $area.n);
+  $velocity_f = $ci->$velocity - uit*$area.n;
+}
+
+$rule pointwise(speciesY_f <- ci->speciesY, Ns),
+constraint(reflecting_BC), prelude {
   $speciesY_f.setVecSize(*$Ns);
 } {
   $speciesY_f = $ci->$speciesY;
 }
 
-$rule pointwise(speciesX_f <- ci->speciesX, Ns), constraint(reflecting_BC),
-prelude {
+$rule pointwise(speciesX_f <- ci->speciesX, Ns),
+constraint(reflecting_BC), prelude {
   $speciesX_f.setVecSize(*$Ns);
 } {
   $speciesX_f = $ci->$speciesX;
 }
 
-$rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
-  constraint(reflecting_BC) {
-  double Winv = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Winv += $speciesY_f[i]/$speciesW[i];
-  }
-  $mixtureW_f = 1.0/Winv;
-  $mixtureR_f = $Runiv*Winv;
+$rule pointwise(mixtureW_f, mixtureR_f <- ci->(mixtureW, mixtureR)),
+constraint(reflecting_BC) {
+  $mixtureW_f = $ci->$mixtureW;
+  $mixtureR_f = $ci->$mixtureR;
 }
 
-$rule pointwise(mixtureCp_f <- speciesY_f, speciesCp_Constant, Ns),
-  constraint(reflecting_BC) {
-  double Cp = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY_f[i]*$speciesCp_Constant[i];
-  }
-  $mixtureCp_f = Cp;
+$rule pointwise(mixtureCp_f, mixtureEnthalpy_f <- ci->(mixtureCp, mixtureEnthalpy)),
+constraint(reflecting_BC) {
+  $mixtureCp_f = $ci->$mixtureCp;
+  $mixtureEnthalpy_f = $ci->$mixtureEnthalpy;
+}
+
+$rule pointwise(speciesCp_f, speciesEnthalpy_f <- ci->(speciesCp, speciesEnthalpy), Ns),
+constraint(reflecting_BC), prelude {
+  $speciesCp_f.setVecSize(*$Ns);
+  $speciesEnthalpy_f.setVecSize(*$Ns);
+} {
+  $speciesCp_f = $ci->$speciesCp;
+  $speciesEnthalpy_f = $ci->$speciesEnthalpy;
+}
+
+$rule pointwise(soundSpeed_f <- ci->soundSpeed),
+constraint(reflecting_BC) {
+  $soundSpeed_f = $ci->$soundSpeed;
 }
 
 $rule pointwise(
@@ -277,17 +288,6 @@ $rule pointwise(
   }
 }
 
-//$rule pointwise(
-//  speciesVelocityD_f <- area, ci->speciesVelocityD, Ns
-//), constraint(reflecting_BC), prelude {
-//  $speciesVelocityD_f.setVecSize(*$Ns);
-//} {
-//  for(int i = 0; i < $Ns; ++i) {
-//    double const uit = dot($ci->$speciesVelocityD[i], $area.n);
-//    $speciesVelocityD_f[i] = $ci->$speciesVelocityD[i] - uit*$area.n;
-//  }
-//}
-
 $rule pointwise(
   msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f,
   density_f, area, Ns
@@ -297,15 +297,6 @@ $rule pointwise(
   for(int i = 0; i < $Ns; ++i) {
     $msDiffusiveFlux_f[i] = 0.0;
   }
-  //computeSpeciesDiffusionFluxWithRamshawCorrection(
-  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
-  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
-  //  $area.sada, $area.n, $Ns
-  //);
-  //for(int i = 0; i < $Ns; ++i) {
-  //  double const uit = dot($ci->$speciesVelocityD[i], $area.n);
-  //  $speciesVelocityD_f[i] = $ci->$speciesVelocityD[i] - uit*$area.n;
-  //}
 }
 
 // =============================================================================

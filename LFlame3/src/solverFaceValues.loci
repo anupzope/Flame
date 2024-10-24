@@ -43,7 +43,28 @@ $rule pointwise(speciesY_f <- faceAvgFactor, (cl,cr)->(vol,speciesY), Ns), prelu
 
 // =============================================================================
 
-$rule pointwise(mixtureW_f, mixtureR_f <- (cl,cr)->vol, speciesY_f, speciesW, Runiv, Ns) {
+$rule pointwise(density_f <- mixtureR_f, temperature_f, gagePressure_f, Pambient),
+constraint(thermallyPerfectGas, (cl,cr)->vol) {
+  $density_f = ($gagePressure_f + $Pambient)/($mixtureR_f*$temperature_f);
+}
+
+// =============================================================================
+
+$rule pointwise(mixtureW_f, mixtureR_f <- (cl,cr)->vol, speciesW, speciesR, Runiv),
+constraint(singleSpecies, (cl,cr)->vol) {
+  $mixtureW_f = $speciesW[0];
+  $mixtureR_f = $speciesW[0]/$Runiv;
+}
+
+$rule pointwise(mixtureCp_f <- (cl,cr)->vol, speciesCp_Constant),
+constraint(singleSpecies, caloricallyPerfectGas, (cl,cr)->vol) {
+  $mixtureCp_f = $speciesCp_Constant[0];
+}
+
+// =============================================================================
+
+$rule pointwise(mixtureW_f, mixtureR_f <- (cl,cr)->vol, speciesY_f, speciesW, Runiv, Ns),
+constraint(multiSpecies, (cl,cr)->vol) {
   double rW = 0.0;
   for(int i = 0; i < $Ns; ++i) {
     rW += $speciesY_f[i]/$speciesW[i];
@@ -52,7 +73,8 @@ $rule pointwise(mixtureW_f, mixtureR_f <- (cl,cr)->vol, speciesY_f, speciesW, Ru
   $mixtureR_f = $Runiv*rW;
 }
 
-$rule pointwise(mixtureCp_f <- (cl,cr)->vol, speciesY_f, speciesCp_Constant, Ns) {
+$rule pointwise(mixtureCp_f <- (cl,cr)->vol, speciesY_f, speciesCp_Constant, Ns),
+constraint(multiSpecies, caloricallyPerfectGas, (cl,cr)->vol) {
   double Cp = 0.0;
   for(int i = 0; i < $Ns; ++i) {
     Cp += $speciesY_f[i]*$speciesCp_Constant[i];
@@ -60,9 +82,11 @@ $rule pointwise(mixtureCp_f <- (cl,cr)->vol, speciesY_f, speciesCp_Constant, Ns)
   $mixtureCp_f = Cp;
 }
 
+// =============================================================================
+
 $rule pointwise(
   speciesX_f <- (cl,cr)->vol, speciesY_f, mixtureW_f, speciesW, Ns
-), prelude {
+), constraint(multiSpecies, (cl,cr)->vol), prelude {
   $speciesX_f.setVecSize(*$Ns);
 } {
   for(int i = 0; i < $Ns; ++i) {

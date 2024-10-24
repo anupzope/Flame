@@ -11,4 +11,9 @@ constraint(thermallyPerfectGas, temperature) {
   $soundSpeed = eos_TP_a_from_Cp_R_T($mixtureCp, $mixtureR, $temperature);
 }
 
+$rule pointwise(soundSpeed_f <- mixtureCp_f, mixtureR_f, temperature_f),
+constraint(thermallyPerfectGas, (cl,cr)->vol) {
+  $soundSpeed_f = eos_TP_a_from_Cp_R_T($mixtureCp_f, $mixtureR_f, $temperature_f);
+}
+
 } // end: namespace flame

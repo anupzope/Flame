@@ -1,8 +1,9 @@
-#include <flame.hh>
-#include <boundary_checker.hh>
-
 $include "FVM.lh"
 $include "flame.lh"
+
+#include <flame.hh>
+#include <boundary_checker.hh>
+#include <eos.hh>
 
 namespace flame {
 
@@ -153,36 +154,60 @@ constraint(viscousWall_BC) {
 }
 
 $rule pointwise(speciesY_f <- ci->speciesY, Ns),
-  constraint(viscousWall_BC), prelude {
+constraint(viscousWall_BC), prelude {
   $speciesY_f.setVecSize(*$Ns);
 } {
   $speciesY_f = $ci->$speciesY;
 }
 
 $rule pointwise(speciesX_f <- ci->speciesX, Ns),
-  constraint(viscousWall_BC), prelude {
+constraint(viscousWall_BC), prelude {
   $speciesX_f.setVecSize(*$Ns);
 } {
   $speciesX_f = $ci->$speciesX;
 }
 
-$rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
-  constraint(viscousWall_BC) {
-  double Winv = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Winv += $speciesY_f[i]/$speciesW[i];
-  }
-  $mixtureW_f = 1.0/Winv;
-  $mixtureR_f = $Runiv*Winv;
+$rule pointwise(mixtureW_f, mixtureR_f <- ci->(mixtureW, mixtureR)),
+constraint(viscousWall_BC) {
+  $mixtureW_f = $ci->$mixtureW;
+  $mixtureR_f = $ci->$mixtureR;
 }
 
-$rule pointwise(mixtureCp_f <- speciesY_f, speciesCp_Constant, Ns),
-  constraint(viscousWall_BC) {
-  double Cp = 0.0;
+$rule pointwise(
+  mixtureCp_f, mixtureEnthalpy_f <- temperature_f, speciesCp_Constant
+), constraint(singleSpecies, caloricallyPerfectGas, viscousWall_BC) {
+  $mixtureCp_f = $speciesCp_Constant[0];
+  $mixtureEnthalpy_f = $speciesCp_Constant[0]*$temperature_f;
+}
+
+$rule pointwise(
+  speciesCp_f, speciesEnthalpy_f <- temperature_f, speciesCp_Constant, Ns
+), constraint(multiSpecies, caloricallyPerfectGas, viscousWall_BC), prelude {
+  $speciesCp_f.setVecSize(*$Ns);
+  $speciesEnthalpy_f.setVecSize(*$Ns);
+} {
   for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY_f[i]*$speciesCp_Constant[i];
+    $speciesCp_f[i] = $speciesCp_Constant[i];
+    $speciesEnthalpy_f[i] = $speciesCp_Constant[i]*$temperature_f;
   }
-  $mixtureCp_f = Cp;
+}
+
+$rule pointwise(
+  mixtureCp_f, mixtureEnthalpy_f
+  <-
+  speciesCp_f, speciesEnthalpy_f, speciesY_f, Ns
+), constraint(multiSpecies, caloricallyPerfectGas, viscousWall_BC) {
+  $mixtureCp_f = mixture_Cp_from_sCp_Y(
+    $Ns, &$speciesCp_f[0], &$speciesY_f[0]
+  );
+  $mixtureEnthalpy_f = mixture_H_from_sH_Y(
+    $Ns, &$speciesCp_f[0], &$speciesEnthalpy_f[0]
+  );
+}
+
+$rule pointwise(soundSpeed_f <- mixtureCp_f, mixtureR_f, temperature_f),
+constraint(thermallyPerfectGas, viscousWall_BC) {
+  $soundSpeed_f = eos_TP_a_from_Cp_R_T($mixtureCp_f, $mixtureR_f, $temperature_f);
 }
 
 // =============================================================================
@@ -216,17 +241,8 @@ constraint(multiSpecies, viscousWall_BC), prelude {
   }
 }
 
-//$rule pointwise(
-//  speciesVelocityD_f <- area, ci->velocity, Ns
-//), constraint(viscousWall_BC), prelude {
-//  $speciesVelocityD_f.setVecSize(*$Ns);
-//} {
-//  for(int i = 0; i < $Ns; ++i) {
-//    $speciesVelocityD_f[i] = Loci::vector3d<double>(0.0, 0.0, 0.0);
-//  }
-//}
-
-$rule pointwise(msDiffusiveFlux_f <- Ns), constraint(viscousWall_BC), prelude {
+$rule pointwise(msDiffusiveFlux_f <- Ns),
+constraint(viscousWall_BC), prelude {
   $msDiffusiveFlux_f.setVecSize(*$Ns);
 } {
   for(int i = 0; i < $Ns; ++i) {

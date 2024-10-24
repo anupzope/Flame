@@ -1,7 +1,8 @@
-#include <flame.hh>
-
 $include "flame.lh"
 $include "FVM.lh"
+
+#include <flame.hh>
+#include <eos.hh>
 
 namespace flame {
 
@@ -126,7 +127,7 @@ $rule pointwise(
 // For single-species.
 $rule pointwise(
   mixtureWRef_BC, mixtureRRef_BC <- speciesW, Runiv
-), constraint(singleSpecies, boundary_faces) {
+), constraint(singleSpecies, boundary_names) {
   $mixtureWRef_BC = $speciesW[0];
   $mixtureRRef_BC = $Runiv/$speciesW[0];
 }
@@ -135,24 +136,16 @@ $rule pointwise(
 $rule pointwise(
   mixtureWRef_BC, mixtureRRef_BC <- massFractions_BC, speciesW, Runiv, Ns
 ), constraint(multiSpecies, massFractions_BCoption) {
-  double Winv = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Winv += $massFractions_BC[i]/$speciesW[i];
-  }
-  $mixtureWRef_BC = 1.0/Winv;
-  $mixtureRRef_BC = $Runiv*Winv;
+  $mixtureWRef_BC = mixture_mW_from_Y_sW($Ns, &$massFractions_BC[0], &$speciesW[0]);
+  $mixtureRRef_BC = $Runiv/$mixtureWRef_BC;
 }
 
 // From molar fractions specification, for multi-species.
 $rule pointwise(
   mixtureWRef_BC, mixtureRRef_BC <- molarFractions_BC, speciesW, Runiv, Ns
 ), constraint(multiSpecies, molarFractions_BCoption) {
-  double W = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    W += $molarFractions_BC[i]*$speciesW[i];
-  }
-  $mixtureWRef_BC = W;
-  $mixtureRRef_BC = $Runiv/W;
+  $mixtureWRef_BC = mixture_mW_from_X_sW($Ns, &$molarFractions_BC[0], &$speciesW[0]);
+  $mixtureRRef_BC = $Runiv/$mixtureWRef_BC;
 }
 
 // =============================================================================
@@ -170,7 +163,8 @@ constraint(caloricallyPerfectGas, multiSpecies, temperatureRef_BC), prelude {
 }
 
 // Mixture specific heat: calorically perfect gas + multi-species
-$rule pointwise(mixtureCpRef_BC <- speciesCpRef_BC, speciesYRef_BC, Ns) {
+$rule pointwise(mixtureCpRef_BC <- speciesCpRef_BC, speciesYRef_BC, Ns),
+constraint(caloricallyPerfectGas, multiSpecies, temperatureRef_BC) {
   $mixtureCpRef_BC = 0.0;
   for(int i = 0; i < $Ns; ++i) {
     $mixtureCpRef_BC += $speciesYRef_BC[i]*$speciesCpRef_BC[i];
@@ -199,10 +193,9 @@ constraint(caloricallyPerfectGas, multiSpecies, temperatureRef_BC), prelude {
 
 // Mixture specific enthalpy: calorically perfect gas + multi-species
 $rule pointwise(mixtureEnthalpyRef_BC <- speciesEnthalpyRef_BC, speciesYRef_BC, Ns) {
-  $mixtureEnthalpyRef_BC = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    $mixtureEnthalpyRef_BC += $speciesYRef_BC[i]*$speciesEnthalpyRef_BC[i];
-  }
+  $mixtureEnthalpyRef_BC = mixture_H_from_sH_Y(
+    $Ns, &$speciesEnthalpyRef_BC[0], &$speciesYRef_BC[0]
+  );
 }
 
 // Mixture specific enthalpy: calorically perfect gas + single-species

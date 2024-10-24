@@ -5,6 +5,7 @@ $include "FVM.lh"
 #include <flame.hh>
 #include <utils.hh>
 #include <boundary_checker.hh>
+#include <eos.hh>
 
 namespace flame {
 
@@ -116,6 +117,12 @@ constraint(supersonicInflow_BC) {
   $gagePressure_f = $gagePressureRef;
 }
 
+$rule pointwise(density_f <- densityRef),
+constraint(supersonicInflow_BC) {
+  $density_f = $densityRef;
+}
+
+
 $rule pointwise(temperature_f <- temperatureRef),
 constraint(supersonicInflow_BC) {
   $temperature_f = $temperatureRef;
@@ -140,23 +147,39 @@ constraint(supersonicInflow_BC), prelude {
   $speciesX_f = $speciesXRef;
 }
 
-$rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
-  constraint(supersonicInflow_BC) {
-  double Winv = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Winv += $speciesY_f[i]/$speciesW[i];
-  }
-  $mixtureW_f = 1.0/Winv;
-  $mixtureR_f = $Runiv*Winv;
+$rule pointwise(mixtureW_f, mixtureR_f <- mixtureWRef, mixtureRRef),
+constraint(supersonicInflow_BC) {
+  $mixtureW_f = $mixtureWRef;
+  $mixtureR_f = $mixtureRRef;
 }
 
-$rule pointwise(mixtureCp_f <- speciesY_f, speciesCp_Constant, Ns),
-  constraint(supersonicInflow_BC) {
-  double Cp = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY_f[i]*$speciesCp_Constant[i];
-  }
-  $mixtureCp_f = Cp;
+$rule pointwise(mixtureCp_f <- mixtureCpRef),
+constraint(supersonicInflow_BC) {
+  $mixtureCp_f = $mixtureCpRef;
+}
+
+$rule pointwise(mixtureEnthalpy_f <- mixtureEnthalpyRef),
+constraint(supersonicInflow_BC) {
+  $mixtureEnthalpy_f = $mixtureEnthalpyRef;
+}
+
+$rule pointwise(speciesCp_f <- speciesCpRef, Ns),
+constraint(supersonicInflow_BC), prelude {
+  $speciesCp_f.setVecSize(*$Ns);
+} {
+  $speciesCp_f = $speciesCpRef;
+}
+
+$rule pointwise(speciesEnthalpy_f <- speciesEnthalpyRef, Ns),
+constraint(supersonicInflow_BC), prelude {
+  $speciesEnthalpy_f.setVecSize(*$Ns);
+} {
+  $speciesEnthalpy_f = $speciesEnthalpyRef;
+}
+
+$rule pointwise(soundSpeed_f <- soundSpeedRef),
+constraint(supersonicInflow_BC) {
+  $soundSpeed_f = $soundSpeedRef;
 }
 
 $rule pointwise(
@@ -212,17 +235,6 @@ $rule pointwise(
   );
 }
 
-//$rule pointwise(
-//  speciesVelocityD_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, Ns
-//), constraint(supersonicInflow_BC), prelude {
-//  $speciesVelocityD_f.setVecSize(*$Ns);
-//} {
-//  computeDiffusionVelocityWithRamshawCorrection(
-//    &$speciesVelocityD_f[0], &$gradv_f(speciesY)[0],
-//    &$speciesY_f[0], &$speciesDiffusivity_f[0], $Ns
-//  );
-//}
-
 // =============================================================================
 // Supersonic outflow implementation
 // -----------------------------------------------------------------------------
@@ -230,6 +242,11 @@ $rule pointwise(
 $rule pointwise(gagePressure_f <- ci->gagePressure),
 constraint(supersonicOutflow_BC) {
   $gagePressure_f = $ci->$gagePressure;
+}
+
+$rule pointwise(density_f <- ci->density),
+constraint(supersonicOutflow_BC) {
+  $density_f = $ci->$density;
 }
 
 $rule pointwise(temperature_f <- ci->temperature),
@@ -256,23 +273,40 @@ constraint(supersonicOutflow_BC), prelude {
   $speciesX_f = $ci->$speciesX;
 }
 
-$rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
-  constraint(supersonicOutflow_BC) {
-  double Winv = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Winv += $speciesY_f[i]/$speciesW[i];
-  }
-  $mixtureW_f = 1.0/Winv;
-  $mixtureR_f = $Runiv*Winv;
+$rule pointwise(mixtureW_f, mixtureR_f <- ci->(mixtureW,mixtureR)),
+constraint(supersonicOutflow_BC) {
+  $mixtureW_f = $ci->$mixtureW;
+  $mixtureR_f = $ci->$mixtureR;
 }
 
-$rule pointwise(mixtureCp_f <- speciesY_f, speciesCp_Constant, Ns),
-  constraint(supersonicOutflow_BC) {
-  double Cp = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY_f[i]*$speciesCp_Constant[i];
-  }
-  $mixtureCp_f = Cp;
+$rule pointwise(mixtureCp_f <- ci->mixtureCp),
+constraint(supersonicOutflow_BC) {
+  $mixtureCp_f = $ci->$mixtureCp;
+}
+
+$rule pointwise(mixtureEnthalpy_f <- ci->mixtureEnthalpy),
+constraint(supersonicOutflow_BC) {
+  $mixtureEnthalpy_f = $ci->$mixtureEnthalpy;
+}
+
+$rule pointwise(speciesCp_f <- ci->speciesCp, Ns),
+constraint(supersonicOutflow_BC), prelude {
+  $speciesCp_f.setVecSize(*$Ns);
+} {
+  $speciesCp_f = $ci->$speciesCp;
+}
+
+$rule pointwise(speciesEnthalpy_f <- ci->speciesEnthalpy, Ns),
+constraint(supersonicOutflow_BC),
+prelude {
+  $speciesEnthalpy_f.setVecSize(*$Ns);
+} {
+  $speciesEnthalpy_f = $ci->$speciesEnthalpy;
+}
+
+$rule pointwise(soundSpeed_f <- ci->soundSpeed),
+constraint(supersonicOutflow_BC) {
+  $soundSpeed_f = $ci->$soundSpeed;
 }
 
 $rule pointwise(
@@ -328,166 +362,216 @@ $rule pointwise(
   );
 }
 
-//$rule pointwise(
-//  speciesVelocityD_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, Ns
-//), constraint(supersonicOutflow_BC), prelude {
-//  $speciesVelocityD_f.setVecSize(*$Ns);
-//} {
-//  computeDiffusionVelocityWithRamshawCorrection(
-//    &$speciesVelocityD_f[0], &$gradv_f(speciesY)[0],
-//    &$speciesY_f[0], &$speciesDiffusivity_f[0], $Ns
-//  );
-//}
-
 // =============================================================================
 // Farfield implementation.
 // -----------------------------------------------------------------------------
 
 $rule pointwise(
-  gagePressure_f, temperature_f, velocity_f
+  gagePressure_f, density_f, temperature_f, velocity_f,
+  mixtureW_f, mixtureR_f
   <-
-  gagePressureRef, temperatureRef, velocityRef, densityRef, soundSpeedRef, area,
-  ci->(gagePressure,temperature,velocity,density), Pambient, speciesR
+  gagePressureRef, densityRef, temperatureRef, velocityRef,
+  mixtureWRef, mixtureRRef,
+  ci->(gagePressure, density, temperature, velocity),
+  ci->(mixtureW, mixtureR, soundSpeed),
+  Pambient, area
 ), constraint(singleSpecies, thermallyPerfectGas, farfield_BC) {
-  Loci::vector3d<double> const & ui = $ci->$velocity;
-  double const & ri = $ci->$density;
   double const & pgi = $ci->$gagePressure;
+  double const & ri = $ci->$density;
   double const & Ti = $ci->$temperature;
+  Loci::vector3d<double> const & ui = $ci->$velocity;
+  double const & Wi = $ci->$mixtureW;
+  double const & Ri = $ci->$mixtureR;
+  double const & ci = $ci->$soundSpeed;
   
-  Loci::vector3d<double> const & uo = $velocityRef;
-  double const & ro = $densityRef;
   double const & pgo = $gagePressureRef;
+  double const & ro = $densityRef;
   double const & To = $temperatureRef;
-  
+  Loci::vector3d<double> const & uo = $velocityRef;
+  double const & Wo = $mixtureWRef;
+  double const & Ro = $mixtureRRef;
+
   double const uti = dot(ui, $area.n);
   double const uto = dot(uo, $area.n);
-  
-  double const r0 = ro;
-  double const c0 = $soundSpeedRef;
+
+  double const r0 = ri;
+  double const c0 = ci;
   double const r0c0 = r0*c0;
-  
+
   if(uti > 0.0) { // outflow
-    if(uti > $soundSpeedRef) { // supersonic outflow
+    if(uti > ci) { // supersonic outflow
       $gagePressure_f = pgi;
+      $density_f = ri;
       $temperature_f = Ti;
       $velocity_f = ui;
+      $mixtureW_f = Wi;
+      $mixtureR_f = Ri;
     } else { // subsonic outflow
       double const pgb = 0.5*(pgi+pgo+r0c0*(uti-uto));
       double const rb = ri+(pgb-pgi)/(c0*c0);
       Loci::vector3d<double> ub = ui+((pgi-pgb)/r0c0)*$area.n;
-      double const Tb = (pgb+$Pambient)/($speciesR[0]*rb);
-      
+      double const Tb = eos_TP_T_from_r_P_R(rb, pgb+$Pambient, Ri);
+
       $gagePressure_f = pgb;
+      $density_f = rb;
       $temperature_f = Tb;
       $velocity_f = ub;
+      $mixtureW_f = Wi;
+      $mixtureR_f = Ri;
     }
   } else {
-    if(-uti > $soundSpeedRef) { // supersonic inflow
+    if(-uti > ci) { // supersonic inflow
       $gagePressure_f = pgo;
+      $density_f = ro;
       $temperature_f = To;
       $velocity_f = uo;
+      $mixtureW_f = Wo;
+      $mixtureR_f = Ro;
     } else { // subsonic inflow
       double const pgb = 0.5*(pgo+pgi+r0c0*(uti-uto));
       double const rb = r0+(pgb-pgo)/(c0*c0);
       Loci::vector3d<double> ub = uo+((pgb-pgo)/r0c0)*$area.n;
-      double const Tb = (pgb+$Pambient)/($speciesR[0]*rb);
-      
+      double const Tb = eos_TP_T_from_r_P_R(rb, pgb+$Pambient, Ro);
+
       $gagePressure_f = pgb;
+      $density_f = rb;
       $temperature_f = Tb;
       $velocity_f = ub;
+      $mixtureW_f = Wo;
+      $mixtureR_f = Ro;
     }
   }
 }
 
 $rule pointwise(
-  gagePressure_f, temperature_f, velocity_f, speciesY_f, speciesX_f
+  gagePressure_f, density_f, temperature_f, velocity_f,
+  speciesY_f, speciesX_f,
+  mixtureW_f, mixtureR_f
   <-
-  gagePressureRef, temperatureRef, velocityRef, densityRef, speciesYRef, speciesXRef, area,
-  ci->(gagePressure,temperature,velocity,density,speciesY,speciesX),
-  Pambient, mixtureRRef, soundSpeedRef, Ns
+  gagePressureRef, densityRef, temperatureRef, velocityRef,
+  speciesYRef, speciesXRef,
+  mixtureWRef, mixtureRRef,
+  ci->(gagePressure, density, temperature, velocity),
+  ci->(speciesY, speciesX),
+  ci->(mixtureW, mixtureR, soundSpeed),
+  Pambient, area, Ns
 ), constraint(multiSpecies, thermallyPerfectGas, farfield_BC), prelude {
   $speciesY_f.setVecSize(*$Ns);
   $speciesX_f.setVecSize(*$Ns);
 } {
-  Loci::vector3d<double> const & ui = $ci->$velocity;
-  double const & ri = $ci->$density;
   double const & pgi = $ci->$gagePressure;
+  double const & ri = $ci->$density;
   double const & Ti = $ci->$temperature;
+  Loci::vector3d<double> const & ui = $ci->$velocity;
   const_Vect<double> const & Yi = $ci->$speciesY;
   const_Vect<double> const & Xi = $ci->$speciesX;
-  
-  Loci::vector3d<double> const & uo = $velocityRef;
-  double const & ro = $densityRef;
+  double const & Wi = $ci->$mixtureW;
+  double const & Ri = $ci->$mixtureR;
+  double const & ci = $ci->$soundSpeed;
+
   double const & pgo = $gagePressureRef;
+  double const & ro = $densityRef;
   double const & To = $temperatureRef;
+  Loci::vector3d<double> const & uo = $velocityRef;
   const_Vect<double> const & Yo = $speciesYRef;
   const_Vect<double> const & Xo = $speciesXRef;
-  
+  double const & Wo = $mixtureWRef;
+  double const & Ro = $mixtureRRef;
+
   double const uti = dot(ui, $area.n);
   double const uto = dot(uo, $area.n);
-  
-  double const r0 = ro;
-  double const c0 = $soundSpeedRef;
+
+  double const r0 = ri;
+  double const c0 = ci;
   double const r0c0 = r0*c0;
-  
+
   if(uti > 0.0) { // outflow
-    if(uti > $soundSpeedRef) { // supersonic outflow
+    if(uti > $ci->$soundSpeed) { // supersonic outflow
       $gagePressure_f = pgi;
+      $density_f = ri;
       $temperature_f = Ti;
       $velocity_f = ui;
       $speciesY_f = Yi;
       $speciesX_f = Xi;
+      $mixtureW_f = Wi;
+      $mixtureR_f = Ri;
     } else { // subsonic outflow
       double const pgb = 0.5*(pgi+pgo+r0c0*(uti-uto));
       double const rb = ri+(pgb-pgi)/(c0*c0);
       Loci::vector3d<double> ub = ui+((pgi-pgb)/r0c0)*$area.n;
-      double const Tb = (pgb+$Pambient)/($mixtureRRef*rb);
-      
+      double const Tb = eos_TP_T_from_r_P_R(rb, pgb+$Pambient, Ri);
+
       $gagePressure_f = pgb;
+      $density_f = rb;
       $temperature_f = Tb;
       $velocity_f = ub;
       $speciesY_f = Yi;
       $speciesX_f = Xi;
+      $mixtureW_f = Wi;
+      $mixtureR_f = Ri;
     }
-  } else {
-    if(-uti > $soundSpeedRef) { // supersonic inflow
+  } else { // inflow
+    if(-uti > ci) { // supersonic inflow
       $gagePressure_f = pgo;
+      $density_f = ro;
       $temperature_f = To;
       $velocity_f = uo;
       $speciesY_f = Yo;
       $speciesX_f = Xo;
+      $mixtureW_f = Wo;
+      $mixtureR_f = Ro;
     } else { // subsonic inflow
       double const pgb = 0.5*(pgo+pgi+r0c0*(uti-uto));
       double const rb = r0+(pgb-pgo)/(c0*c0);
       Loci::vector3d<double> ub = uo+((pgb-pgo)/r0c0)*$area.n;
-      double const Tb = (pgb+$Pambient)/($mixtureRRef*rb);
-      
+      double const Tb = eos_TP_T_from_r_P_R(rb, pgb+$Pambient, Ro);
+
       $gagePressure_f = pgb;
+      $density_f = rb;
       $temperature_f = Tb;
       $velocity_f = ub;
       $speciesY_f = Yo;
       $speciesX_f = Xo;
+      $mixtureW_f = Wo;
+      $mixtureR_f = Ro;
     }
   }
 }
 
-$rule pointwise(mixtureW_f, mixtureR_f <- speciesY_f, speciesW, Runiv, Ns),
-  constraint(farfield_BC) {
-  double Winv = 0.0;
-  for(int i = 0; i < $Ns; ++i) {
-    Winv += $speciesY_f[i]/$speciesW[i];
-  }
-  $mixtureW_f = 1.0/Winv;
-  $mixtureR_f = $Runiv*Winv;
+$rule pointwise(
+  mixtureCp_f, mixtureEnthalpy_f
+  <-
+  temperature_f, speciesCp_Constant
+), constraint(singleSpecies, caloricallyPerfectGas, farfield_BC) {
+  $mixtureCp_f = $speciesCp_Constant[0];
+  $mixtureEnthalpy_f = $speciesCp_Constant[0]*$temperature_f;
 }
 
-$rule pointwise(mixtureCp_f <- speciesY_f, speciesCp_Constant, Ns),
-  constraint(farfield_BC) {
-  double Cp = 0.0;
+$rule pointwise(
+  mixtureCp_f, mixtureEnthalpy_f, speciesCp_f, speciesEnthalpy_f
+  <-
+  temperature_f, speciesY_f, speciesCp_Constant, Ns
+), constraint(multiSpecies, caloricallyPerfectGas, farfield_BC), prelude {
+  $speciesCp_f.setVecSize(*$Ns);
+  $speciesEnthalpy_f.setVecSize(*$Ns);
+} {
   for(int i = 0; i < $Ns; ++i) {
-    Cp += $speciesY_f[i]*$speciesCp_Constant[i];
+    $speciesCp_f[i] = $speciesCp_Constant[i];
+    $speciesEnthalpy_f[i] = $speciesCp_Constant[i]*$temperature_f;
   }
-  $mixtureCp_f = Cp;
+
+  $mixtureCp_f = mixture_Cp_from_sCp_Y(
+    $Ns, &$speciesCp_f[0], &$speciesY_f[0]
+  );
+
+  $mixtureEnthalpy_f = mixture_H_from_sH_Y(
+    $Ns, &$speciesEnthalpy_f[0], &$speciesY_f[0]
+  );
+}
+
+$rule pointwise(soundSpeed_f <- mixtureCp_f, mixtureR_f, temperature_f),
+constraint(thermallyPerfectGas, farfield_BC) {
+  $soundSpeed_f = eos_TP_a_from_Cp_R_T($mixtureCp_f, $mixtureR_f, $temperature_f);
 }
 
 $rule pointwise(
@@ -495,14 +579,16 @@ $rule pointwise(
   <-
   leftsP(gagePressure,minPg), leftsP(temperature,Zero), leftv3d(velocity),
   gagePressure_f, temperature_f, velocity_f,
-  area, Pambient, speciesCp_Constant, speciesR
+  mixtureCp_f, mixtureR_f,
+  area, Pambient
 ), constraint(singleSpecies, thermallyPerfectGas, farfield_BC) {
+  // TODO: Get Cp and R based on extrapolated primitive variables
   AUSMPlusUpFluxIdealGas(
     $ssConvectiveFlux_f,
     $leftv3d(velocity), $leftsP(gagePressure,minPg), $leftsP(temperature,Zero),
     $velocity_f, $gagePressure_f, $temperature_f,
     $area.sada, $area.n, $Pambient,
-    $speciesR[0], $speciesCp_Constant[0], 1.0
+    $mixtureR_f, $mixtureCp_f, 1.0
   );
 }
 
@@ -523,6 +609,7 @@ $rule pointwise(
   Loci::vector3d<double> const & Ul = $leftv3d(velocity);
   double const & Pgl = $leftsP(gagePressure,minPg);
   double const & Tl = $leftsP(temperature,Zero);
+  // TODO: Get Cp and R based on extrapolated primitive variables
   double const & Cpl = $ci->$mixtureCp;
   double const & Rtildel = $ci->$mixtureR;
 
@@ -543,17 +630,6 @@ $rule pointwise(
   );
 }
 
-//$rule pointwise(
-//  speciesVelocityD_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, Ns
-//), constraint(farfield_BC), prelude {
-//  $speciesVelocityD_f.setVecSize(*$Ns);
-//} {
-//  computeDiffusionVelocityWithRamshawCorrection(
-//    &$speciesVelocityD_f[0], &$gradv_f(speciesY)[0],
-//    &$speciesY_f[0], &$speciesDiffusivity_f[0], $Ns
-//  );
-//}
-
 $rule pointwise(
   msDiffusiveFlux_f <- gradv_f(speciesY), speciesY_f, speciesDiffusivity_f, density_f, area, Ns
 ), constraint(farfield_BC), prelude {
@@ -562,11 +638,6 @@ $rule pointwise(
   for(int i = 0; i < $Ns; ++i) {
     $msDiffusiveFlux_f[i] = 0.0;
   }
-  //computeSpeciesDiffusionFluxWithRamshawCorrection(
-  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
-  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
-  //  $area.sada, $area.n, $Ns
-  //);
 }
 
 $rule pointwise(
@@ -577,11 +648,6 @@ $rule pointwise(
   for(int i = 0; i < $Ns; ++i) {
     $msDiffusiveFlux_f[i] = 0.0;
   }
-  //computeSpeciesDiffusionFluxWithRamshawCorrection(
-  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
-  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
-  //  $area.sada, $area.n, $Ns
-  //);
 }
 
 $rule pointwise(
@@ -592,11 +658,6 @@ $rule pointwise(
   for(int i = 0; i < $Ns; ++i) {
     $msDiffusiveFlux_f[i] = 0.0;
   }
-  //computeSpeciesDiffusionFluxWithRamshawCorrection(
-  //  &$msDiffusiveFlux_f[0], &$gradv_f(speciesY)[0],
-  //  &$speciesY_f[0], &$speciesDiffusivity_f[0], $density_f,
-  //  $area.sada, $area.n, $Ns
-  //);
 }
 
 // =============================================================================

@@ -74,6 +74,16 @@ double eos_TP_a_from_gamma_R_T(double const gamma, double const R, double const 
 }
 
 inline
+double eos_TP_a_from_Cp_R_r_P(double const Cp, double const R, double const r, double const P) {
+  return sqrt(Cp/(Cp-R)*P/r);
+}
+
+inline
+double eos_TP_a_from_gamma_r_P(double const gamma, double const r, double const P) {
+  return sqrt(gamma*P/r);
+}
+
+inline
 double eos_TP_Cv_from_Cp_R(double const Cp, double const R) {
   return Cp-R;
 }
