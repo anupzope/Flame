@@ -1584,7 +1584,9 @@ int getRegionGeom(
       } else if(argName == "priority") {
         if(getArgValue(*aiter, "", priority, errmsg)) {
           ++error;
-        }
+        } else {
+	  priority = max(0.0, priority);
+	}
       }
       ++aiter;
     }
@@ -1629,7 +1631,9 @@ int getRegionGeom(
       } else if(argName == "priority") {
         if(getArgValue(*aiter, "", priority, errmsg)) {
           ++error;
-        }
+        } else {
+	  priority = max(0.0, priority);
+	}
       }
       ++aiter;
     }
@@ -1666,7 +1670,9 @@ int getRegionGeom(
       } else if(argName == "priority") {
         if(getArgValue(*aiter, "", priority, errmsg)) {
           ++error;
-        }
+        } else {
+	  priority = max(0.0, priority);
+	}
       }
       ++aiter;
     }
@@ -1721,7 +1727,9 @@ int getRegionGeom(
       } else if(argName == "priority") {
         if(getArgValue(*aiter, "", priority, errmsg)) {
           ++error;
-        }
+        } else {
+	  priority = max(0.0, priority);
+	}
       }
       ++aiter;
     }

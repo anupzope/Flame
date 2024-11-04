@@ -423,7 +423,7 @@ $rule singleton(icRegionMixtureCp <- nICRegionStates, speciesCp_Constant),
 constraint(singleSpecies, caloricallyPerfectGas) {
   $icRegionMixtureCp.resize($nICRegionStates);
   for(int i = 0; i < $nICRegionStates; ++i) {
-    $icRegionMixtureCp[i] = $speciesCp_Constant[i];
+    $icRegionMixtureCp[i] = $speciesCp_Constant[0];
   }
 }
 
@@ -498,10 +498,13 @@ $rule singleton(
 $rule pointwise(cellICRegionIdx <- geomICRegion, stateICRegion, cellcenter) {
   $cellICRegionIdx = 0;
   const int sz = $geomICRegion.size();
+  int maxPriority = -1;
   for(int i = 0; i < sz; ++i) {
     if((*$geomICRegion[i]).in($cellcenter.x, $cellcenter.y, $cellcenter.z)) {
-      $cellICRegionIdx = $stateICRegion[i];
-      break;
+      if((*$geomICRegion[i]).getPriority() > maxPriority) {
+        $cellICRegionIdx = $stateICRegion[i];
+	maxPriority = (*$geomICRegion[i]).getPriority();
+      }
     }
   }
 }
