@@ -27,27 +27,13 @@ CONFIGURE_GTEST
 
 dnl Detect and configure glog
 CONFIGURE_GLOG
-AS_IF(
-  [test "x$with_glog" = "xyes"],
-  [
-    AS_IF(
-      [test "x$use_glog" = "xyes"],
-      [],
-      [
-        AC_MSG_ERROR([unable to find glog])
-      ]
-    )
-  ],
-  [
-    AC_MSG_ERROR([Glog not requested, configure with --with-glog])
-  ]
-)
+AS_IF([test "x$have_glog" != "xyes"],[AC_MSG_ERROR([glog is required])])
 
 dnl Detect and configure libxml2
 CONFIGURE_XML2
 
 dnl Detect and configure MPI
-CONFIGURE_MPI_CXX
+CONFIGURE_MPI
 
 dnl Detect and configure HDF5
 AX_LIB_HDF5([parallel])
