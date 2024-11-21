@@ -36,13 +36,14 @@ dnl Detect and configure MPI
 CONFIGURE_MPI
 
 dnl Detect and configure HDF5
-AX_LIB_HDF5([parallel])
+dnl AX_LIB_HDF5([parallel])
 dnl subsequent configures require use_hdf5
-AS_IF(
-  [test "x$with_hdf5" = "xyes"],
-  [use_hdf5="yes"],
-  [use_hdf5="no"]
-)
+dnl AS_IF(
+dnl   [test "x$with_hdf5" = "xyes"],
+dnl   [use_hdf5="yes"],
+dnl   [use_hdf5="no"]
+dnl )
+CONFIGURE_HDF5
 
 dnl Detect and configure METIS
 CONFIGURE_METIS
