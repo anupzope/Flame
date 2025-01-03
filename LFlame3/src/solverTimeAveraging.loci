@@ -1,0 +1,382 @@
+$include "FVM.lh"
+$include "flame.lh"
+
+#include <Loci.h>
+
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+
+namespace flame {
+
+$type timeAverageWindow param<int>;
+
+$rule default(timeAverageWindow) {
+  $timeAverageWindow = 1000;
+}
+
+$type timeAverageCount param<int>;
+$type timeAverageCount_ic param<int>;
+$type timeAverageCount_icf param<int>;
+
+$type timeAverageVariable_X param<std::string>;
+$type timeAverageCount_X param<int>;
+
+$type scalarTimeAverage(X) store<double>;
+$type scalarTimeAverageCell_X_ic store<double>;
+$type scalarTimeAverageCell_X_icf store<double>;
+$type scalarTimeAverageCell_X store<double>;
+
+$type vector3dTimeAverage(X) store<Loci::vector3d<double> >;
+$type vector3dTimeAverageCell_X_ic store<Loci::vector3d<double> >;
+$type vector3dTimeAverageCell_X_icf store<Loci::vector3d<double> >;
+$type vector3dTimeAverageCell_X store<Loci::vector3d<double> >;
+
+class TimeAverageCountFromFile : public singleton_rule {
+  param<int> timeAverageCount_icf;
+  const_param<std::string> icDirectory;
+  const_param<std::string> caseName;
+  Constraint withICDirectory;
+
+public:
+  TimeAverageCountFromFile();
+  virtual void compute(sequence const & seq);
+};
+
+TimeAverageCountFromFile::TimeAverageCountFromFile() {
+  name_store("timeAverageCount_icf", timeAverageCount_icf);
+  name_store("icDirectory", icDirectory);
+  name_store("caseName", caseName);
+  //name_store("withICDirectory", withICDirectory);
+  input("icDirectory,caseName");
+  output("timeAverageCount_icf");
+  constraint("withICDirectory");
+  disable_threading();
+}
+
+void TimeAverageCountFromFile::compute(sequence const & seq) {
+  if(Loci::GLOBAL_AND(seq == EMPTY)) {
+    return;
+  }
+
+  std::ostringstream ss;
+  ss << *icDirectory << "timeAverageCount_" << *caseName;
+
+  std::string filename(ss.str());
+
+  struct stat buf;
+  int has_file = 0;
+  $[Once] {
+    if(stat(filename.c_str(), &buf) == 0) {
+      if(buf.st_size != 0 && S_ISREG(buf.st_mode)) {
+        has_file = 1;
+      } else {
+        has_file = 2;
+      }
+    }
+  }
+  
+  MPI_Bcast(&has_file, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  if(has_file == 2) {
+    $[Once] {
+      LOG(ERROR) << "Unable to find file '" << filename << "'";
+    }
+  }
+
+  if(has_file) {
+    entitySet readSet = ~EMPTY;
+    hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    Loci::readContainer(fileId, "timeAverageCount", timeAverageCount_icf.Rep(), readSet);
+    Loci::hdf5CloseFile(fileId);
+  } else {
+    *timeAverageCount_icf = 0;
+  }
+}
+
+Loci::register_rule<TimeAverageCountFromFile> registerTimeAverageCountFromFile;
+
+$rule pointwise(
+  OUTPUT
+  <-
+  timeAverageCount, timeStep, restartDirectory, caseName, $n
+), conditional(doRestart), option(disable_threading), prelude {
+  if(*$timeStep != 0 && *$$n != 0) {
+    std::ostringstream ss;
+    ss << *$restartDirectory << "timeAverageCount_" << *$caseName;
+
+    std::string filename(ss.str());
+
+    $[Once] {
+      LOG(INFO) << "writing restart state for time average count at time step "
+        << *$timeStep << " to file '" << filename << "'";
+    }
+
+    hid_t fileId = Loci::hdf5CreateFile(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    Loci::writeContainer(fileId, "timeAverageCount", $timeAverageCount.Rep());
+    Loci::hdf5CloseFile(fileId);
+  }
+};
+
+$rule unit(timeAverageCount_ic), constraint(UNIVERSE) {
+  $timeAverageCount_ic = 0;
+}
+
+$rule apply(timeAverageCount_ic <- timeAverageCount_icf)[Loci::Maximum] {
+  join($timeAverageCount_ic, $timeAverageCount_icf);
+}
+
+$rule singleton(timeAverageCount{n=0} <- timeAverageCount_ic) {
+  $timeAverageCount{n=0} = $timeAverageCount_ic;
+}
+
+$rule singleton(timeAverageCount{n,rk=0} <- timeAverageCount{n}) {
+  $timeAverageCount{n,rk=0} = $timeAverageCount{n};
+}
+
+$rule singleton(timeAverageCount{n,rk+1} <- timeAverageCount{n,rk}) {
+  $timeAverageCount{n,rk+1} = $timeAverageCount{n,rk};
+}
+
+$rule singleton(
+  timeAverageCount{n+1}
+  <-
+  timeAverageCount{n,rk}, timeAverageWindow{n,rk}, timeStep{n,rk}
+), conditional(rkFinished{n,rk}) {
+  if($timeStep{n,rk}%$timeAverageWindow{n,rk} == 0) {
+    $timeAverageCount{n+1} = 1;
+  } else {
+    $timeAverageCount{n+1} = $timeAverageCount{n,rk} + 1;
+  }
+}
+
+$rule singleton(timeAverageVariable_X),
+constraint(UNIVERSE),
+parametric(scalarTimeAverage(X)),
+option(disable_threading) {
+  Loci::rule_impl::info const & info = get_info();
+  Loci::variableSet outset = info.output_vars();
+  Loci::variable out = *outset.begin();
+  Loci::variable::info const & vinfo = out.get_info();
+
+  std::string name;
+
+  int const sz = vinfo.name.size();
+  int i = 0;
+  while(i < sz && vinfo.name[i] != '_') {
+    ++i;
+  }
+  ++i;
+  while(i < sz && vinfo.name[i] != '_') {
+    name += vinfo.name[i];
+    ++i;
+  }
+
+  $timeAverageVariable_X = name;
+}
+
+$rule singleton(timeAverageVariable_X),
+constraint(UNIVERSE),
+parametric(vector3dTimeAverage(X)),
+option(disable_threading) {
+  Loci::rule_impl::info const & info = get_info();
+  Loci::variableSet outset = info.output_vars();
+  Loci::variable out = *outset.begin();
+  Loci::variable::info const & vinfo = out.get_info();
+
+  std::string name;
+
+  int const sz = vinfo.name.size();
+  int i = 0;
+  while(i < sz && vinfo.name[i] != '_') {
+    ++i;
+  }
+  ++i;
+  while(i < sz && vinfo.name[i] != '_') {
+    name += vinfo.name[i];
+    ++i;
+  }
+
+  $timeAverageVariable_X = name;
+}
+
+// time average of scalar quantities
+
+$rule unit(scalarTimeAverageCell_X_ic),
+parametric(scalarTimeAverage(X)),
+constraint(geom_cells) {
+  $scalarTimeAverageCell_X_ic = 0.0;
+}
+
+$rule pointwise(
+  OUTPUT
+  <-
+  scalarTimeAverageCell_X, timeAverageVariable_X,
+  timeStep, restartDirectory, caseName, $n
+), conditional(doRestart), parametric(scalarTimeAverage(X)),
+option(disable_threading), prelude {
+  if(*$timeStep != 0 && *$$n != 0) {
+    std::ostringstream ss;
+    ss << *$restartDirectory << "timeAverage_" << *$timeAverageVariable_X
+      << "_" << *$caseName;
+
+    std::string filename(ss.str());
+
+    $[Once] {
+      LOG(INFO) << "writing time averaged restart state for "
+        << *$timeAverageVariable_X << " at time step " << *$timeStep
+        << " to file '" << filename << "'";
+    }
+
+    hid_t fileId = Loci::hdf5CreateFile(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    Loci::writeContainer(fileId, "timeAverage", $scalarTimeAverageCell_X.Rep());
+    Loci::hdf5CloseFile(fileId);
+  }
+};
+
+$rule pointwise(
+  scalarTimeAverageCell_X_icf
+  <-
+  timeAverageVariable_X, icDirectory, caseName
+), constraint(geom_cells, withICDirectory), parametric(scalarTimeAverage(X)),
+option(disable_threading), prelude {
+  std::ostringstream ss;
+  ss << *$icDirectory << "timeAverage_" << *$timeAverageVariable_X << "_" << *$caseName;
+
+  std::string filename(ss.str());
+
+  Loci::entitySet readSet = entitySet(seq);
+  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  Loci::readContainer(fileId, "timeAverage", $scalarTimeAverageCell_X_icf.Rep(), readSet);
+  Loci::hdf5CloseFile(fileId);
+};
+
+$rule apply(scalarTimeAverageCell_X_ic <- scalarTimeAverageCell_X_icf)[Loci::Summation],
+parametric(scalarTimeAverage(X)) {
+  join($scalarTimeAverageCell_X_ic, $scalarTimeAverageCell_X_icf);
+}
+
+$rule pointwise(scalarTimeAverageCell_X{n=0} <- scalarTimeAverageCell_X_ic),
+constraint(geom_cells), parametric(scalarTimeAverage(X)) {
+  $scalarTimeAverageCell_X{n=0} = $scalarTimeAverageCell_X_ic;
+}
+
+$rule pointwise(scalarTimeAverageCell_X{n,rk=0} <- scalarTimeAverageCell_X{n}),
+inplace(scalarTimeAverageCell_X{n,rk=0}|scalarTimeAverageCell_X{n}),
+parametric(scalarTimeAverage(X)), prelude {};
+
+$rule pointwise(scalarTimeAverage(X){n,rk} <- scalarTimeAverageCell_X{n,rk}) {
+  $scalarTimeAverage(X){n,rk} = $scalarTimeAverageCell_X{n,rk};
+}
+
+$rule pointwise(scalarTimeAverageCell_X{n,rk+1} <- scalarTimeAverage(X){n,rk}),
+inplace(scalarTimeAverageCell_X{n,rk+1}|scalarTimeAverage(X){n,rk}),
+parametric(scalarTimeAverage(X)), prelude {
+};
+
+$type X store<double>;
+
+$rule pointwise(
+  scalarTimeAverageCell_X{n+1}
+  <-
+  scalarTimeAverageCell_X{n,rk}, X{n,rk}, timeAverageWindow{n,rk},
+  timeAverageCount{n,rk}, timeStep{n,rk}
+), conditional(rkFinished{n,rk}), parametric(scalarTimeAverage(X)) {
+  if($timeStep{n,rk}%$timeAverageWindow{n,rk} == 0) {
+    $scalarTimeAverageCell_X{n+1} = $X{n,rk};
+  } else {
+    $scalarTimeAverageCell_X{n+1} = ($X{n,rk} - $scalarTimeAverageCell_X{n,rk})/$timeAverageCount{n,rk};
+  }
+}
+
+// time average of vector3d quantities
+
+$rule unit(vector3dTimeAverageCell_X_ic),
+parametric(vector3dTimeAverage(X)),
+constraint(geom_cells) {
+  $vector3dTimeAverageCell_X_ic = Loci::vector3d<double>(0.0, 0.0, 0.0);
+}
+
+$rule pointwise(
+  OUTPUT
+  <-
+  vector3dTimeAverageCell_X, timeAverageVariable_X,
+  timeStep, restartDirectory, caseName, $n
+), conditional(doRestart), parametric(vector3dTimeAverage(X)),
+option(disable_threading), prelude {
+  if(*$timeStep != 0 && *$$n != 0) {
+    std::ostringstream ss;
+    ss << *$restartDirectory << "timeAverage_" << *$timeAverageVariable_X
+      << "_" << *$caseName;
+
+    std::string filename(ss.str());
+
+    $[Once] {
+      LOG(INFO) << "writing time averaged restart state for "
+        << *$timeAverageVariable_X << " at time step " << *$timeStep
+        << " to file '" << filename << "'";
+    }
+
+    hid_t fileId = Loci::hdf5CreateFile(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    Loci::writeContainer(fileId, "timeAverage", $vector3dTimeAverageCell_X.Rep());
+    Loci::hdf5CloseFile(fileId);
+  }
+};
+
+$rule pointwise(
+  vector3dTimeAverageCell_X_icf
+  <-
+  timeAverageVariable_X, icDirectory, caseName
+), constraint(geom_cells, withICDirectory), parametric(vector3dTimeAverage(X)),
+option(disable_threading), prelude {
+  std::ostringstream ss;
+  ss << *$icDirectory << "timeAverage_" << *$timeAverageVariable_X << "_" << *$caseName;
+
+  std::string filename(ss.str());
+
+  Loci::entitySet readSet = entitySet(seq);
+  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  Loci::readContainer(fileId, "timeAverage", $vector3dTimeAverageCell_X_icf.Rep(), readSet);
+  Loci::hdf5CloseFile(fileId);
+};
+
+$rule apply(vector3dTimeAverageCell_X_ic <- vector3dTimeAverageCell_X_icf)[Loci::Summation],
+parametric(vector3dTimeAverage(X)) {
+  join($vector3dTimeAverageCell_X_ic, $vector3dTimeAverageCell_X_icf);
+}
+
+$rule pointwise(vector3dTimeAverageCell_X{n=0} <- vector3dTimeAverageCell_X_ic),
+constraint(geom_cells), parametric(vector3dTimeAverage(X)) {
+  $vector3dTimeAverageCell_X{n=0} = $vector3dTimeAverageCell_X_ic;
+}
+
+$rule pointwise(vector3dTimeAverageCell_X{n,rk=0} <- vector3dTimeAverageCell_X{n}),
+inplace(vector3dTimeAverageCell_X{n,rk=0}|vector3dTimeAverageCell_X{n}),
+parametric(vector3dTimeAverage(X)), prelude {};
+
+$rule pointwise(vector3dTimeAverage(X){n,rk} <- vector3dTimeAverageCell_X{n,rk}) {
+  $vector3dTimeAverage(X){n,rk} = $vector3dTimeAverageCell_X{n,rk};
+}
+
+$rule pointwise(vector3dTimeAverageCell_X{n,rk+1} <- vector3dTimeAverage(X){n,rk}),
+inplace(vector3dTimeAverageCell_X{n,rk+1}|vector3dTimeAverage(X){n,rk}),
+parametric(vector3dTimeAverage(X)), prelude {
+};
+
+$type X store<Loci::vector3d<double> >;
+
+$rule pointwise(
+  vector3dTimeAverageCell_X{n+1}
+  <-
+  vector3dTimeAverageCell_X{n,rk}, X{n,rk}, timeAverageWindow{n,rk},
+  timeAverageCount{n,rk}, timeStep{n,rk}
+), conditional(rkFinished{n,rk}), parametric(vector3dTimeAverage(X)) {
+  if($timeStep{n,rk}%$timeAverageWindow{n,rk} == 0) {
+    $vector3dTimeAverageCell_X{n+1} = $X{n,rk};
+  } else {
+    $vector3dTimeAverageCell_X{n+1} = ($X{n,rk} - $vector3dTimeAverageCell_X{n,rk})/$timeAverageCount{n,rk};
+  }
+}
+
+} // end: namespace flame

@@ -18,11 +18,11 @@ namespace flame {
 $rule optional(printOptions) {
 }
 
-$rule singleton(doPrint{n,rk} <- printSettings, timeStep{n}, $rk{n,rk}) {
+$rule singleton(doPrint{n,rk} <- printSettings, timeStep{n,rk}, $rk{n,rk}) {
   $doPrint{n,rk} = false;
   
   if($printSettings.frequency > 0) {
-    if($timeStep{n} % $printSettings.frequency == 0) {
+    if($timeStep{n,rk} % $printSettings.frequency == 0) {
       $doPrint{n,rk} = $$rk{n,rk} == 0;
     }
   }
@@ -157,17 +157,17 @@ $rule pointwise(
 $rule singleton(
   doPlot{n,rk}, plotPostfix{n,rk}
   <-
-  timeStep{n}, plotSettings, $rk{n,rk}
+  timeStep{n,rk}, plotSettings{n,rk}, $rk{n,rk}
 ) {
   $doPlot{n,rk} = false;
   $plotPostfix{n,rk} = "none";
   
-  int const nLevels = $plotSettings.nodalCounts.size();
-  int const n = $timeStep{n};
+  int const nLevels = $plotSettings{n,rk}.nodalCounts.size();
+  int const n = $timeStep{n,rk};
 
   for(int i = 0; i < nLevels; ++i) {
-    int const f = $plotSettings.nodalFrequencies[i];
-    int const c = $plotSettings.nodalCounts[i];
+    int const f = $plotSettings{n,rk}.nodalFrequencies[i];
+    int const c = $plotSettings{n,rk}.nodalCounts[i];
     
     if(f > 0 && $$rk{n,rk} == 0) {
       if(n%f == 0) {
@@ -185,12 +185,12 @@ $rule singleton(
     }
   }
 
-  int const nTimeSteps = $plotSettings.nodalTimeSteps.size();
+  int const nTimeSteps = $plotSettings{n,rk}.nodalTimeSteps.size();
   for(int i = 0; i < nTimeSteps; ++i) {
-    if($timeStep{n} == $plotSettings.nodalTimeSteps[i]) {
+    if($timeStep{n,rk} == $plotSettings{n,rk}.nodalTimeSteps[i]) {
       $doPlot{n,rk} = true;
       std::stringstream ss;
-      ss << $timeStep{n} << "FTS";
+      ss << $timeStep{n,rk} << "FTS";
       $plotPostfix{n,rk} = ss.str();
     }
   }
@@ -199,17 +199,17 @@ $rule singleton(
 $rule singleton(
   doBoundaryPlot{n,rk}, plotBoundaryPostfix{n,rk}
   <-
-  timeStep{n}, plotSettings, $rk{n,rk}
+  timeStep{n,rk}, plotSettings{n,rk}, $rk{n,rk}
 ) {
   $doBoundaryPlot{n,rk} = false;
   $plotBoundaryPostfix{n,rk} = "none";
   
-  int const nLevels = $plotSettings.boundaryCounts.size();
-  int const n = $timeStep{n};
+  int const nLevels = $plotSettings{n,rk}.boundaryCounts.size();
+  int const n = $timeStep{n,rk};
   
   for(int i = 0; i < nLevels; ++i) {
-    int const f = $plotSettings.boundaryFrequencies[i];
-    int const c = $plotSettings.boundaryCounts[i];
+    int const f = $plotSettings{n,rk}.boundaryFrequencies[i];
+    int const c = $plotSettings{n,rk}.boundaryCounts[i];
     
     if(f > 0 && $$rk{n,rk} == 0) {
       if(n%f == 0) {
@@ -227,12 +227,12 @@ $rule singleton(
     }
   }
 
-  int const nTimeSteps = $plotSettings.boundaryTimeSteps.size();
+  int const nTimeSteps = $plotSettings{n,rk}.boundaryTimeSteps.size();
   for(int i = 0; i < nTimeSteps; ++i) {
-    if($timeStep{n} == $plotSettings.boundaryTimeSteps[i]) {
+    if($timeStep{n,rk} == $plotSettings{n,rk}.boundaryTimeSteps[i]) {
       $doBoundaryPlot{n,rk} = true;
       std::stringstream ss;
-      ss << $timeStep{n} << "FTS";
+      ss << $timeStep{n,rk} << "FTS";
       $plotBoundaryPostfix{n,rk} = ss.str();
     }
   }
@@ -270,6 +270,12 @@ OUTPUT_VEC_COMPONENTS("cell2node_v(speciesY)", Y, "speciesNames", "multiSpecies"
 OUTPUT_VECTOR("cell2node_v3d(vorticity)", vorticity);
 OUTPUT_SCALAR("cell2node(strainRateMagnitude)", strainRateMagnitude);
 OUTPUT_SCALAR("cell2node(Qcriterion)", Q);
+
+OUTPUT_SCALAR("cell2node(scalarTimeAverage(gagePressure))", pgmean);
+OUTPUT_SCALAR("cell2node(scalarTimeAverage(temperature))", tmean);
+OUTPUT_SCALAR("cell2node(scalarTimeAverage(density))", rmean);
+OUTPUT_VECTOR("cell2node_v3d(vector3dTimeAverage(velocity))", vmean);
+OUTPUT_SCALAR("cell2node(scalarTimeAverage(soundSpeed))", amean);
 
 // =============================================================================
 // TODO:

@@ -402,9 +402,17 @@ int main(int argc, char * argv[]) {
         LOG(INFO) << "Parsing mixture file: '" << *filename << "'";
       }
 
+      char const * envFlameDataDir = std::getenv("FLAME_DATA_DIR");
+
       flame::Mixture mix;
       std::ostringstream ss;
-      int error = parseFromXML(*filename, mix, ss);
+      int error;
+      if(envFlameDataDir) {
+        error = parseFromXML(*filename, mix, ss, envFlameDataDir);
+      } else {
+        error = parseFromXML(*filename, mix, ss);
+      }
+
       if(error) {
         LOG(ERROR) << "Unable to parse mixture file: '" << *filename << "'";
         LOG(ERROR) << ss.str();

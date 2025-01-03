@@ -80,34 +80,47 @@ void Mixture::clearSpecies(int idx) {
   for(int i = 0; i < FLAME_NAME_MAX_LENGTH; ++i) {
     speciesName[idx][i] = '\0';
   }
+  hasSpeciesName[idx] = 0;
 
   molecularWeight[idx] = 0.0;
+  hasMolecularWeight[idx] = 0;
 
   viscosityModel[idx] = VISCOSITY_NONE;
+  hasViscosityModel[idx] = 0;
   
   constantViscosity[idx].value = 0.0;
+  hasConstantViscosity[idx] = 0;
   
   sutherlandViscosity[idx].refTemperature = 0.0;
   sutherlandViscosity[idx].refViscosity = 0.0;
   sutherlandViscosity[idx].refConstant = 0.0;
+  hasSutherlandViscosity[idx] = 0;
 
   conductivityModel[idx] = CONDUCTIVITY_NONE;
+  hasConductivityModel[idx] = 0;
   
   constantConductivity[idx].value = 0.0;
+  hasConstantConductivity[idx] = 0;
   
   sutherlandConductivity[idx].refTemperature = 0.0;
   sutherlandConductivity[idx].refConductivity = 0.0;
   sutherlandConductivity[idx].refConstant = 0.0;
+  hasSutherlandConductivity[idx] = 0;
 
   diffusivityModel[idx] = DIFFUSIVITY_NONE;
+  hasDiffusivityModel[idx] = 0;
 
   constantDiffusivity[idx].value = 0.0;
+  hasConstantDiffusivity[idx] = 0;
 
   schmidtNumber[idx].value = 0.0;
+  hasSchmidtNumber[idx] = 0;
 
   thermochemistryModel[idx] = THERMOCHEMISTRY_NONE;
+  hasThermochemistryModel[idx] = 0;
 
   caloricallyPerfectThermochemistry[idx].specificHeat = 0.0;
+  hasCaloricallyPerfectThermochemistry[idx] = 0;
 
   for(int i = 0; i < 3; ++i)
     nasa9Thermochemistry[idx].tRange[i] = 0.0;
@@ -117,6 +130,7 @@ void Mixture::clearSpecies(int idx) {
     nasa9Thermochemistry[idx].hCoeff[i] = 0.0;
     nasa9Thermochemistry[idx].sCoeff[i] = 0.0;
   }
+  hasNasa9Thermochemistry[idx] = 0;
 }
 
 std::ostream & operator<<(std::ostream & s, Mixture const & mix) {
@@ -375,6 +389,7 @@ public:
   }
 
   void popElement(std::string const & localName) {
+    std::stringstream ss(charData);
     switch(fsm.top()) {
     case MIXTURE:
       break;
@@ -384,112 +399,85 @@ public:
     case MIXTURE_SPECIES_NAME:
       std::strncpy(mixture.speciesName[speciesIndex], charData.c_str(), FLAME_NAME_MAX_LENGTH-1);
       mixture.speciesName[speciesIndex][FLAME_NAME_MAX_LENGTH-1] = '\0';
+      mixture.hasSpeciesName[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_MOLECULAR_WEIGHT:
-    {
-      std::stringstream ss(charData);
       ss >> mixture.molecularWeight[speciesIndex];
-    }
+      mixture.hasMolecularWeight[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_VISCOSITY:
+      mixture.hasViscosityModel[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_VISCOSITY_CONSTANT:
-    {
       mixture.viscosityModel[speciesIndex] = VISCOSITY_CONSTANT;
-      std::stringstream ss(charData);
       ss >> mixture.constantViscosity[speciesIndex].value;
-    }
+      mixture.hasConstantViscosity[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_VISCOSITY_SUTHERLAND:
       mixture.viscosityModel[speciesIndex] = VISCOSITY_SUTHERLAND;
+      mixture.hasSutherlandViscosity[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_VISCOSITY_SUTHERLAND_REF_TEMPERATURE:
-    {
-      std::stringstream ss(charData);
       ss >> mixture.sutherlandViscosity[speciesIndex].refTemperature;
-    }
       break;
     case MIXTURE_SPECIES_VISCOSITY_SUTHERLAND_REF_VISCOSITY:
-    {
-      std::stringstream ss(charData);
       ss >> mixture.sutherlandViscosity[speciesIndex].refViscosity;
-    }
       break;
     case MIXTURE_SPECIES_VISCOSITY_SUTHERLAND_REF_CONSTANT:
-    {
-      std::stringstream ss(charData);
       ss >> mixture.sutherlandViscosity[speciesIndex].refConstant;
-    }
       break;
     case MIXTURE_SPECIES_CONDUCTIVITY:
+      mixture.hasConductivityModel[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_CONDUCTIVITY_CONSTANT:
-    {
       mixture.conductivityModel[speciesIndex] = CONDUCTIVITY_CONSTANT;
-      std::stringstream ss(charData);
       ss >> mixture.constantConductivity[speciesIndex].value;
-    }
+      mixture.hasConstantConductivity[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_CONDUCTIVITY_SUTHERLAND:
       mixture.conductivityModel[speciesIndex] = CONDUCTIVITY_SUTHERLAND;
+      mixture.hasSutherlandConductivity[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_CONDUCTIVITY_SUTHERLAND_REF_TEMPERATURE:
-    {
-      std::stringstream ss(charData);
       ss >> mixture.sutherlandConductivity[speciesIndex].refTemperature;
-    }
       break;
     case MIXTURE_SPECIES_CONDUCTIVITY_SUTHERLAND_REF_CONDUCTIVITY:
-    {
-      std::stringstream ss(charData);
       ss >> mixture.sutherlandConductivity[speciesIndex].refConductivity;
-    }
       break;
     case MIXTURE_SPECIES_CONDUCTIVITY_SUTHERLAND_REF_CONSTANT:
-    {
-      std::stringstream ss(charData);
       ss >> mixture.sutherlandConductivity[speciesIndex].refConstant;
-    }
       break;
     case MIXTURE_SPECIES_DIFFUSIVITY:
+      mixture.hasDiffusivityModel[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_DIFFUSIVITY_CONSTANT:
-    {
       mixture.diffusivityModel[speciesIndex] = DIFFUSIVITY_CONSTANT;
-      std::stringstream ss(charData);
       ss >> mixture.constantDiffusivity[speciesIndex].value;
-    }
+      mixture.hasConstantDiffusivity[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_DIFFUSIVITY_SCHMIDT_NUMBER:
-    {
       mixture.diffusivityModel[speciesIndex] = DIFFUSIVITY_SCHMIDT;
-      std::stringstream ss(charData);
       ss >> mixture.schmidtNumber[speciesIndex].value;
-    }
+      mixture.hasSchmidtNumber[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_THERMOCHEMISTRY:
+      mixture.hasThermochemistryModel[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_THERMOCHEMISTRY_SPECIFIC_HEAT:
-    {
       mixture.thermochemistryModel[speciesIndex] = THERMOCHEMISTRY_CALORICALLY_PERFECT;
-      std::stringstream ss(charData);
       ss >> mixture.caloricallyPerfectThermochemistry[speciesIndex].specificHeat;
-    }
+      mixture.hasCaloricallyPerfectThermochemistry[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_THERMOCHEMISTRY_NASA9_POLYNOMIAL:
       mixture.thermochemistryModel[speciesIndex] = THERMOCHEMISTRY_NASA9;
+      mixture.hasNasa9Thermochemistry[speciesIndex] = 1;
       break;
     case MIXTURE_SPECIES_THERMOCHEMISTRY_NASA9_POLYNOMIAL_TEMPERATURE_RANGES:
-    {
-      std::stringstream ss(charData);
       for(int i = 0; i < 3; ++i) {
         ss >> mixture.nasa9Thermochemistry[speciesIndex].tRange[i];
       }
-    }
       break;
     case MIXTURE_SPECIES_THERMOCHEMISTRY_NASA9_POLYNOMIAL_COEFFICIENTS:
-    {
-      std::stringstream ss;
       for(int i = 0; i < 18; ++i) {
         ss >> mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[i];
       }
@@ -516,7 +504,6 @@ public:
         mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+7] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+7];
         mixture.nasa9Thermochemistry[speciesIndex].sCoeff[j+8] = mixture.nasa9Thermochemistry[speciesIndex].cpCoeff[j+8];
       }
-    }
       break;
     }
 

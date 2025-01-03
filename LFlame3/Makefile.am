@@ -43,7 +43,8 @@ LFlame3_SOURCES=src/main.cc \
   src/boundaryRefs.cc \
   src/signal_handler.cc \
   src/gridMetrics.cc \
-  src/solverDiffusive.cc
+  src/solverDiffusive.cc \
+  src/solverTimeAveraging.cc
 
 LFlame3_LDFLAGS = $(LDFLAGS)
 LFlame3_LDADD = 

@@ -66,15 +66,25 @@ $rule constraint(multiSpecies, singleSpecies <- Ns) {
 $rule singleton(speciesNames <- mixture) {
   $speciesNames.resize($mixture.nSpecies);
   for(int i = 0; i < $mixture.nSpecies; ++i) {
-    $speciesNames[i] = std::string(
-      $mixture.speciesName[i], std::strlen($mixture.speciesName[i])
-    );
+    if($mixture.hasSpeciesName[i]) {
+      $speciesNames[i] = std::string(
+        $mixture.speciesName[i], std::strlen($mixture.speciesName[i])
+      );
+    } else {
+      LOG(ERROR) << "species[" << i << "].name not specified";
+      Loci::Abort();
+    }
   }
 }
 
 $rule singleton(speciesW <- mixture) {
   for(int i = 0; i < $mixture.nSpecies; ++i) {
-    $speciesW[i] = $mixture.molecularWeight[i];
+    if($mixture.hasMolecularWeight[i]) {
+      $speciesW[i] = $mixture.molecularWeight[i];
+    } else {
+      LOG(ERROR) << "species[" << i << "].molecularWeight not specified";
+      Loci::Abort();
+    }
   }
   for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
     $speciesW[i] = 0.0;
@@ -83,7 +93,12 @@ $rule singleton(speciesW <- mixture) {
 
 $rule singleton(speciesR <- mixture, Runiv) {
   for(int i = 0; i < $mixture.nSpecies; ++i) {
-    $speciesR[i] = $Runiv/$mixture.molecularWeight[i];
+    if($mixture.hasMolecularWeight[i]) {
+      $speciesR[i] = $Runiv/$mixture.molecularWeight[i];
+    } else {
+      LOG(ERROR) << "species[" << i << "].molecularWeight not specified";
+      Loci::Abort();
+    }
   }
   for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
     $speciesR[i] = 0.0;
@@ -97,6 +112,13 @@ $rule constraint(
 ) {
   $speciesViscosityModel_Constant = EMPTY;
   $speciesViscosityModel_Sutherland = EMPTY;
+
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasViscosityModel[i]) {
+      LOG(ERROR) << "species[" << i << "].viscosity not specified";
+      Loci::Abort();
+    }
+  }
 
   bool mixed = false;
   ViscosityModel model = $mixture.viscosityModel[0];
@@ -134,6 +156,13 @@ $rule constraint(
   $speciesConductivityModel_Constant = EMPTY;
   $speciesConductivityModel_Sutherland = EMPTY;
 
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasConductivityModel[i]) {
+      LOG(ERROR) << "species[" << i << "].conductivity not specified";
+      Loci::Abort();
+    }
+  }
+
   bool mixed = false;
   ConductivityModel model = $mixture.conductivityModel[0];
   for(int i = 0; i < $mixture.nSpecies; ++i) {
@@ -167,6 +196,13 @@ speciesDiffusivityModel_Schmidt <- mixture) {
   $speciesDiffusivityModel_Constant = EMPTY;
   $speciesDiffusivityModel_Schmidt = EMPTY;
 
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasDiffusivityModel[i]) {
+      LOG(ERROR) << "species[" << i << "].diffusivity not specified";
+      Loci::Abort();
+    }
+  }
+
   bool mixed = false;
   DiffusivityModel model = $mixture.diffusivityModel[0];
   for(int i = 0; i < $mixture.nSpecies; ++i) {
@@ -198,6 +234,13 @@ speciesDiffusivityModel_Schmidt <- mixture) {
 $rule constraint(caloricallyPerfectGas <- mixture) {
   $caloricallyPerfectGas = EMPTY;
 
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasThermochemistryModel[i]) {
+      LOG(ERROR) << "species[" << i << "].thermochemistry not specified";
+      Loci::Abort();
+    }
+  }
+
   bool mixed = false;
   ThermochemistryModel model = $mixture.thermochemistryModel[0];
   for(int i = 0; i < $mixture.nSpecies; ++i) {
@@ -224,7 +267,14 @@ $rule constraint(caloricallyPerfectGas <- mixture) {
 }
 
 $rule singleton(speciesCp_Constant <- mixture),
-  constraint(caloricallyPerfectGas) {
+constraint(caloricallyPerfectGas) {
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasCaloricallyPerfectThermochemistry[i]) {
+      LOG(ERROR) << "species[" << i << "].thermochemistry.specificHeat not specified";
+      Loci::Abort();
+    }
+  }
+
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesCp_Constant[i] = $mixture.caloricallyPerfectThermochemistry[i].specificHeat;
   }
@@ -234,22 +284,38 @@ $rule singleton(speciesCp_Constant <- mixture),
 }
 
 $rule singleton(speciesViscosity_Constant <- mixture),
-  constraint(speciesViscosityModel_Constant) {
+constraint(speciesViscosityModel_Constant) {
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasConstantViscosity[i]) {
+      LOG(ERROR) << "species[" << i << "].viscosity.constant not specified";
+      Loci::Abort();
+    }
+  }
+
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesViscosity_Constant[i] = $mixture.constantViscosity[i].value;
   }
+
   for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
     $speciesViscosity_Constant[i] = 0.0;
   }
 }
 
 $rule singleton(speciesViscosity_SutherlandParameters <- mixture),
-  constraint(speciesViscosityModel_Sutherland) {
+constraint(speciesViscosityModel_Sutherland) {
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasSutherlandViscosity[i]) {
+      LOG(ERROR) << "species[" << i << "].viscosity.sutherland not specified";
+      Loci::Abort();
+    }
+  }
+
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesViscosity_SutherlandParameters[i][0] = $mixture.sutherlandViscosity[i].refViscosity;
     $speciesViscosity_SutherlandParameters[i][1] = $mixture.sutherlandViscosity[i].refTemperature;
     $speciesViscosity_SutherlandParameters[i][2] = $mixture.sutherlandViscosity[i].refConstant;
   }
+
   for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
     $speciesViscosity_SutherlandParameters[i][0] = 0.0;
     $speciesViscosity_SutherlandParameters[i][1] = 0.0;
@@ -258,22 +324,38 @@ $rule singleton(speciesViscosity_SutherlandParameters <- mixture),
 }
 
 $rule singleton(speciesConductivity_Constant <- mixture),
-  constraint(speciesConductivityModel_Constant) {
+constraint(speciesConductivityModel_Constant) {
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasConstantConductivity[i]) {
+      LOG(ERROR) << "species[" << i << "].conductivity.constant not specified";
+      Loci::Abort();
+    }
+  }
+
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesConductivity_Constant[i] = $mixture.constantConductivity[i].value;
   }
+
   for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
     $speciesConductivity_Constant[i] = 0.0;
   }
 }
 
 $rule singleton(speciesConductivity_SutherlandParameters <- mixture),
-  constraint(speciesConductivityModel_Sutherland) {
+constraint(speciesConductivityModel_Sutherland) {
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasSutherlandConductivity[i]) {
+      LOG(ERROR) << "species[" << i << "].conductivity.sutherland not specified";
+      Loci::Abort();
+    }
+  }
+
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesConductivity_SutherlandParameters[i][0] = $mixture.sutherlandConductivity[i].refConductivity;
     $speciesConductivity_SutherlandParameters[i][1] = $mixture.sutherlandConductivity[i].refTemperature;
     $speciesConductivity_SutherlandParameters[i][2] = $mixture.sutherlandConductivity[i].refConstant;
   }
+
   for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
     $speciesConductivity_SutherlandParameters[i][0] = 0.0;
     $speciesConductivity_SutherlandParameters[i][1] = 0.0;
@@ -282,20 +364,36 @@ $rule singleton(speciesConductivity_SutherlandParameters <- mixture),
 }
 
 $rule singleton(speciesDiffusivity_Constant <- mixture),
-  constraint(speciesDiffusivityModel_Constant) {
+constraint(speciesDiffusivityModel_Constant) {
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasConstantDiffusivity[i]) {
+      LOG(ERROR) << "species[" << i << "].diffusivity.constant not specified";
+      Loci::Abort();
+    }
+  }
+
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesDiffusivity_Constant[i] = $mixture.constantDiffusivity[i].value;
   }
+
   for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
     $speciesDiffusivity_Constant[i] = 0.0;
   }
 }
 
 $rule singleton(speciesDiffusivity_SchmidtNumber <- mixture),
-  constraint(speciesDiffusivityModel_Schmidt) {
+constraint(speciesDiffusivityModel_Schmidt) {
+  for(int i = 0; i < $mixture.nSpecies; ++i) {
+    if(!$mixture.hasSchmidtNumber[i]) {
+      LOG(ERROR) << "species[" << i << "].diffusivity.schmidtNumber not specified";
+      Loci::Abort();
+    }
+  }
+
   for(int i = 0; i < $mixture.nSpecies; ++i) {
     $speciesDiffusivity_SchmidtNumber[i] = $mixture.schmidtNumber[i].value;
   }
+
   for(int i = $mixture.nSpecies; i < FLAME_MAX_NSPECIES; ++i) {
     $speciesDiffusivity_SchmidtNumber[i] = 0.0;
   }

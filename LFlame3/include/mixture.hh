@@ -71,28 +71,52 @@ enum ThermochemistryModel {
 
 struct Mixture {
   int nSpecies;
+
   char speciesName[FLAME_MAX_NSPECIES][FLAME_NAME_MAX_LENGTH];
+  int hasSpeciesName[FLAME_MAX_NSPECIES];
+
   double molecularWeight[FLAME_MAX_NSPECIES];
+  int hasMolecularWeight[FLAME_MAX_NSPECIES];
 
   // Viscosity parameters
   ViscosityModel viscosityModel[FLAME_MAX_NSPECIES];
+  int hasViscosityModel[FLAME_MAX_NSPECIES];
+
   ConstantViscosity constantViscosity[FLAME_MAX_NSPECIES];
+  int hasConstantViscosity[FLAME_MAX_NSPECIES];
+
   SutherlandViscosity sutherlandViscosity[FLAME_MAX_NSPECIES];
+  int hasSutherlandViscosity[FLAME_MAX_NSPECIES];
 
   // Conductivity parameters
   ConductivityModel conductivityModel[FLAME_MAX_NSPECIES];
+  int hasConductivityModel[FLAME_MAX_NSPECIES];
+
   ConstantConductivity constantConductivity[FLAME_MAX_NSPECIES];
+  int hasConstantConductivity[FLAME_MAX_NSPECIES];
+
   SutherlandConductivity sutherlandConductivity[FLAME_MAX_NSPECIES];
+  int hasSutherlandConductivity[FLAME_MAX_NSPECIES];
 
   // Species diffusivity parameters
   DiffusivityModel diffusivityModel[FLAME_MAX_NSPECIES];
+  int hasDiffusivityModel[FLAME_MAX_NSPECIES];
+
   ConstantDiffusivity constantDiffusivity[FLAME_MAX_NSPECIES];
+  int hasConstantDiffusivity[FLAME_MAX_NSPECIES];
+
   SchmidtNumber schmidtNumber[FLAME_MAX_NSPECIES];
+  int hasSchmidtNumber[FLAME_MAX_NSPECIES];
 
   // Thermochemistry parameters
   ThermochemistryModel thermochemistryModel[FLAME_MAX_NSPECIES];
+  int hasThermochemistryModel[FLAME_MAX_NSPECIES];
+
   CaloricallyPerfectThermochemistry caloricallyPerfectThermochemistry[FLAME_MAX_NSPECIES];
+  int hasCaloricallyPerfectThermochemistry[FLAME_MAX_NSPECIES];
+
   NASA9Thermochemistry nasa9Thermochemistry[FLAME_MAX_NSPECIES];
+  int hasNasa9Thermochemistry[FLAME_MAX_NSPECIES];
 
   void clear();
   void clearSpecies(int idx);
@@ -144,7 +168,7 @@ struct data_schema_traits<flame::SutherlandViscosity> {
     return DatatypeP(cmpd);
   }
 };
-      
+
 template<>
 struct data_schema_traits<flame::ConstantConductivity> {
   typedef IDENTITY_CONVERTER Schema_Converter;
@@ -302,7 +326,7 @@ struct data_schema_traits<flame::Mixture> {
   typedef IDENTITY_CONVERTER Schema_Converter;
   static DatatypeP get_type() {
     flame::Mixture m;
-    
+
     CompoundDatatypeP cmpd = CompoundFactory(flame::Mixture());
     LOCI_INSERT_TYPE(cmpd, flame::Mixture, nSpecies);
 
@@ -315,6 +339,19 @@ struct data_schema_traits<flame::Mixture> {
       cmpd->insert(
         "speciesName",
         offsetof(flame::Mixture, speciesName),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasSpeciesName[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasSpeciesName",
+        offsetof(flame::Mixture, hasSpeciesName),
         DatatypeP(array_t)
       );
     }
@@ -336,11 +373,37 @@ struct data_schema_traits<flame::Mixture> {
       int rank = 1;
       int dim[] = {FLAME_MAX_NSPECIES};
       int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasMolecularWeight[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasMolecularWeight",
+        offsetof(flame::Mixture, hasMolecularWeight),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
       DatatypeP atom = getLociType(m.viscosityModel[0]);
       ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
       cmpd->insert(
         "viscosityModel",
         offsetof(flame::Mixture, viscosityModel),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasViscosityModel[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasViscosityModel",
+        offsetof(flame::Mixture, hasViscosityModel),
         DatatypeP(array_t)
       );
     }
@@ -354,6 +417,19 @@ struct data_schema_traits<flame::Mixture> {
       cmpd->insert(
         "constantViscosity",
         offsetof(flame::Mixture, constantViscosity),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasConstantViscosity[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasConstantViscosity",
+        offsetof(flame::Mixture, hasConstantViscosity),
         DatatypeP(array_t)
       );
     }
@@ -375,11 +451,37 @@ struct data_schema_traits<flame::Mixture> {
       int rank = 1;
       int dim[] = {FLAME_MAX_NSPECIES};
       int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasSutherlandViscosity[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasSutherlandViscosity",
+        offsetof(flame::Mixture, hasSutherlandViscosity),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
       DatatypeP atom = getLociType(m.conductivityModel[0]);
       ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
       cmpd->insert(
         "conductivityModel",
         offsetof(flame::Mixture, conductivityModel),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasConductivityModel[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasConductivityModel",
+        offsetof(flame::Mixture, hasConductivityModel),
         DatatypeP(array_t)
       );
     }
@@ -393,6 +495,19 @@ struct data_schema_traits<flame::Mixture> {
       cmpd->insert(
         "constantConductivity",
         offsetof(flame::Mixture, constantConductivity),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasConstantConductivity[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasConstantConductivity",
+        offsetof(flame::Mixture, hasConstantConductivity),
         DatatypeP(array_t)
       );
     }
@@ -414,11 +529,37 @@ struct data_schema_traits<flame::Mixture> {
       int rank = 1;
       int dim[] = {FLAME_MAX_NSPECIES};
       int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasSutherlandConductivity[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasSutherlandConductivity",
+        offsetof(flame::Mixture, hasSutherlandConductivity),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
       DatatypeP atom = getLociType(m.diffusivityModel[0]);
       ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
       cmpd->insert(
         "diffusivityModel",
         offsetof(flame::Mixture, diffusivityModel),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasDiffusivityModel[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasDiffusivityModel",
+        offsetof(flame::Mixture, hasDiffusivityModel),
         DatatypeP(array_t)
       );
     }
@@ -432,6 +573,19 @@ struct data_schema_traits<flame::Mixture> {
       cmpd->insert(
         "constantDiffusivity",
         offsetof(flame::Mixture, constantDiffusivity),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasConstantDiffusivity[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasConstantDiffusivity",
+        offsetof(flame::Mixture, hasConstantDiffusivity),
         DatatypeP(array_t)
       );
     }
@@ -453,11 +607,37 @@ struct data_schema_traits<flame::Mixture> {
       int rank = 1;
       int dim[] = {FLAME_MAX_NSPECIES};
       int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasSchmidtNumber[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasSchmidtNumber",
+        offsetof(flame::Mixture, hasSchmidtNumber),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
       DatatypeP atom = getLociType(m.thermochemistryModel[0]);
       ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
       cmpd->insert(
         "thermochemistryModel",
         offsetof(flame::Mixture, thermochemistryModel),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasThermochemistryModel[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasThermochemistryModel",
+        offsetof(flame::Mixture, hasThermochemistryModel),
         DatatypeP(array_t)
       );
     }
@@ -478,12 +658,38 @@ struct data_schema_traits<flame::Mixture> {
     {
       int rank = 1;
       int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasCaloricallyPerfectThermochemistry[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasCaloricallyPerfectThermochemistry",
+        offsetof(flame::Mixture, hasCaloricallyPerfectThermochemistry),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
       int size = sizeof(flame::NASA9Thermochemistry)*FLAME_MAX_NSPECIES;
       DatatypeP atom = getLociType(m.nasa9Thermochemistry[0]);
       ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
       cmpd->insert(
         "nasa9Thermochemistry",
         offsetof(flame::Mixture, nasa9Thermochemistry),
+        DatatypeP(array_t)
+      );
+    }
+
+    {
+      int rank = 1;
+      int dim[] = {FLAME_MAX_NSPECIES};
+      int size = sizeof(int)*FLAME_MAX_NSPECIES;
+      DatatypeP atom = getLociType(m.hasNasa9Thermochemistry[0]);
+      ArrayDatatypeP array_t = ArrayFactory(atom, size, rank, dim);
+      cmpd->insert(
+        "hasNasa9Thermochemistry",
+        offsetof(flame::Mixture, hasNasa9Thermochemistry),
         DatatypeP(array_t)
       );
     }
