@@ -1,5 +1,6 @@
 #include <flame.hh>
 #include <mixture.hh>
+#include <utils.hh>
 #include <plot.hh>
 #include <boundary_checker.hh>
 #include <signal_handler.hh>
@@ -295,7 +296,78 @@ int main(int argc, char * argv[]) {
   //  *plotInfo = plotInfoValue.str();
   //  facts.create_fact("plotInfo", plotInfo);
   //}
-  
+
+  // Process timeAverageVariables
+  {
+    Loci::storeRepP rep = facts.get_variable("timeAveragingOptions");
+    if(rep != 0 && rep->RepType() == Loci::PARAMETER) {
+      param<options_list> ol;
+      ol.setRep(rep);
+
+      options_list::option_namelist li = ol->getOptionNameList();
+      for(auto const & optName : li) {
+        if(optName == "frequency") {
+          double freq;
+          std::ostringstream errmsg;
+          if(flame::getOptionValue(*ol, optName, "", freq, errmsg)) {
+            LOG(ERROR) << errmsg.str();
+            Loci::Abort();
+          }
+          param<int> frequency;
+          *frequency = freq;
+          facts.create_fact("meanFrequency", frequency);
+        } else if(optName == "meanVariables") {
+          std::vector<std::string> variables;
+          std::ostringstream errmsg;
+          if(flame::getOptionValues(*ol, optName, 0, std::numeric_limits<int>::max(), variables, errmsg)) {
+            LOG(ERROR) << errmsg.str();
+            Loci::Abort();
+          }
+          flame::UserVariableRegistry const & uvr = flame::UserVariableRegistry::get();
+          for(auto const & var : variables) {
+            LOG(INFO) << "mean variable: " << var;
+            std::map<std::string, std::string>::const_iterator iter;
+            if(uvr.containsUserVariable(var)) {
+              std::string constraintName = std::string("calculateMean_") +
+                uvr.getInternalName(var);
+              LOG(INFO) << constraintName;
+              constraint x;
+              x = ~EMPTY;
+              facts.create_fact(constraintName, x);
+            }
+          }
+        } else if(optName == "meanSquareVariables") {
+          std::vector<std::string> variables;
+          std::ostringstream errmsg;
+          if(flame::getOptionValues(*ol, optName, 0, std::numeric_limits<int>::max(), variables, errmsg)) {
+            LOG(ERROR) << errmsg.str();
+            Loci::Abort();
+          }
+          flame::UserVariableRegistry const & uvr = flame::UserVariableRegistry::get();
+          for(auto const & var : variables) {
+            LOG(INFO) << "mean square variable: " << var;
+            std::map<std::string, std::string>::const_iterator iter;
+            if(uvr.containsUserVariable(var)) {
+              std::string constraintName = std::string("calculateMeanSquare_") +
+                uvr.getInternalName(var);
+              LOG(INFO) << constraintName;
+              constraint x;
+              x = ~EMPTY;
+              facts.create_fact(constraintName, x);
+            }
+          }
+        } else {
+          LOG(ERROR) << "timeAveragingOptions: unknown option '" << optName << "'";
+          Loci::Abort();
+        }
+      }
+    } else {
+      if(Loci::MPI_rank == 0) {
+        LOG(INFO) << "timeAverageVariables not specified";
+      }
+    }
+  }
+
   // Process printOptions
   {
     Loci::storeRepP posp = facts.get_variable("printOptions");

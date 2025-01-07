@@ -271,11 +271,17 @@ OUTPUT_VECTOR("cell2node_v3d(vorticity)", vorticity);
 OUTPUT_SCALAR("cell2node(strainRateMagnitude)", strainRateMagnitude);
 OUTPUT_SCALAR("cell2node(Qcriterion)", Q);
 
-OUTPUT_SCALAR("cell2node(scalarTimeAverage(gagePressure))", pgmean);
-OUTPUT_SCALAR("cell2node(scalarTimeAverage(temperature))", tmean);
-OUTPUT_SCALAR("cell2node(scalarTimeAverage(density))", rmean);
-OUTPUT_VECTOR("cell2node_v3d(vector3dTimeAverage(velocity))", vmean);
-OUTPUT_SCALAR("cell2node(scalarTimeAverage(soundSpeed))", amean);
+OUTPUT_SCALAR("cell2node(mean(gagePressure))", pgmean);
+OUTPUT_SCALAR("cell2node(mean(temperature))", tmean);
+OUTPUT_SCALAR("cell2node(mean(density))", rmean);
+OUTPUT_VECTOR("cell2node_v3d(meanv3d(velocity))", vmean);
+OUTPUT_SCALAR("cell2node(mean(soundSpeed))", amean);
+
+OUTPUT_SCALAR("cell2node(meanSquare(gagePressure))", pg2mean);
+OUTPUT_SCALAR("cell2node(meanSquare(temperature))", t2mean);
+OUTPUT_SCALAR("cell2node(meanSquare(density))", r2mean);
+OUTPUT_VECTOR("cell2node_v3d(meanSquarev3d(velocity))", v2mean);
+OUTPUT_SCALAR("cell2node(meanSquare(soundSpeed))", a2mean);
 
 // =============================================================================
 // TODO:

@@ -8,6 +8,7 @@ SUFFIXES = .loci
 	$(LPP) $(LOCI_CXXFLAGS) -I$(srcdir)/include $< -o $@
 
 LFlame3_SOURCES=src/main.cc \
+  src/flame.cc \
   src/boundary_checker.cc \
   src/grid_post_processor.cc \
   src/bcImpermeable.cc \

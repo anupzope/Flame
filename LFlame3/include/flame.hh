@@ -10,6 +10,34 @@ namespace flame {
 
 // =============================================================================
 
+class RegisterUserVariable {
+public:
+  RegisterUserVariable(
+    std::string const & userName, std::string const & internalName
+  );
+};
+
+class UserVariableRegistry {
+protected:
+  std::map<std::string, std::string> variables;
+
+public:
+  static UserVariableRegistry & get();
+
+public:
+  UserVariableRegistry();
+
+  void addVariable(std::string const & userName, std::string const & internalName);
+
+  bool containsUserVariable(std::string const & userName) const;
+
+  bool containsInternalVariable(std::string const & internalName) const;
+
+  std::string const & getInternalName(std::string const & userName) const;
+};
+
+// =============================================================================
+
 struct SymmetricTensor {
   double xx, xy, xz, yy, yz, zz;
 } ;
