@@ -192,42 +192,44 @@ $rule constraint(
 }
 
 $rule constraint(speciesDiffusivityModel_Constant,
-speciesDiffusivityModel_Schmidt <- mixture) {
+speciesDiffusivityModel_Schmidt <- mixture, enableSpeciesMassDiffusion) {
   $speciesDiffusivityModel_Constant = EMPTY;
   $speciesDiffusivityModel_Schmidt = EMPTY;
 
-  for(int i = 0; i < $mixture.nSpecies; ++i) {
-    if(!$mixture.hasDiffusivityModel[i]) {
-      LOG(ERROR) << "species[" << i << "].diffusivity not specified";
+  if($enableSpeciesMassDiffusion) {
+    for(int i = 0; i < $mixture.nSpecies; ++i) {
+      if(!$mixture.hasDiffusivityModel[i]) {
+        LOG(ERROR) << "species[" << i << "].diffusivity not specified";
+        Loci::Abort();
+      }
+    }
+    
+    bool mixed = false;
+    DiffusivityModel model = $mixture.diffusivityModel[0];
+    for(int i = 0; i < $mixture.nSpecies; ++i) {
+      if(model != $mixture.diffusivityModel[i]) {
+        mixed = true;
+        break;
+      }
+    }
+    
+    if(mixed) {
+      LOG(ERROR) << "All species must have the same diffusivity model";
       Loci::Abort();
     }
-  }
-
-  bool mixed = false;
-  DiffusivityModel model = $mixture.diffusivityModel[0];
-  for(int i = 0; i < $mixture.nSpecies; ++i) {
-    if(model != $mixture.diffusivityModel[i]) {
-      mixed = true;
+    
+    switch(model) {
+    case DIFFUSIVITY_CONSTANT:
+      $speciesDiffusivityModel_Constant = ~EMPTY;
+      break;
+    case DIFFUSIVITY_SCHMIDT:
+      $speciesDiffusivityModel_Schmidt = ~EMPTY;
+      break;
+    default:
+      $speciesDiffusivityModel_Constant = EMPTY;
+      $speciesDiffusivityModel_Schmidt = EMPTY;
       break;
     }
-  }
-
-  if(mixed) {
-    LOG(ERROR) << "All species must have the same diffusivity model";
-    Loci::Abort();
-  }
-
-  switch(model) {
-  case DIFFUSIVITY_CONSTANT:
-    $speciesDiffusivityModel_Constant = ~EMPTY;
-    break;
-  case DIFFUSIVITY_SCHMIDT:
-    $speciesDiffusivityModel_Schmidt = ~EMPTY;
-    break;
-  default:
-    $speciesDiffusivityModel_Constant = EMPTY;
-    $speciesDiffusivityModel_Schmidt = EMPTY;
-    break;
   }
 }
 

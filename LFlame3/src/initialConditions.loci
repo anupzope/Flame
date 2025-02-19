@@ -26,6 +26,9 @@ $rule optional(initialConditions) {
 $rule optional(initialConditionsTGV) {
 }
 
+$rule optional(initialConditionsIsentropicVortex) {
+}
+
 $rule optional(initialConditionRegions) {
 }
 
@@ -907,6 +910,466 @@ constraint(geom_cells, withoutICDirectory) {
 $rule apply(speciesY_ic <- speciesY_TGV_ic)[Loci::Summation],
 constraint(geom_cells, withoutICDirectory) {
   join($speciesY_ic, $speciesY_TGV_ic);
+}
+
+// -----------------------------------------------------------------------------
+
+$rule singleton(isentropicVortexICParameters <- initialConditionsIsentropicVortex) {
+  $[Once] {
+    LOG(INFO) << "Parsing initialConditionsIsentropicVortex";
+  }
+
+  Loci::vector3d<double> origin;
+  Loci::vector3d<double> offsets;
+  double scale;
+  double strength;
+  double spread;
+  int thermoSpec;
+  double temperature;
+  double pressure;
+  double density;
+  int velSpec;
+  Loci::vector3d<double> Mach;
+  Loci::vector3d<double> velocity;
+
+  bool originSet = false;
+  bool offsetsSet = false;
+  bool scaleSet = false;
+  bool strengthSet = false;
+  bool spreadSet = false;
+  bool temperatureSet = false;
+  bool pressureSet = false;
+  bool densitySet = false;
+  bool MachSet = false;
+  bool velocitySet = false;
+
+  std::ostringstream errmsg;
+  int error = 0;
+
+  options_list::option_namelist li = $initialConditionsIsentropicVortex.getOptionNameList();
+  for(auto const & optName : li) {
+    if(optName == "origin") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditionsIsentropicVortex, optName, {"m", "m", "m"}, 1, 3, values, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        originSet = true;
+        switch(values.size()) {
+        case 1:
+          origin.x = values[0];
+          origin.y = 0.0;
+          origin.z = 0.0;
+          break;
+        case 2:
+          origin.x = values[0];
+          origin.y = values[1];
+          origin.z = 0.0;
+          break;
+        case 3:
+          origin.x = values[0];
+          origin.y = values[1];
+          origin.z = values[2];
+          break;
+        }
+      }
+    } else if(optName == "offsets") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditionsIsentropicVortex, optName, {"m", "m", "m"}, 1, 3, values, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        offsetsSet = true;
+        switch(values.size()) {
+        case 1:
+          offsets.x = values[0];
+          offsets.y = 0.0;
+          offsets.z = 0.0;
+          break;
+        case 2:
+          offsets.x = values[0];
+          offsets.y = values[1];
+          offsets.z = 0.0;
+          break;
+        case 3:
+          offsets.x = values[0];
+          offsets.y = values[1];
+          offsets.z = values[2];
+          break;
+        }
+      }
+    } else if(optName == "scale") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsIsentropicVortex, optName, "m", value, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        scaleSet = true;
+        scale = value;
+      }
+    } else if(optName == "strength") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsIsentropicVortex, optName, "m", value, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        strengthSet = true;
+        strength = value;
+      }
+    } else if(optName == "spread") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsIsentropicVortex, optName, "m", value, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        spreadSet = true;
+        spread = value;
+      }
+    } else if(optName == "temperature") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsIsentropicVortex, optName, "K", value, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        temperatureSet = true;
+        temperature = value;
+      }
+    } else if(optName == "pressure") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsIsentropicVortex, optName, "Pa", value, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        pressureSet = true;
+        pressure = value;
+      }
+    } else if(optName == "density") {
+      std::ostringstream ss;
+      double value;
+      int err = getOptionValue(
+        $initialConditionsIsentropicVortex, optName, "kg/m/m/m", value, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        densitySet = true;
+        density = value;
+      }
+    } else if(optName == "Mach") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditionsIsentropicVortex, optName, {"", "", ""}, 1, 3, values, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        MachSet = true;
+        switch(values.size()) {
+        case 1:
+          Mach.x = values[0];
+          Mach.y = 0.0;
+          Mach.z = 0.0;
+          break;
+        case 2:
+          Mach.x = values[0];
+          Mach.y = values[1];
+          Mach.z = 0.0;
+          break;
+        case 3:
+          Mach.x = values[0];
+          Mach.y = values[1];
+          Mach.z = values[2];
+          break;
+        }
+      }
+    } else if(optName == "velocity") {
+      std::ostringstream ss;
+      std::vector<double> values;
+      int err = getOptionValues(
+        $initialConditionsIsentropicVortex, optName, {"m/s", "m/s", "m/s"}, 1, 3, values, ss
+      );
+
+      if(err) {
+        errmsg << "[Error parsing initialConditionsIsentropicVortex::" << optName
+          << " : " << ss.str() << "]";
+        ++error;
+      } else {
+        velocitySet = true;
+        switch(values.size()) {
+        case 1:
+          velocity.x = values[0];
+          velocity.y = 0.0;
+          velocity.z = 0.0;
+          break;
+        case 2:
+          velocity.x = values[0];
+          velocity.y = values[1];
+          velocity.z = 0.0;
+          break;
+        case 3:
+          velocity.x = values[0];
+          velocity.y = values[1];
+          velocity.z = values[2];
+          break;
+        }
+      }
+    } else {
+      LOG(ERROR) << "Unknown option: " << optName;
+      Loci::Abort();
+    }
+  }
+
+  if(!originSet) {
+    errmsg << "[missing initialConditionsIsentropicVortex::origin]";
+    ++error;
+  }
+
+  if(!offsetsSet) {
+    errmsg << "[missing initialConditionsIsentropicVortex::offsets]";
+    ++error;
+  }
+
+  if(!scaleSet) {
+    errmsg << "[missing initialConditionsIsentropicVortex::scale]";
+    ++error;
+  }
+
+  if(!strengthSet) {
+    errmsg << "[missing initialConditionsIsentropicVortex::strength]";
+    ++error;
+  }
+
+  if(!spreadSet) {
+    errmsg << "[missing initialConditionsIsentropicVortex::spread]";
+    ++error;
+  }
+
+  thermoSpec = 0;
+  if(temperatureSet && pressureSet && !densitySet) thermoSpec = 1; // T, P
+  if(temperatureSet && !pressureSet && densitySet) thermoSpec = 2; // T, r
+  if(!temperatureSet && pressureSet && densitySet) thermoSpec = 3; // P, r
+
+  velSpec = 0;
+  if(velocitySet && !MachSet) velSpec = 1; // v
+  if(!velocitySet && MachSet) velSpec = 2; // M
+
+  if(thermoSpec == 0) {
+    errmsg << "[only two thermodynamic variables are required in initialConditionsIsentropicVortex]";
+    ++error;
+  }
+
+  if(velSpec == 0) {
+    errmsg << "[only one velocity variable is required in initialConditionsIsentropicVortex]";
+    ++error;
+  }
+
+  if(error) {
+    $[Once] {
+      LOG(ERROR) << errmsg.str();
+    }
+    Loci::Abort();
+  } else {
+    $isentropicVortexICParameters.origin = origin;
+    $isentropicVortexICParameters.offsets = offsets;
+    $isentropicVortexICParameters.scale = scale;
+    $isentropicVortexICParameters.strength = strength;
+    $isentropicVortexICParameters.spread = spread;
+    $isentropicVortexICParameters.thermoSpec = thermoSpec;
+    $isentropicVortexICParameters.temperature = temperature;
+    $isentropicVortexICParameters.pressure = pressure;
+    $isentropicVortexICParameters.density = density;
+    $isentropicVortexICParameters.velSpec = velSpec;
+    $isentropicVortexICParameters.Mach = Mach;
+    $isentropicVortexICParameters.velocity = velocity;
+  }
+}
+
+$rule pointwise(mixtureW_IV_ic, mixtureR_IV_ic <- speciesW, Runiv),
+constraint(geom_cells, singleSpecies) {
+  $mixtureW_IV_ic = $speciesW[0];
+  $mixtureR_IV_ic = $Runiv/$speciesW[0];
+}
+
+$rule pointwise(mixtureCp_IV_ic <- speciesCp_Constant),
+constraint(geom_cells, caloricallyPerfectGas, singleSpecies) {
+  $mixtureCp_IV_ic = $speciesCp_Constant[0];
+}
+
+$rule pointwise(speciesY_IV_ic <- isentropicVortexICParameters, Ns),
+constraint(geom_cells, multiSpecies), prelude {
+  $speciesY_IV_ic.setVecSize(*$Ns);
+} {
+  $speciesY_IV_ic = mk_Scalar(0.0);
+  $speciesY_IV_ic[0] = 1.0;
+}
+
+$rule pointwise(mixtureW_IV_ic, mixtureR_IV_ic <- speciesY_IV_ic, speciesW, Runiv, Ns),
+constraint(geom_cells, multiSpecies) {
+  $mixtureW_IV_ic = mixture_mW_from_Y_sW($Ns, &$speciesY_IV_ic[0], &$speciesW[0]);
+  $mixtureR_IV_ic = $Runiv/$mixtureW_IV_ic;
+}
+
+$rule pointwise(mixtureCp_IV_ic <- speciesY_IV_ic, speciesCp_Constant, Ns),
+constraint(geom_cells, caloricallyPerfectGas, multiSpecies) {
+  $mixtureCp_IV_ic = mixture_Cp_from_sCp_Y($Ns, &$speciesCp_Constant[0], &$speciesY_IV_ic[0]);
+}
+
+$rule pointwise(
+  gagePressure_IV_ic, velocity_IV_ic, temperature_IV_ic
+  <-
+  mixtureCp_IV_ic, mixtureR_IV_ic, Pambient, cellcenter,
+  isentropicVortexICParameters
+), constraint(geom_cells, thermallyPerfectGas) {
+  double const pi = atan(1.0)*4.0;
+
+  double const temperature = $isentropicVortexICParameters.temperature;
+  double const pressure = $isentropicVortexICParameters.pressure;
+  double const density = $isentropicVortexICParameters.density;
+  Loci::vector3d<double> const Mach = $isentropicVortexICParameters.Mach;
+  Loci::vector3d<double> const velocity = $isentropicVortexICParameters.velocity;
+
+  double Tref, Pref, rhoref;
+  switch($isentropicVortexICParameters.thermoSpec) {
+  case 1: // T, P
+    Tref = temperature;
+    Pref = pressure;
+    rhoref = eos_TP_r_from_P_T_R(pressure, temperature, $mixtureR_IV_ic);
+    break;
+  case 2: // T, r
+    Tref = temperature;
+    Pref = eos_TP_P_from_r_T_R(density, temperature, $mixtureR_IV_ic);
+    rhoref = density;
+    break;
+  case 3: // P, r
+    Tref = eos_TP_T_from_r_P_R(density, pressure, $mixtureR_IV_ic);
+    Pref = pressure;
+    rhoref = density;
+    break;
+  }
+
+  double const gamma = eos_TP_gamma_from_Cp_R($mixtureCp_IV_ic, $mixtureR_IV_ic);
+  double const aref = eos_TP_a_from_gamma_R_T(gamma, $mixtureR_IV_ic, temperature);
+
+  double const x = $cellcenter.x;
+  double const y = $cellcenter.y;
+  double const z = $cellcenter.z;
+
+  double const x0 = $isentropicVortexICParameters.origin.x;
+  double const y0 = $isentropicVortexICParameters.origin.y;
+  double const z0 = $isentropicVortexICParameters.origin.z;
+
+  double const xoff = $isentropicVortexICParameters.offsets.x;
+  double const yoff = $isentropicVortexICParameters.offsets.y;
+  double const zoff = $isentropicVortexICParameters.offsets.z;
+
+  double const scale = $isentropicVortexICParameters.scale;
+  double const sigma = $isentropicVortexICParameters.spread;
+  double const beta = $isentropicVortexICParameters.strength;
+
+  double const cx = xoff*trunc((x-x0)/xoff);
+  double const cy = yoff*trunc((y-y0)/yoff);
+
+  double const xbar = (x-cx)/scale;
+  double const ybar = (y-cy)/scale;
+
+  double const r2 = xbar*xbar + ybar*ybar;
+
+  double const f = -r2/(2*sigma*sigma);
+  double const Omega = beta*exp(f);
+
+  double const du = -ybar*Omega;
+  double const dv = xbar*Omega;
+  double const dT = -0.5*(gamma-1.0)*Omega*Omega;
+
+  double const T = Tref*(1.0+dT);
+  double const rho = rhoref*pow(1.0+dT, 1.0/(gamma-1.0));
+  double vx, vy;
+  switch($isentropicVortexICParameters.velSpec) {
+  case 1: // v
+    vx = velocity.x + aref*du;
+    vy = velocity.y + aref*dv;
+    break;
+  case 2: // M
+    vx = aref*(Mach.x + du);
+    vy = aref*(Mach.y + dv);
+    break;
+  }
+  double const P = Pref*pow(1.0+dT, gamma/(gamma-1.0));
+
+  $gagePressure_IV_ic = P;
+  $velocity_IV_ic = Loci::vector3d<double>(vx, vy, 0.0);
+  $temperature_IV_ic = T;
+}
+
+// -----------------------------------------------------------------------------
+
+$rule apply(gagePressure_ic <- gagePressure_IV_ic)[Loci::Summation],
+constraint(geom_cells, withoutICDirectory) {
+  join($gagePressure_ic, $gagePressure_IV_ic);
+}
+
+$rule apply(velocity_ic <- velocity_IV_ic)[Loci::Summation],
+constraint(geom_cells, withoutICDirectory) {
+  join($velocity_ic, $velocity_IV_ic);
+}
+
+$rule apply(temperature_ic <- temperature_IV_ic)[Loci::Summation],
+constraint(geom_cells, withoutICDirectory) {
+  join($temperature_ic, $temperature_IV_ic);
+}
+
+$rule apply(speciesY_ic <- speciesY_IV_ic)[Loci::Summation],
+constraint(geom_cells, withoutICDirectory) {
+  join($speciesY_ic, $speciesY_IV_ic);
 }
 
 // =============================================================================

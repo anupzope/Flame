@@ -286,13 +286,13 @@ void MeanCountFromFile<TYPE>::compute(sequence const & seq) {
 // =============================================================================
 
 $rule unit(meanCount_X_ic),
-constraint(calculateMean_X),
+constraint(geom_cells, calculateMean_X),
 parametric(mean(X)) {
   $meanCount_X_ic = 0;
 }
 
 $rule unit(meanCount_X_ic),
-constraint(calculateMean_X),
+constraint(geom_cells, calculateMean_X),
 parametric(meanv3d(X)) {
   $meanCount_X_ic = 0;
 }
@@ -305,13 +305,11 @@ Loci::register_rule<MeanCountFromFile<CELL_VECTOR3D_MEAN> > registerVector3dMean
 // -----------------------------------------------------------------------------
 
 $rule apply(meanCount_X_ic <- meanCount_X_icf)[Loci::Maximum],
-constraint(calculateMean_X),
 parametric(mean(X)) {
   join($meanCount_X_ic, $meanCount_X_icf);
 }
 
 $rule apply(meanCount_X_ic <- meanCount_X_icf)[Loci::Maximum],
-constraint(calculateMean_X),
 parametric(meanv3d(X)) {
   join($meanCount_X_ic, $meanCount_X_icf);
 }
@@ -319,13 +317,13 @@ parametric(meanv3d(X)) {
 // -----------------------------------------------------------------------------
 
 $rule singleton(meanCount_X{n=0} <- meanCount_X_ic),
-constraint(calculateMean_X),
+constraint(geom_cells, calculateMean_X),
 parametric(mean(X)) {
   $meanCount_X{n=0} = $meanCount_X_ic;
 }
 
 $rule singleton(meanCount_X{n=0} <- meanCount_X_ic),
-constraint(calculateMean_X),
+constraint(geom_cells, calculateMean_X),
 parametric(meanv3d(X)) {
   $meanCount_X{n=0} = $meanCount_X_ic;
 }
@@ -333,13 +331,13 @@ parametric(meanv3d(X)) {
 // -----------------------------------------------------------------------------
 
 $rule singleton(meanCount_X{n,rk=0} <- meanCount_X{n}),
-constraint(calculateMean_X),
+constraint(geom_cells, calculateMean_X),
 parametric(mean(X)) {
   $meanCount_X{n,rk=0} = $meanCount_X{n};
 }
 
 $rule singleton(meanCount_X{n,rk=0} <- meanCount_X{n}),
-constraint(calculateMean_X),
+constraint(geom_cells, calculateMean_X),
 parametric(meanv3d(X)) {
   $meanCount_X{n,rk=0} = $meanCount_X{n};
 }
@@ -347,13 +345,11 @@ parametric(meanv3d(X)) {
 // -----------------------------------------------------------------------------
 
 $rule singleton(meanCount_X{n,rk+1} <- meanCount_X{n,rk}),
-constraint(calculateMean_X),
 parametric(mean(X)) {
   $meanCount_X{n,rk+1} = $meanCount_X{n,rk};
 }
 
 $rule singleton(meanCount_X{n,rk+1} <- meanCount_X{n,rk}),
-constraint(calculateMean_X),
 parametric(meanv3d(X)) {
   $meanCount_X{n,rk+1} = $meanCount_X{n,rk};
 }
@@ -364,7 +360,7 @@ $rule singleton(
   meanCount_X{n+1}
   <-
   meanCount_X{n,rk}, meanFrequency{n,rk}, timeStep{n,rk}
-), constraint(calculateMean_X), conditional(rkFinished{n,rk}),
+), conditional(rkFinished{n,rk}),
 parametric(mean(X)) {
   if($timeStep{n,rk}%$meanFrequency{n,rk} == 0) {
     $meanCount_X{n+1} = 1;
@@ -377,7 +373,7 @@ $rule singleton(
   meanCount_X{n+1}
   <-
   meanCount_X{n,rk}, meanFrequency{n,rk}, timeStep{n,rk}
-), constraint(calculateMean_X), conditional(rkFinished{n,rk}),
+), conditional(rkFinished{n,rk}),
 parametric(meanv3d(X)) {
   if($timeStep{n,rk}%$meanFrequency{n,rk} == 0) {
     $meanCount_X{n+1} = 1;
@@ -391,13 +387,13 @@ parametric(meanv3d(X)) {
 // =============================================================================
 
 $rule unit(meanSquareCount_X_ic),
-constraint(calculateMeanSquare_X),
+constraint(geom_cells, calculateMeanSquare_X),
 parametric(meanSquare(X)) {
   $meanSquareCount_X_ic = 0;
 }
 
 $rule unit(meanSquareCount_X_ic),
-constraint(calculateMeanSquare_X),
+constraint(geom_cells, calculateMeanSquare_X),
 parametric(meanSquarev3d(X)) {
   $meanSquareCount_X_ic = 0;
 }
@@ -410,13 +406,11 @@ Loci::register_rule<MeanCountFromFile<CELL_VECTOR3D_MEAN_SQUARE> > registerVecto
 // -----------------------------------------------------------------------------
 
 $rule apply(meanSquareCount_X_ic <- meanSquareCount_X_icf)[Loci::Maximum],
-constraint(calculateMeanSquare_X),
 parametric(meanSquare(X)) {
   join($meanSquareCount_X_ic, $meanSquareCount_X_icf);
 }
 
 $rule apply(meanSquareCount_X_ic <- meanSquareCount_X_icf)[Loci::Maximum],
-constraint(calculateMeanSquare_X),
 parametric(meanSquarev3d(X)) {
   join($meanSquareCount_X_ic, $meanSquareCount_X_icf);
 }
@@ -424,13 +418,13 @@ parametric(meanSquarev3d(X)) {
 // -----------------------------------------------------------------------------
 
 $rule singleton(meanSquareCount_X{n=0} <- meanSquareCount_X_ic),
-constraint(calculateMeanSquare_X),
+constraint(geom_cells, calculateMeanSquare_X),
 parametric(meanSquare(X)) {
   $meanSquareCount_X{n=0} = $meanSquareCount_X_ic;
 }
 
 $rule singleton(meanSquareCount_X{n=0} <- meanSquareCount_X_ic),
-constraint(calculateMeanSquare_X),
+constraint(geom_cells, calculateMeanSquare_X),
 parametric(meanSquarev3d(X)) {
   $meanSquareCount_X{n=0} = $meanSquareCount_X_ic;
 }
@@ -438,13 +432,13 @@ parametric(meanSquarev3d(X)) {
 // -----------------------------------------------------------------------------
 
 $rule singleton(meanSquareCount_X{n,rk=0} <- meanSquareCount_X{n}),
-constraint(calculateMeanSquare_X),
+constraint(geom_cells, calculateMeanSquare_X),
 parametric(meanSquare(X)) {
   $meanSquareCount_X{n,rk=0} = $meanSquareCount_X{n};
 }
 
 $rule singleton(meanSquareCount_X{n,rk=0} <- meanSquareCount_X{n}),
-constraint(calculateMeanSquare_X),
+constraint(geom_cells, calculateMeanSquare_X),
 parametric(meanSquarev3d(X)) {
   $meanSquareCount_X{n,rk=0} = $meanSquareCount_X{n};
 }
@@ -452,13 +446,11 @@ parametric(meanSquarev3d(X)) {
 // -----------------------------------------------------------------------------
 
 $rule singleton(meanSquareCount_X{n,rk+1} <- meanSquareCount_X{n,rk}),
-constraint(calculateMeanSquare_X),
 parametric(meanSquare(X)) {
   $meanSquareCount_X{n,rk+1} = $meanSquareCount_X{n,rk};
 }
 
 $rule singleton(meanSquareCount_X{n,rk+1} <- meanSquareCount_X{n,rk}),
-constraint(calculateMeanSquare_X),
 parametric(meanSquarev3d(X)) {
   $meanSquareCount_X{n,rk+1} = $meanSquareCount_X{n,rk};
 }
@@ -469,7 +461,7 @@ $rule singleton(
   meanSquareCount_X{n+1}
   <-
   meanSquareCount_X{n,rk}, meanFrequency{n,rk}, timeStep{n,rk}
-), constraint(calculateMeanSquare_X), conditional(rkFinished{n,rk}),
+), conditional(rkFinished{n,rk}),
 parametric(meanSquare(X)) {
   if($timeStep{n,rk}%$meanFrequency{n,rk} == 0) {
     $meanSquareCount_X{n+1} = 1;
@@ -482,7 +474,7 @@ $rule singleton(
   meanSquareCount_X{n+1}
   <-
   meanSquareCount_X{n,rk}, meanFrequency{n,rk}, timeStep{n,rk}
-), constraint(calculateMeanSquare_X), conditional(rkFinished{n,rk}),
+), conditional(rkFinished{n,rk}),
 parametric(meanSquarev3d(X)) {
   if($timeStep{n,rk}%$meanFrequency{n,rk} == 0) {
     $meanSquareCount_X{n+1} = 1;
@@ -539,10 +531,39 @@ parametric(mean(X)), option(disable_threading), prelude {
 
   std::string filename(ss.str());
 
-  Loci::entitySet readSet = entitySet(seq);
-  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-  Loci::readContainer(fileId, "mean", $mean_X_icf.Rep(), readSet);
-  Loci::hdf5CloseFile(fileId);
+  struct stat buf;
+  int has_file = 0;
+  $[Once] {
+    if(stat(filename.c_str(), &buf) == 0) {
+      if(buf.st_size != 0 && S_ISREG(buf.st_mode)) {
+        has_file = 1;
+      } else {
+        has_file = 2;
+      }
+    }
+  }
+
+  MPI_Bcast(&has_file, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  if(has_file == 2) {
+    $[Once] {
+      LOG(ERROR) << "Unable to find file '" << filename << "'";
+    }
+  }
+
+  if(has_file) {
+    Loci::entitySet readSet = entitySet(seq);
+    hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    Loci::readContainer(fileId, "mean", $mean_X_icf.Rep(), readSet);
+    Loci::hdf5CloseFile(fileId);
+  } else {
+    $[Once] {
+      LOG(WARNING) << "Could not find restart file '" << filename << "'";
+    }
+    Loci::entitySet dom = entitySet(seq);
+    FORALL(dom,ii) {
+      $mean_X_icf[ii] = 0;
+    } ENDFORALL;
+  }
 };
 
 $rule apply(mean_X_ic <- mean_X_icf)[Loci::Summation],
@@ -578,7 +599,8 @@ $rule pointwise(
   if($timeStep{n,rk}%$meanFrequency{n,rk} == 0) {
     $mean_X{n+1} = $X{n,rk};
   } else {
-    $mean_X{n+1} = ($X{n,rk} - $mean_X{n,rk})/($meanCount_X{n,rk}+1);
+    $mean_X{n+1} = $mean_X{n,rk} +
+      ($X{n,rk} - $mean_X{n,rk})/($meanCount_X{n,rk}+1);
   }
 }
 
@@ -630,10 +652,39 @@ parametric(meanv3d(X)), option(disable_threading), prelude {
 
   std::string filename(ss.str());
 
-  Loci::entitySet readSet = entitySet(seq);
-  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-  Loci::readContainer(fileId, "mean", $meanv3d_X_icf.Rep(), readSet);
-  Loci::hdf5CloseFile(fileId);
+  struct stat buf;
+  int has_file = 0;
+  $[Once] {
+    if(stat(filename.c_str(), &buf) == 0) {
+      if(buf.st_size != 0 && S_ISREG(buf.st_mode)) {
+        has_file = 1;
+      } else {
+        has_file = 2;
+      }
+    }
+  }
+
+  MPI_Bcast(&has_file, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  if(has_file == 2) {
+    $[Once] {
+      LOG(ERROR) << "Unable to find file '" << filename << "'";
+    }
+  }
+
+  if(has_file) {
+    Loci::entitySet readSet = entitySet(seq);
+    hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    Loci::readContainer(fileId, "mean", $meanv3d_X_icf.Rep(), readSet);
+    Loci::hdf5CloseFile(fileId);
+  } else {
+    $[Once] {
+      LOG(WARNING) << "Could not find restart file '" << filename << "'";
+    }
+    Loci::entitySet dom = entitySet(seq);
+    FORALL(dom,ii) {
+      $meanv3d_X_icf[ii] = Loci::vector3d<double>(0.0, 0.0, 0.0);
+    } ENDFORALL;
+  }
 };
 
 $rule apply(meanv3d_X_ic <- meanv3d_X_icf)[Loci::Summation],
@@ -669,7 +720,8 @@ $rule pointwise(
   if($timeStep{n,rk}%$meanFrequency{n,rk} == 0) {
     $meanv3d_X{n+1} = $X{n,rk};
   } else {
-    $meanv3d_X{n+1} = ($X{n,rk} - $meanv3d_X{n,rk})/($meanCount_X{n,rk}+1);
+    $meanv3d_X{n+1} = $meanv3d_X{n,rk} +
+      ($X{n,rk} - $meanv3d_X{n,rk})/($meanCount_X{n,rk}+1);
   }
 }
 
@@ -721,10 +773,39 @@ parametric(meanSquare(X)), option(disable_threading), prelude {
 
   std::string filename(ss.str());
 
-  Loci::entitySet readSet = entitySet(seq);
-  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-  Loci::readContainer(fileId, "meanSquare", $meanSquare_X_icf.Rep(), readSet);
-  Loci::hdf5CloseFile(fileId);
+  struct stat buf;
+  int has_file = 0;
+  $[Once] {
+    if(stat(filename.c_str(), &buf) == 0) {
+      if(buf.st_size != 0 && S_ISREG(buf.st_mode)) {
+        has_file = 1;
+      } else {
+        has_file = 2;
+      }
+    }
+  }
+
+  MPI_Bcast(&has_file, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  if(has_file == 2) {
+    $[Once] {
+      LOG(ERROR) << "Unable to find file '" << filename << "'";
+    }
+  }
+
+  if(has_file) {
+    Loci::entitySet readSet = entitySet(seq);
+    hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    Loci::readContainer(fileId, "meanSquare", $meanSquare_X_icf.Rep(), readSet);
+    Loci::hdf5CloseFile(fileId);
+  } else {
+    $[Once] {
+      LOG(WARNING) << "Could not find restart file '" << filename << "'";
+    }
+    Loci::entitySet dom = entitySet(seq);
+    FORALL(dom,ii) {
+      $meanSquare_X_icf[ii] = 0;
+    } ENDFORALL;
+  }
 };
 
 $rule apply(meanSquare_X_ic <- meanSquare_X_icf)[Loci::Summation],
@@ -760,7 +841,8 @@ $rule pointwise(
   if($timeStep{n,rk}%$meanFrequency{n,rk} == 0) {
     $meanSquare_X{n+1} = $X{n,rk}*$X{n,rk};
   } else {
-    $meanSquare_X{n+1} = ($X{n,rk}*$X{n,rk} - $meanSquare_X{n,rk})/($meanSquareCount_X{n,rk}+1);
+    $meanSquare_X{n+1} = $meanSquare_X{n,rk} +
+      ($X{n,rk}*$X{n,rk} - $meanSquare_X{n,rk})/($meanSquareCount_X{n,rk}+1);
   }
 }
 
@@ -812,10 +894,39 @@ parametric(meanSquarev3d(X)), option(disable_threading), prelude {
 
   std::string filename(ss.str());
 
-  Loci::entitySet readSet = entitySet(seq);
-  hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-  Loci::readContainer(fileId, "meanSquare", $meanSquarev3d_X_icf.Rep(), readSet);
-  Loci::hdf5CloseFile(fileId);
+  struct stat buf;
+  int has_file = 0;
+  $[Once] {
+    if(stat(filename.c_str(), &buf) == 0) {
+      if(buf.st_size != 0 && S_ISREG(buf.st_mode)) {
+        has_file = 1;
+      } else {
+        has_file = 2;
+      }
+    }
+  }
+
+  MPI_Bcast(&has_file, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  if(has_file == 2) {
+    $[Once] {
+      LOG(ERROR) << "Unable to find file '" << filename << "'";
+    }
+  }
+
+  if(has_file) {
+    Loci::entitySet readSet = entitySet(seq);
+    hid_t fileId = Loci::hdf5OpenFile(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    Loci::readContainer(fileId, "meanSquare", $meanSquarev3d_X_icf.Rep(), readSet);
+    Loci::hdf5CloseFile(fileId);
+  } else {
+    $[Once] {
+      LOG(WARNING) << "Could not find restart file '" << filename << "'";
+    }
+    Loci::entitySet dom = entitySet(seq);
+    FORALL(dom,ii) {
+      $meanSquarev3d_X_icf[ii] = Loci::vector3d<double>(0.0, 0.0, 0.0);
+    } ENDFORALL;
+  }
 };
 
 
@@ -855,7 +966,8 @@ $rule pointwise(
   if($timeStep{n,rk}%$meanFrequency{n,rk} == 0) {
     $meanSquarev3d_X{n+1} = temp;
   } else {
-    $meanSquarev3d_X{n+1} = (temp - $meanSquarev3d_X{n,rk})/($meanSquareCount_X{n,rk}+1);
+    $meanSquarev3d_X{n+1} = $meanSquarev3d_X{n,rk} +
+      (temp - $meanSquarev3d_X{n,rk})/($meanSquareCount_X{n,rk}+1);
   }
 }
 

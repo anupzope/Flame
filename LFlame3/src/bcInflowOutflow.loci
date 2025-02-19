@@ -450,7 +450,7 @@ $rule pointwise(
   <-
   gagePressureRef, densityRef, temperatureRef, velocityRef,
   speciesYRef, speciesXRef,
-  mixtureWRef, mixtureRRef,
+  mixtureWRef, mixtureRRef, soundSpeedRef,
   ci->(gagePressure, density, temperature, velocity),
   ci->(speciesY, speciesX),
   ci->(mixtureW, mixtureR, soundSpeed),
@@ -477,12 +477,13 @@ $rule pointwise(
   const_Vect<double> const & Xo = $speciesXRef;
   double const & Wo = $mixtureWRef;
   double const & Ro = $mixtureRRef;
+  double const & co = $soundSpeedRef;
 
   double const uti = dot(ui, $area.n);
   double const uto = dot(uo, $area.n);
 
-  double const r0 = ri;
-  double const c0 = ci;
+  double const r0 = ro;
+  double const c0 = co;
   double const r0c0 = r0*c0;
 
   if(uti > 0.0) { // outflow

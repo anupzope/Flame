@@ -14,8 +14,12 @@ namespace flame {
 // Default values for parameters that control the time loop.
 // =============================================================================
 
-$rule default(nTimeSteps) {
+$rule optional(nTimeSteps) {
   $nTimeSteps = 10;
+}
+
+$rule optional(stopTimeStep) {
+  $stopTimeStep = 0;
 }
 
 $rule default(timeStepSize) {
@@ -324,6 +328,10 @@ $rule pointwise(
 
 $rule singleton(timeStepFinished{n} <- $n{n}, timeStep{n}, nTimeSteps) {
   $timeStepFinished{n} = $$n{n} >= $nTimeSteps;
+}
+
+$rule singleton(timeStepFinished{n} <- $n{n}, timeStep{n}, stopTimeStep) {
+  $timeStepFinished{n} = $timeStep{n} >= $stopTimeStep;
 }
 
 $rule pointwise(solution <- gagePressure{n}, velocity{n}, temperature{n}),

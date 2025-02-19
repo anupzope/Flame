@@ -1,0 +1,42 @@
+#+TITLE: LFlame3: Time Averaging
+#+AUTHOR: Anup Zope
+
+* Enable Time Averaging
+
+~LFlame3~ can compute running time average of flow variables and/or
+running time average of square of flow variables. The running time
+average is computes using Welford's algorithm. Time averaging is
+disabled by default. To enable it, use the following option in the
+~.vars~ file.
+
+#+BEGIN_SRC
+timeAveragingOptions: <
+  frequency=1000,
+  meanVariables=[...],
+  meanSquareVariables=[...]
+>
+#+END_SRC
+
+Running average resets to zero at a time steps which are an exact
+multiple of ~frequency~.  Options ~meanVariables~ and
+~meanSquareVariables~ are optional. If specified, they must be a list
+of variable names. Valid variable names are as follows.
+
+| Variable Name | Variable Meaning |
+|---------------+------------------|
+| pg            | Gage pressure    |
+| t             | Temperature      |
+| r             | Density          |
+| v             | Velocity         |
+| a             | Speed of sound   |
+
+* Obtaining Time Average with Different Frequencies
+
+As an example, let's assume that you want to obtain time average with
+frequencies 1000, 2000, 3000, and 4000. Then, set the ~frequency=4000~
+in ~timeAveragingOptions~ and set plot frequency to 4000 in
+~plotOptions~. Since LFlame3 computes running time average, the plot
+files will contain time average with frequency of ~timeStep%frequency~
+and the running time average will reset to zero every 4000 time
+steps. If time average with non-harmonic frequencies is desired, use
+~nodalTimeSteps~ option in ~plotOptions~.

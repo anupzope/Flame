@@ -1,0 +1,28 @@
+#+TITLE: LFlame3: Time Stepping Specification
+#+AUTHOR: Anup Zope
+
+* Specify the Number of Time Steps
+
+Use wither option ~nTimeSteps~ or option ~stopTimeStep~ (but not both)
+for the number of time steps for the solver. In case of a newly
+started simulation, both the options have the same effect since the
+simulation always starts with time step of zero. For a simulation that
+is restarted from a specified checkpoint (~--ic~ command line option),
+the effect is different. If ~nTimeSteps~ is specified, the simulation
+will be run for that many additional time steps beyond the time step
+of the restart checkpoint. If ~stopTimeStep~ is specified, the
+simulation will be run till the total time steps reach the specified
+value.
+
+* Specify Time Step Size
+
+Specify the time step size in seconds using ~timeStepSize~ option.
+
+* Specify Time Integration Method
+
+Specify time integration method using ~timeIntegrationMethod~
+option. Currently supported value is ~rk~ which means Runge-Kutta
+explicit time integration. For the explicit Runge-Kutta time
+integration, order of integration can be specified using option
+~rkOrder~, which can take value of 2 or 3 for the second order and
+third order scheme.

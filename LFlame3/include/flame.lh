@@ -31,6 +31,9 @@ $type periodicTransform store<Loci::rigid_transform>;
 // Number of time steps.
 $type nTimeSteps param<int>;
 
+// Time step at which to stop simulation.
+$type stopTimeStep param<int>;
+
 // Time step size specified by user.
 $type timeStepSize param<double>;
 
@@ -177,6 +180,25 @@ $type speciesY_TGV_ic storeVec<double>;
 $type mixtureW_TGV_ic store<double>;
 $type mixtureR_TGV_ic store<double>;
 $type mixtureCp_TGV_ic store<double>;
+
+// -----------------------------------------------------------------------------
+
+// User supplied options list for specifying parameters for setting up
+// isentropic vortex initial conditions.
+$type initialConditionsIsentropicVortex param<options_list>;
+
+// Parameters for Isentropic vortex initial conditions, extracted from
+// initialConditionsIsentropicVortex.
+$type isentropicVortexICParameters param<IsentropicVortexICParameters>;
+
+// Taylor-Green vortex initial conditions (geom_cells).
+$type gagePressure_IV_ic store<double>;
+$type velocity_IV_ic store<Loci::vector3d<double> >;
+$type temperature_IV_ic store<double>;
+$type speciesY_IV_ic storeVec<double>;
+$type mixtureW_IV_ic store<double>;
+$type mixtureR_IV_ic store<double>;
+$type mixtureCp_IV_ic store<double>;
 
 // -----------------------------------------------------------------------------
 

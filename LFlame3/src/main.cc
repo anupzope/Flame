@@ -325,12 +325,11 @@ int main(int argc, char * argv[]) {
           }
           flame::UserVariableRegistry const & uvr = flame::UserVariableRegistry::get();
           for(auto const & var : variables) {
-            LOG(INFO) << "mean variable: " << var;
             std::map<std::string, std::string>::const_iterator iter;
             if(uvr.containsUserVariable(var)) {
               std::string constraintName = std::string("calculateMean_") +
                 uvr.getInternalName(var);
-              LOG(INFO) << constraintName;
+              LOG(INFO) << "Created constraint " << constraintName;
               constraint x;
               x = ~EMPTY;
               facts.create_fact(constraintName, x);
@@ -345,12 +344,11 @@ int main(int argc, char * argv[]) {
           }
           flame::UserVariableRegistry const & uvr = flame::UserVariableRegistry::get();
           for(auto const & var : variables) {
-            LOG(INFO) << "mean square variable: " << var;
             std::map<std::string, std::string>::const_iterator iter;
             if(uvr.containsUserVariable(var)) {
               std::string constraintName = std::string("calculateMeanSquare_") +
                 uvr.getInternalName(var);
-              LOG(INFO) << constraintName;
+              LOG(INFO) << "Created constraint " << constraintName;
               constraint x;
               x = ~EMPTY;
               facts.create_fact(constraintName, x);
@@ -363,7 +361,7 @@ int main(int argc, char * argv[]) {
       }
     } else {
       if(Loci::MPI_rank == 0) {
-        LOG(INFO) << "timeAverageVariables not specified";
+        LOG(INFO) << "timeAveragingOptions not specified";
       }
     }
   }
